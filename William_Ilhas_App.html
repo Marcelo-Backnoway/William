@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>⚔ Ilhas — CQ EU</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a14; color: #e8e8e8; min-height: 100vh; overflow-x: hidden; }
+
+/* TOPO */
+.topbar { background: #111122; border-bottom: 1px solid #2a2a3a; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.topbar h1 { font-size: 12px; color: #c8a96e; letter-spacing: 1px; font-weight: 700; }
+.clock { font-size: 18px; font-weight: 700; color: #c8a96e; font-variant-numeric: tabular-nums; min-width: 60px; text-align: right; }
+
+/* ABAS DE ILHA */
+.tabs { display: flex; background: #0d0d1a; border-bottom: 1px solid #2a2a3a; }
+.tab { flex: 1; padding: 10px 4px; text-align: center; font-size: 12px; font-weight: 700; letter-spacing: 1px; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; color: #555; }
+.tab.rigel.active   { color: #90EE90; border-color: #90EE90; background: #0f1a0f; }
+.tab.scorpius.active { color: #87CEFA; border-color: #87CEFA; background: #0f141a; }
+.tab.hubble.active  { color: #DDA0DD; border-color: #DDA0DD; background: #150f1a; }
+.tab:not(.active):hover { color: #888; }
+
+/* GRID DE 3 COLUNAS */
+.grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 10px 8px; }
+
+/* CARD DE FUNÇÃO */
+.fcard { background: #141424; border: 1px solid #2a2a3a; border-radius: 14px; padding: 12px 8px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.fcard.full { border-color: #ff4444; background: #1a0f0f; }
+.fcard.almostfull { border-color: #ffa500; background: #1a150a; }
+
+.flabel { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #666; }
+.flabel.refinados { color: #c8a96e; }
+.flabel.meteoros  { color: #ff9944; }
+.flabel.compose   { color: #88ddff; }
+
+/* Slots Compose — mostra os 4 */
+.compose-slots { width: 100%; display: flex; flex-direction: column; gap: 3px; }
+.compose-row { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 8px; background: #1e1e30; }
+.compose-row.atual { background: #1a2a1a; border: 1px solid #55aa55; }
+.compose-row.cheio { background: #1a0f0f; opacity: 0.5; }
+.compose-num { font-size: 13px; font-weight: 700; min-width: 22px; text-align: center; }
+.compose-nome { font-size: 10px; color: #aaa; flex: 1; }
+.compose-tag { font-size: 9px; padding: 1px 5px; border-radius: 4px; background: #55aa55; color: #fff; font-weight: 700; }
+.compose-tag.vazio-tag { background: #333; color: #888; }
+.compose-tag.cheio-tag { background: #aa3333; color: #fff; }
+
+/* Número grande pra Refinados/Meteoros */
+.big-num { font-size: 42px; font-weight: 800; line-height: 1; }
+.char-name { font-size: 11px; color: #888; margin-top: -2px; text-align: center; }
+.status-msg { font-size: 10px; font-weight: 700; color: #ff4444; }
+
+/* Botões ◀ ▶ */
+.btn-row { display: flex; gap: 6px; width: 100%; justify-content: center; }
+.btn-nav { flex: 1; padding: 9px 4px; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; transition: opacity 0.15s; }
+.btn-nav:active { opacity: 0.6; transform: scale(0.95); }
+.btn-prev { background: #2a2a3a; color: #aaa; }
+.btn-next { background: #c8a96e; color: #111; }
+.btn-next:disabled { background: #333; color: #555; }
+
+/* Barra de progresso */
+.progress-bar { width: 100%; height: 4px; background: #2a2a3a; border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+.progress-fill.refinados { background: #c8a96e; }
+.progress-fill.meteoros  { background: #ff9944; }
+
+/* Botão reset */
+.reset-btn { display: block; width: calc(100% - 16px); margin: 0 8px 16px; padding: 12px; background: #1a1a2a; border: 1px solid #333; border-radius: 12px; color: #666; font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; }
+.reset-btn:active { background: #222; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>⚔ ILHAS — CQ EU</h1>
+  <div class="clock" id="clock">00:00</div>
+</div>
+
+<div class="tabs">
+  <div class="tab scorpius active" onclick="setIsland('scorpius')">SCORPIUS</div>
+  <div class="tab rigel" onclick="setIsland('rigel')">RIGEL</div>
+  <div class="tab hubble" onclick="setIsland('hubble')">HUBBLE</div>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<button class="reset-btn" onclick="confirmReset()">↺ Resetar ilha atual</button>
+
+<script>
+var CHARS = {
+  rigel:    ["","Tirisfall","Nagrand","Karazhan","Lordaeron","Andromath","Malfurion","Atiesh","Nefarian","Onyxia","Chevette","Krypton","Skylab","Santana","Sears","Zok","Goliath","Morbiduz","Gotham","Zion","Caesium137","Magneto","Rivelta","Laguna","Midfield","Outland","Azeroth","Xevious","Druaga","Autorama","Mococa"],
+  scorpius: ["","Proudmoore","Lothar","Greymane","Thrall","Uther","Tyrande","Zaxxon","Falagrum","Vancleef","Michonne","Arcus","Tanaris","Cybertron","Kisuco","Shinobi","Morbidus","Overlord","Supernova","Asgard","Orion","Nucleus","Curupira","Bayonet","Sequoia","Drakkari","Corleone","Zandalar","Quake","CoolNight","Magnum"],
+  hubble:   ["","Zephyr","Hyperion","Kepler","Agnus","Longest","Zenith","Capivara","Mangaba","Catarinense","Darkseid","Ultron","Samanosuke","Megalith","Mobius1","Yellow13","Vercetti","Alastor","Neville","Ancelotti","Scaloni","Sampaoli","Lakesia","Vozinha","COSIPA","Riga","Anchieta","Imigrantes","Brabham","Gardenal","Gonzaga"]
+};
+
+var RANGES = { refinados: [1,24], meteoros: [25,26], compose: [27,30] };
+var KEY = 'cq_ilhas_v1';
+var island = 'scorpius';
+
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) { return {}; }
+}
+function saveState(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch(e) {} }
+
+function getIslandState(isl) {
+  var s = loadState();
+  if (!s[isl]) s[isl] = { refinados: 1, meteoros: 25, compose: { 27:0, 28:0, 29:0, 30:0 } };
+  return s[isl];
+}
+function setIslandState(isl, st) {
+  var s = loadState(); s[isl] = st; saveState(s);
+}
+
+function getName(isl, num) { return CHARS[isl][num] || '???'; }
+
+function setIsland(isl) {
+  island = isl;
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+  document.querySelector('.tab.' + isl).classList.add('active');
+  render();
+}
+
+function render() {
+  var st = getIslandState(island);
+  var grid = document.getElementById('grid');
+  grid.innerHTML = '';
+
+  // REFINADOS
+  grid.appendChild(makeQueueCard('refinados', st.refinados, RANGES.refinados[0], RANGES.refinados[1]));
+  // COMPOSE
+  grid.appendChild(makeComposeCard(st.compose));
+  // METEOROS
+  grid.appendChild(makeQueueCard('meteoros', st.meteoros, RANGES.meteoros[0], RANGES.meteoros[1]));
+}
+
+function makeQueueCard(type, current, min, max) {
+  var div = document.createElement('div');
+  var isFull = current > max;
+  var almostFull = current === max;
+  div.className = 'fcard' + (isFull ? ' full' : almostFull ? ' almostfull' : '');
+
+  var label = document.createElement('div');
+  label.className = 'flabel ' + type;
+  label.textContent = type === 'refinados' ? 'REFINADOS' : 'METEOROS';
+  div.appendChild(label);
+
+  var total = max - min + 1;
+  var used = Math.min(current - min, total);
+  var pct = Math.round((used / total) * 100);
+  var pb = document.createElement('div'); pb.className = 'progress-bar';
+  var pf = document.createElement('div'); pf.className = 'progress-fill ' + type;
+  pf.style.width = pct + '%';
+  pb.appendChild(pf); div.appendChild(pb);
+
+  var num = document.createElement('div');
+  num.className = 'big-num';
+  num.style.color = isFull ? '#ff4444' : (type === 'meteoros' ? '#ff9944' : '#c8a96e');
+  num.textContent = isFull ? '✓' : current;
+  div.appendChild(num);
+
+  var nm = document.createElement('div');
+  nm.className = 'char-name';
+  nm.textContent = isFull ? 'Todas cheias!' : getName(island, current);
+  div.appendChild(nm);
+
+  if (isFull) {
+    var msg = document.createElement('div'); msg.className = 'status-msg'; msg.textContent = min+'-'+max+' CHEIAS';
+    div.appendChild(msg);
+  }
+
+  var btnRow = document.createElement('div'); btnRow.className = 'btn-row';
+  var prev = document.createElement('button'); prev.className = 'btn-nav btn-prev'; prev.textContent = '◀';
+  prev.disabled = (current <= min);
+  prev.onclick = function(){ navigate(type, -1); };
+  var next = document.createElement('button'); next.className = 'btn-nav btn-next'; next.textContent = isFull ? '↺' : '▶';
+  next.onclick = function(){ navigate(type, 1); };
+  btnRow.appendChild(prev); btnRow.appendChild(next);
+  div.appendChild(btnRow);
+
+  return div;
+}
+
+function makeComposeCard(composeState) {
+  var div = document.createElement('div');
+  var slots = [27,28,29,30];
+  var allFull = slots.every(function(s){ return composeState[s] === 1; });
+  div.className = 'fcard' + (allFull ? ' full' : '');
+
+  var label = document.createElement('div');
+  label.className = 'flabel compose';
+  label.textContent = 'COMPOSE';
+  div.appendChild(label);
+
+  // Encontra o atual (primeiro não cheio)
+  var atual = slots.find(function(s){ return composeState[s] !== 1; });
+
+  var slotsDiv = document.createElement('div'); slotsDiv.className = 'compose-slots';
+  slots.forEach(function(s) {
+    var row = document.createElement('div');
+    var isCheio = composeState[s] === 1;
+    var isAtual = s === atual;
+    row.className = 'compose-row' + (isAtual ? ' atual' : '') + (isCheio ? ' cheio' : '');
+
+    var num = document.createElement('div'); num.className = 'compose-num';
+    num.style.color = isCheio ? '#555' : isAtual ? '#90ee90' : '#87cefa';
+    num.textContent = s;
+
+    var nome = document.createElement('div'); nome.className = 'compose-nome';
+    nome.textContent = getName(island, s);
+
+    var tag = document.createElement('div');
+    if (isCheio) { tag.className = 'compose-tag cheio-tag'; tag.textContent = 'CHEIO'; }
+    else if (isAtual) { tag.className = 'compose-tag'; tag.textContent = 'ATUAL'; }
+    else { tag.className = 'compose-tag vazio-tag'; tag.textContent = 'LIVRE'; }
+
+    row.appendChild(num); row.appendChild(nome); row.appendChild(tag);
+    slotsDiv.appendChild(row);
+  });
+  div.appendChild(slotsDiv);
+
+  var btnRow = document.createElement('div'); btnRow.className = 'btn-row';
+  var prev = document.createElement('button'); prev.className = 'btn-nav btn-prev'; prev.textContent = '◀';
+  prev.onclick = function(){ navigateCompose(-1); };
+  var next = document.createElement('button'); next.className = 'btn-nav btn-next';
+  next.textContent = allFull ? '↺' : '▶';
+  next.onclick = function(){ navigateCompose(1); };
+  btnRow.appendChild(prev); btnRow.appendChild(next);
+  div.appendChild(btnRow);
+
+  return div;
+}
+
+function navigate(type, dir) {
+  var st = getIslandState(island);
+  var min = RANGES[type][0], max = RANGES[type][1];
+  var cur = st[type];
+  if (dir === 1 && cur <= max) st[type] = cur + 1;
+  if (dir === -1 && cur > min) st[type] = cur - 1;
+  setIslandState(island, st);
+  render();
+}
+
+function navigateCompose(dir) {
+  var st = getIslandState(island);
+  var slots = [27,28,29,30];
+  var allFull = slots.every(function(s){ return st.compose[s] === 1; });
+
+  if (dir === 1) {
+    if (allFull) { slots.forEach(function(s){ st.compose[s] = 0; }); }
+    else {
+      var atual = slots.find(function(s){ return st.compose[s] !== 1; });
+      if (atual) st.compose[atual] = 1;
+    }
+  } else {
+    // retroceder: desfaz o último marcado como cheio
+    var lastCheio = null;
+    slots.forEach(function(s){ if(st.compose[s] === 1) lastCheio = s; });
+    if (lastCheio) st.compose[lastCheio] = 0;
+  }
+  setIslandState(island, st);
+  render();
+}
+
+function confirmReset() {
+  if (confirm('Resetar ' + island.toUpperCase() + '? Todos os contadores voltam ao início.')) {
+    var s = loadState();
+    delete s[island];
+    saveState(s);
+    render();
+  }
+}
+
+// Relógio
+function tick() {
+  var now = new Date();
+  var h = String(now.getHours()).padStart(2,'0');
+  var m = String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('clock').textContent = h + ':' + m;
+}
+tick();
+setInterval(tick, 10000);
+
+render();
+</script>
+</body>
+</html>
