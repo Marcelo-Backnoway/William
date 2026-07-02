@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>⚔ Ilhas — CQ EU</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a14; color: #e8e8e8; min-height: 100vh; overflow-x: hidden; }
+
+/* TOPO */
+.topbar { background: #111122; border-bottom: 1px solid #2a2a3a; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.topbar h1 { font-size: 11px; color: #c8a96e; letter-spacing: 1px; font-weight: 700; }
+.top-right { display: flex; align-items: center; gap: 10px; }
+.clock { font-size: 18px; font-weight: 700; color: #c8a96e; font-variant-numeric: tabular-nums; }
+.wakelock-btn { font-size: 16px; cursor: pointer; opacity: 0.4; transition: opacity 0.2s; background: none; border: none; padding: 2px; }
+.wakelock-btn.active { opacity: 1; }
+
+/* ABAS */
+.tabs { display: flex; background: #0d0d1a; border-bottom: 1px solid #2a2a3a; }
+.tab { flex: 1; padding: 9px 4px; text-align: center; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; color: #555; }
+.tab.rigel.active    { color: #90EE90; border-color: #90EE90; background: #0f1a0f; }
+.tab.scorpius.active { color: #87CEFA; border-color: #87CEFA; background: #0f141a; }
+.tab.hubble.active   { color: #DDA0DD; border-color: #DDA0DD; background: #150f1a; }
+.tab.resumo.active   { color: #c8a96e; border-color: #c8a96e; background: #1a160a; }
+.tab:not(.active):hover { color: #888; }
+
+/* GRID */
+.grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 10px 8px; }
+
+/* CARD */
+.fcard { background: #141424; border: 1px solid #2a2a3a; border-radius: 14px; padding: 12px 8px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: border-color 0.3s, background 0.3s; }
+.fcard.full      { border-color: #ff4444; background: #1a0f0f; }
+.fcard.almostfull { border-color: #ffa500; background: #1a150a; }
+@keyframes pulse { 0%,100%{border-color:#ff4444} 50%{border-color:#ff0000;box-shadow:0 0 12px #ff000066} }
+.fcard.pulse { animation: pulse 0.8s ease-in-out 3; }
+
+.flabel { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+.flabel.refinados { color: #c8a96e; }
+.flabel.meteoros  { color: #ff9944; }
+.flabel.compose   { color: #88ddff; }
+
+.progress-bar { width: 100%; height: 4px; background: #2a2a3a; border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+.progress-fill.refinados { background: #c8a96e; }
+.progress-fill.meteoros  { background: #ff9944; }
+
+.big-num { font-size: 40px; font-weight: 800; line-height: 1; }
+.char-name { font-size: 11px; color: #888; text-align: center; }
+.remaining { font-size: 10px; color: #555; }
+.status-msg { font-size: 10px; font-weight: 700; color: #ff4444; }
+
+.compose-slots { width: 100%; display: flex; flex-direction: column; gap: 3px; }
+.compose-row { display: flex; align-items: center; gap: 5px; padding: 4px 5px; border-radius: 8px; background: #1e1e30; }
+.compose-row.atual { background: #1a2a1a; border: 1px solid #55aa55; }
+.compose-row.cheio { opacity: 0.45; }
+.compose-num  { font-size: 13px; font-weight: 700; min-width: 20px; text-align: center; }
+.compose-nome { font-size: 9px; color: #aaa; flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.compose-tag  { font-size: 8px; padding: 1px 4px; border-radius: 4px; font-weight: 700; white-space: nowrap; }
+.tag-atual  { background: #55aa55; color: #fff; }
+.tag-cheio  { background: #aa3333; color: #fff; }
+.tag-livre  { background: #333; color: #888; }
+
+.btn-row { display: flex; gap: 6px; width: 100%; }
+.btn-nav { flex: 1; padding: 10px 4px; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; transition: transform 0.1s, opacity 0.15s; }
+.btn-nav:active { transform: scale(0.92); opacity: 0.7; }
+.btn-prev { background: #2a2a3a; color: #aaa; }
+.btn-next { background: #c8a96e; color: #111; }
+.btn-next:disabled, .btn-prev:disabled { background: #1a1a2a; color: #333; }
+
+/* RESUMO */
+.resumo-wrap { padding: 10px 8px; display: flex; flex-direction: column; gap: 10px; }
+.resumo-card { background: #141424; border: 1px solid #2a2a3a; border-radius: 14px; padding: 14px; }
+.resumo-title { font-size: 12px; font-weight: 700; letter-spacing: 1px; margin-bottom: 10px; }
+.resumo-title.rigel    { color: #90EE90; }
+.resumo-title.scorpius { color: #87CEFA; }
+.resumo-title.hubble   { color: #DDA0DD; }
+.resumo-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #1e1e30; font-size: 12px; }
+.resumo-row:last-child { border-bottom: none; }
+.resumo-label { color: #888; }
+.resumo-val { font-weight: 700; color: #e8e8e8; }
+.resumo-val.alerta { color: #ff4444; }
+.resumo-val.ok { color: #74c69d; }
+
+.reset-btn { display: block; width: calc(100% - 16px); margin: 0 8px 16px; padding: 12px; background: #1a1a2a; border: 1px solid #333; border-radius: 12px; color: #666; font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; }
+.reset-btn:active { background: #222; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>⚔ ILHAS — CQ EU</h1>
+  <div class="top-right">
+    <button class="wakelock-btn" id="wlBtn" onclick="toggleWakeLock()" title="Manter tela ligada">💡</button>
+    <div class="clock" id="clock">00:00</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab scorpius active" onclick="setView('scorpius')">SCORPIUS</div>
+  <div class="tab rigel"          onclick="setView('rigel')">RIGEL</div>
+  <div class="tab hubble"         onclick="setView('hubble')">HUBBLE</div>
+  <div class="tab resumo"         onclick="setView('resumo')">📊</div>
+</div>
+
+<div id="main"></div>
+
+<script>
+var CHARS = {
+  rigel:    ["","Tirisfall","Nagrand","Karazhan","Lordaeron","Andromath","Malfurion","Atiesh","Nefarian","Onyxia","Chevette","Krypton","Skylab","Santana","Sears","Zok","Goliath","Morbiduz","Gotham","Zion","Caesium137","Magneto","Rivelta","Laguna","Midfield","Outland","Azeroth","Xevious","Druaga","Autorama","Mococa"],
+  scorpius: ["","Proudmoore","Lothar","Greymane","Thrall","Uther","Tyrande","Zaxxon","Falagrum","Vancleef","Michonne","Arcus","Tanaris","Cybertron","Kisuco","Shinobi","Morbidus","Overlord","Supernova","Asgard","Orion","Nucleus","Curupira","Bayonet","Sequoia","Drakkari","Corleone","Zandalar","Quake","CoolNight","Magnum"],
+  hubble:   ["","Zephyr","Hyperion","Kepler","Agnus","Longest","Zenith","Capivara","Mangaba","Catarinense","Darkseid","Ultron","Samanosuke","Megalith","Mobius1","Yellow13","Vercetti","Alastor","Neville","Ancelotti","Scaloni","Sampaoli","Lakesia","Vozinha","COSIPA","Riga","Anchieta","Imigrantes","Brabham","Gardenal","Gonzaga"]
+};
+var RANGES = { refinados:[1,24], meteoros:[25,26], compose:[27,30] };
+var KEY = 'cq_ilhas_v2';
+var view = 'scorpius';
+var wakeLock = null;
+
+// ── STATE ──
+function loadState() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) { return {}; } }
+function saveState(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch(e) {} }
+function getISL(isl) {
+  var s = loadState();
+  if (!s[isl]) s[isl] = { refinados:1, meteoros:25, compose:{27:0,28:0,29:0,30:0} };
+  return s[isl];
+}
+function setISL(isl, st) { var s=loadState(); s[isl]=st; saveState(s); }
+function getName(isl, n) { return CHARS[isl][n] || '???'; }
+
+// ── VIBRATION ──
+function vibe(pattern) { try { if(navigator.vibrate) navigator.vibrate(pattern); } catch(e){} }
+
+// ── WAKELOCK ──
+async function toggleWakeLock() {
+  var btn = document.getElementById('wlBtn');
+  if (wakeLock) {
+    try { await wakeLock.release(); } catch(e){}
+    wakeLock = null;
+    btn.classList.remove('active');
+    btn.title = 'Manter tela ligada';
+  } else {
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      btn.classList.add('active');
+      btn.title = 'Tela sempre ligada — toque para desativar';
+      wakeLock.addEventListener('release', function(){ wakeLock=null; btn.classList.remove('active'); });
+    } catch(e) { alert('WakeLock não disponível neste navegador.'); }
+  }
+}
+
+// ── VIEW ──
+function setView(v) {
+  view = v;
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+  var sel = v === 'resumo' ? '.tab.resumo' : '.tab.' + v;
+  document.querySelector(sel).classList.add('active');
+  render();
+}
+
+function render() {
+  var main = document.getElementById('main');
+  if (view === 'resumo') { renderResumo(main); return; }
+  main.innerHTML = '<div class="grid" id="grid"></div>';
+  var grid = document.getElementById('grid');
+  var st = getISL(view);
+  grid.appendChild(makeQueueCard('refinados', st.refinados));
+  grid.appendChild(makeComposeCard(st.compose));
+  grid.appendChild(makeQueueCard('meteoros', st.meteoros));
+  main.innerHTML += '<button class="reset-btn" onclick="confirmReset()">↺ Resetar ' + view.toUpperCase() + '</button>';
+}
+
+// ── QUEUE CARD ──
+function makeQueueCard(type, current) {
+  var min = RANGES[type][0], max = RANGES[type][1];
+  var isFull = current > max;
+  var isLast = current === max;
+  var div = document.createElement('div');
+  div.className = 'fcard' + (isFull?' full':isLast?' almostfull':'');
+
+  var lbl = el('div','flabel '+type, type==='refinados'?'REFINADOS':'METEOROS');
+  div.appendChild(lbl);
+
+  if (!isFull) {
+    var total = max-min+1, used = current-min;
+    var pb = el('div','progress-bar'); var pf = el('div','progress-fill '+type);
+    pf.style.width = Math.round((used/total)*100)+'%';
+    pb.appendChild(pf); div.appendChild(pb);
+  }
+
+  var num = el('div','big-num', isFull?'✓':String(current));
+  num.style.color = isFull?'#ff4444':(type==='meteoros'?'#ff9944':'#c8a96e');
+  div.appendChild(num);
+
+  div.appendChild(el('div','char-name', isFull?'Todas cheias!':getName(view,current)));
+
+  if (!isFull) {
+    var rem = max - current;
+    div.appendChild(el('div','remaining', rem===0?'Última!':rem+' restante'+(rem>1?'s':'')));
+  } else {
+    div.appendChild(el('div','status-msg', min+'-'+max+' CHEIAS'));
+  }
+
+  var br = document.createElement('div'); br.className='btn-row';
+  var prev = btn('◀','btn-nav btn-prev', function(){ navigate(type,-1); });
+  prev.disabled = (current<=min);
+  var next = btn(isFull?'↺':'▶','btn-nav btn-next', function(){ navigate(type,1); });
+  br.appendChild(prev); br.appendChild(next);
+  div.appendChild(br);
+  return div;
+}
+
+// ── COMPOSE CARD ──
+function makeComposeCard(composeState) {
+  var slots=[27,28,29,30];
+  var allFull = slots.every(function(s){ return composeState[s]===1; });
+  var atual = slots.find(function(s){ return composeState[s]!==1; });
+  var div = document.createElement('div');
+  div.className='fcard'+(allFull?' full':'');
+
+  div.appendChild(el('div','flabel compose','COMPOSE'));
+
+  var sd = document.createElement('div'); sd.className='compose-slots';
+  slots.forEach(function(s){
+    var isCheio = composeState[s]===1;
+    var isAtual = s===atual;
+    var row = document.createElement('div');
+    row.className='compose-row'+(isAtual?' atual':'')+(isCheio?' cheio':'');
+    var num = el('div','compose-num',String(s));
+    num.style.color = isCheio?'#555':isAtual?'#90ee90':'#87cefa';
+    var nome = el('div','compose-nome',getName(view,s));
+    var tag = document.createElement('div');
+    if(isCheio){ tag.className='compose-tag tag-cheio'; tag.textContent='CHEIO'; }
+    else if(isAtual){ tag.className='compose-tag tag-atual'; tag.textContent='ATUAL'; }
+    else{ tag.className='compose-tag tag-livre'; tag.textContent='LIVRE'; }
+    row.appendChild(num); row.appendChild(nome); row.appendChild(tag);
+    sd.appendChild(row);
+  });
+  div.appendChild(sd);
+
+  if(allFull) div.appendChild(el('div','status-msg','TODAS CHEIAS'));
+
+  var br=document.createElement('div'); br.className='btn-row';
+  br.appendChild(btn('◀','btn-nav btn-prev',function(){ navigateCompose(-1); }));
+  br.appendChild(btn(allFull?'↺':'▶','btn-nav btn-next',function(){ navigateCompose(1); }));
+  div.appendChild(br);
+  return div;
+}
+
+// ── RESUMO ──
+function renderResumo(main) {
+  var islands = ['scorpius','rigel','hubble'];
+  var colors  = {scorpius:'#87CEFA',rigel:'#90EE90',hubble:'#DDA0DD'};
+  var names   = {scorpius:'SCORPIUS',rigel:'RIGEL',hubble:'HUBBLE'};
+  var html = '<div class="resumo-wrap">';
+  islands.forEach(function(isl){
+    var st = getISL(isl);
+    var rFull = st.refinados > 24;
+    var mFull = st.meteoros > 26;
+    var cCount = [27,28,29,30].filter(function(s){ return st.compose[s]===1; }).length;
+    var cFull = cCount===4;
+    html += '<div class="resumo-card">';
+    html += '<div class="resumo-title '+isl+'">⚔ '+names[isl]+'</div>';
+    html += '<div class="resumo-row"><span class="resumo-label">Refinados</span><span class="resumo-val'+(rFull?' alerta':'')+'">'+(rFull?'CHEIAS':'Atual: '+st.refinados+' / '+getName(isl,st.refinados))+'</span></div>';
+    html += '<div class="resumo-row"><span class="resumo-label">Meteoros</span><span class="resumo-val'+(mFull?' alerta':'')+'">'+(mFull?'CHEIAS':'Atual: '+st.meteoros+' / '+getName(isl,st.meteoros))+'</span></div>';
+    html += '<div class="resumo-row"><span class="resumo-label">Compose</span><span class="resumo-val'+(cFull?' alerta':' ok')+'">'+cCount+'/4 cheias</span></div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  main.innerHTML = html;
+}
+
+// ── NAVIGATE ──
+function navigate(type, dir) {
+  var st = getISL(view);
+  var min=RANGES[type][0], max=RANGES[type][1];
+  var cur = st[type];
+  if(dir===1 && cur<=max){ st[type]=cur+1; vibe(dir===1?[30]:[]); }
+  if(dir===-1 && cur>min){ st[type]=cur-1; vibe([10,10,10]); }
+  // Alerta se chegou na última
+  if(st[type]===max){ vibe([50,30,50,30,100]); }
+  setISL(view,st); render();
+}
+
+function navigateCompose(dir) {
+  var st = getISL(view);
+  var slots=[27,28,29,30];
+  var allFull = slots.every(function(s){ return st.compose[s]===1; });
+  if(dir===1){
+    if(allFull){ slots.forEach(function(s){ st.compose[s]=0; }); vibe([10,10,10]); }
+    else{ var atual=slots.find(function(s){ return st.compose[s]!==1; }); if(atual){ st.compose[atual]=1; vibe([30]); } }
+    if(slots.every(function(s){ return st.compose[s]===1; })){ vibe([50,30,50,30,100]); }
+  } else {
+    var last=null; slots.forEach(function(s){ if(st.compose[s]===1) last=s; });
+    if(last){ st.compose[last]=0; vibe([10,10,10]); }
+  }
+  setISL(view,st); render();
+}
+
+function confirmReset() {
+  if(confirm('Resetar '+view.toUpperCase()+'?\nTodos os contadores voltam ao início.')){
+    var s=loadState(); delete s[view]; saveState(s); vibe([20,20,20,20,50]); render();
+  }
+}
+
+// ── HELPERS ──
+function el(tag,cls,txt){
+  var e=document.createElement(tag); e.className=cls;
+  if(txt!==undefined) e.textContent=txt;
+  return e;
+}
+function btn(txt,cls,fn){
+  var b=document.createElement('button'); b.className=cls; b.textContent=txt; b.onclick=fn; return b;
+}
+
+// ── RELÓGIO ──
+function tick(){
+  var n=new Date();
+  document.getElementById('clock').textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');
+}
+tick(); setInterval(tick,10000);
+
+render();
+</script>
+</body>
+</html>
