@@ -227,6 +227,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   <div class="tab" onclick="setTab('ilhas')">🏝️ Ilhas</div>
   <div class="tab" onclick="setTab('chars')">⚔️ Personagens</div>
   <div class="tab" onclick="setTab('dash')">📅 Agenda</div>
+  <div class="tab" onclick="setTab('gold')">💰 Gold</div>
   <div class="tab" onclick="setTab('backup')">💾 Backup</div>
 </div>
 
@@ -363,7 +364,7 @@ function setServer(sv) {
 function setTab(t) {
   tab = t;
   document.querySelectorAll('.tab').forEach(function(b){ b.classList.remove('active'); });
-  var idx = {ilhas:0,chars:1,dash:2,backup:3};
+  var idx = {ilhas:0,chars:1,dash:2,gold:3,backup:4};
   document.querySelectorAll('.tab')[idx[t]].classList.add('active');
   render();
 }
@@ -378,6 +379,7 @@ function render() {
   if (tab==='ilhas')  renderIlhas(main);
   else if (tab==='chars') renderChars(main);
   else if (tab==='dash')  renderDash(main);
+  else if (tab==='gold') renderGold(main);
   else if (tab==='backup') renderBackup(main);
 }
 
@@ -795,6 +797,137 @@ function addObj2(){var i=document.getElementById('objIn');if(!i||!i.value.trim()
 // ══════════════════════════════════════════════════════
 // BACKUP
 // ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+// GOLD
+// ══════════════════════════════════════════════════════
+function getGoldState() {
+  var s = loadState(), k = server+'_gold';
+  if (!s[k]) s[k] = { total:0, historico:[], data: new Date().toLocaleDateString('pt-BR') };
+  return s[k];
+}
+function setGoldState(data) { var s=loadState(); s[server+'_gold']=data; saveState(s); }
+
+function renderGold(main) {
+  var gs = getGoldState();
+  var hoje = new Date().toLocaleDateString('pt-BR');
+
+  var card = document.createElement('div'); card.className='card';
+
+  // Título e data
+  var title = el('div','card-title','💰 CONTADOR DE GOLD — '+hoje);
+  card.appendChild(title);
+
+  // Total acumulado
+  var totalBox = document.createElement('div');
+  totalBox.style.cssText = 'background:#1a2a0a;border:2px solid #c8a96e;border-radius:14px;padding:18px;text-align:center;margin-bottom:14px;';
+  var totalLabel = el('div','',  'Total do dia');
+  totalLabel.style.cssText = 'font-size:11px;color:#888;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;';
+  var totalVal = el('div','', formatGold(gs.total));
+  totalVal.style.cssText = 'font-size:36px;font-weight:800;color:#FFD700;letter-spacing:1px;';
+  totalBox.appendChild(totalLabel); totalBox.appendChild(totalVal);
+  card.appendChild(totalBox);
+
+  // Personagem
+  var chars = getChars().filter(function(c){ return c.cat==='Principal'||c.cat==='Intermediário'; });
+  var charLabel = el('div','','👤 Personagem farmando:');
+  charLabel.style.cssText = 'font-size:11px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;';
+  card.appendChild(charLabel);
+
+  var sel = document.createElement('select');
+  sel.id = 'goldChar';
+  sel.style.cssText = 'width:100%;background:#1a1a2e;border:1px solid #333;border-radius:10px;padding:10px 12px;font-size:14px;color:#e8e8e8;outline:none;font-family:inherit;margin-bottom:10px;';
+  var defOpt = document.createElement('option'); defOpt.value=''; defOpt.textContent='Selecione...';
+  sel.appendChild(defOpt);
+  chars.forEach(function(c){
+    var opt = document.createElement('option'); opt.value=c.nome; opt.textContent=c.nome+' ('+c.cat+')';
+    if(c.nome==='Mxyzptlk') opt.selected=true;
+    sel.appendChild(opt);
+  });
+  // If no chars, add manual option
+  if(chars.length===0){
+    var opt2=document.createElement('option'); opt2.value='Manual'; opt2.textContent='Digitar manualmente'; sel.appendChild(opt2);
+  }
+  card.appendChild(sel);
+
+  // Input de valor
+  var addLabel = el('div','','💎 Valor depositado:');
+  addLabel.style.cssText = 'font-size:11px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;';
+  card.appendChild(addLabel);
+
+  var inputRow = document.createElement('div');
+  inputRow.style.cssText = 'display:flex;gap:8px;margin-bottom:10px;';
+  var goldInput = document.createElement('input');
+  goldInput.id='goldInput'; goldInput.type='number'; goldInput.placeholder='Ex: 50000';
+  goldInput.style.cssText='flex:1;background:#1a1a2e;border:1px solid #c8a96e;border-radius:10px;padding:12px;font-size:16px;color:#FFD700;outline:none;font-family:inherit;text-align:center;';
+  goldInput.addEventListener('keydown',function(e){if(e.key==='Enter')addGold();});
+  var addBtn = document.createElement('button');
+  addBtn.textContent='＋'; addBtn.style.cssText='background:#c8a96e;color:#111;border:none;border-radius:10px;padding:12px 20px;font-size:22px;font-weight:700;cursor:pointer;';
+  addBtn.onclick=addGold;
+  inputRow.appendChild(goldInput); inputRow.appendChild(addBtn);
+  card.appendChild(inputRow);
+
+  // Botão zerar
+  var resetRow = document.createElement('div');
+  resetRow.style.cssText='display:flex;gap:8px;margin-bottom:14px;';
+  var resetBtn=document.createElement('button');
+  resetBtn.textContent='↺ Zerar dia'; resetBtn.className='btn-reset'; resetBtn.style.cssText='flex:1;padding:10px;background:#1a0f0f;border:1px solid #aa3333;border-radius:10px;color:#ff6666;font-size:13px;font-weight:600;cursor:pointer;';
+  resetBtn.onclick=function(){ if(confirm('Zerar o contador de gold?')){ setGoldState({total:0,historico:[],data:hoje}); render(); } };
+  var undoBtn=document.createElement('button');
+  undoBtn.textContent='↩ Desfazer'; undoBtn.className='btn-reset'; undoBtn.style.cssText='flex:1;padding:10px;background:#1a1a2a;border:1px solid #555;border-radius:10px;color:#aaa;font-size:13px;font-weight:600;cursor:pointer;';
+  undoBtn.onclick=function(){
+    var gs2=getGoldState();
+    if(gs2.historico.length===0){alert('Nada pra desfazer!');return;}
+    var last=gs2.historico.pop(); gs2.total-=last.valor;
+    if(gs2.total<0)gs2.total=0;
+    setGoldState(gs2); render();
+  };
+  resetRow.appendChild(undoBtn); resetRow.appendChild(resetBtn);
+  card.appendChild(resetRow);
+
+  // Histórico
+  if(gs.historico.length>0){
+    var hTitle=el('div','card-title','📋 Depósitos de hoje');
+    card.appendChild(hTitle);
+    var hList=document.createElement('div');
+    var rev=[].concat(gs.historico).reverse().slice(0,10);
+    rev.forEach(function(h,i){
+      var hRow=document.createElement('div');
+      hRow.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#0f0f1e;border-radius:8px;margin-bottom:5px;border:1px solid #2a2a3a;';
+      var left=document.createElement('div');
+      left.innerHTML='<div style="font-size:12px;font-weight:600;color:#c8a96e;">'+h.char+'</div><div style="font-size:10px;color:#555;">'+h.hora+'</div>';
+      var right=el('div','','+ '+formatGold(h.valor));
+      right.style.cssText='font-size:14px;font-weight:700;color:#FFD700;';
+      hRow.appendChild(left); hRow.appendChild(right); hList.appendChild(hRow);
+    });
+    card.appendChild(hList);
+  } else {
+    var empty=el('div','','Nenhum depósito ainda hoje. Bora farmar! ⚔️');
+    empty.style.cssText='text-align:center;color:#555;font-size:13px;padding:16px;';
+    card.appendChild(empty);
+  }
+
+  main.appendChild(card);
+}
+
+function addGold(){
+  var val=parseFloat(document.getElementById('goldInput').value);
+  var charName=document.getElementById('goldChar').value||'Personagem';
+  if(!val||val<=0){alert('Digite um valor válido!');return;}
+  var gs=getGoldState();
+  var hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  gs.total+=val;
+  gs.historico.push({char:charName,valor:val,hora:hora});
+  setGoldState(gs);
+  vibe([30]);
+  render();
+}
+
+function formatGold(n){
+  if(n>=1000000) return (n/1000000).toFixed(2).replace('.',',')+'M';
+  if(n>=1000) return (n/1000).toFixed(1).replace('.',',')+'k';
+  return n.toLocaleString('pt-BR');
+}
+
 function renderBackup(main) {
   var card=document.createElement('div'); card.className='card';
   card.appendChild(el('div','card-title','💾 Backup & Restauração'));
