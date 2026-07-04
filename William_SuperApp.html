@@ -413,7 +413,7 @@ function renderIlhas(main) {
   ];
   cols.forEach(function(col){
     var isFull = (col.type==='refinados'&&col.cur>24)||(col.type==='elite'&&col.cur>26);
-    var nome = isFull?'CHEIAS':(server==='eu'?getIlhaNome(ilha, col.cur):getIlhaNome(ilha, col.cur));
+    var nome = isFull?'CHEIAS':getIlhaNome(ilha, col.cur);
     var lk = col.type+'_'+col.cur;
 
     var card = document.createElement('div'); card.className='info-card';
@@ -484,7 +484,7 @@ function makeQueueCard(type, current) {
     cnIn.placeholder = 'Nome slot '+current;
     cnIn.value = getIlhaNome(ilha, current) !== 'Slot '+current ? getIlhaNome(ilha, current) : '';
     cnIn.dataset.slot = current;
-    cnIn.onchange = (function(sl){ return function(){ setIlhaNome(ilha, sl, this.value); }; })(current);
+    cnIn.onchange = (function(sl, isl){ return function(){ setIlhaNome(isl, sl, this.value); }; })(current, ilha);
     div.appendChild(cnIn);
   } else {
     var cn=el('div','char-name-ilha',isFull?'Cheias!':getIlhaNome(ilha,current));
@@ -517,7 +517,7 @@ function makeComposeCard(composeState) {
       nome.placeholder = 'Slot '+s;
       var savedNome = getIlhaNome(ilha, s);
       nome.value = savedNome !== 'Slot '+s ? savedNome : '';
-      nome.onchange = (function(sl){ return function(){ setIlhaNome(ilha, sl, this.value); }; })(s);
+      nome.onchange = (function(sl, isl){ return function(){ setIlhaNome(isl, sl, this.value); }; })(s, ilha);
     } else {
       nome = el('div','compose-nome',getIlhaNome(ilha,s));
       nome.style.color = isCheio?'#555':isAtual?'#90ee90':'#87cefa';
