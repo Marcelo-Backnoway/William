@@ -413,7 +413,7 @@ function renderIlhas(main) {
   ];
   cols.forEach(function(col){
     var isFull = (col.type==='refinados'&&col.cur>24)||(col.type==='elite'&&col.cur>26);
-    var nome = isFull?'CHEIAS':getIlhaNome(ilha, col.cur);
+    var nome = isFull?'CHEIAS':(server==='eu'?getIlhaNome(ilha, col.cur):getIlhaNome(ilha, col.cur));
     var lk = col.type+'_'+col.cur;
 
     var card = document.createElement('div'); card.className='info-card';
@@ -455,7 +455,19 @@ function renderIlhas(main) {
   rb.onclick=confirmResetIlha; main.appendChild(rb);
 }
 
-function getIlhaNome(isl, n) { return (ILHA_CHARS[isl]&&ILHA_CHARS[isl][n])?ILHA_CHARS[isl][n]:'???'; }
+function getIlhaNome(isl, n) {
+  if (server === 'eu') return (ILHA_CHARS[isl]&&ILHA_CHARS[isl][n])?ILHA_CHARS[isl][n]:'???';
+  // Outros servidores: busca no estado salvo
+  var s = loadState(), k = server+'_ilha_nomes_'+isl;
+  var nomes = s[k] || {};
+  return nomes[n] || 'Slot '+n;
+}
+function setIlhaNome(isl, n, nome) {
+  var s = loadState(), k = server+'_ilha_nomes_'+isl;
+  if (!s[k]) s[k] = {};
+  s[k][n] = nome;
+  saveState(s);
+}
 
 function makeQueueCard(type, current) {
   var min={refinados:1,elite:25}[type]||1, max={refinados:24,elite:26}[type]||24;
@@ -465,7 +477,20 @@ function makeQueueCard(type, current) {
   div.appendChild(el('div','flabel '+type,type==='refinados'?'REFINADOS':'ELITE'));
   if(!isFull){ var pb=el('div','progress-bar'),pf=el('div','progress-fill '+type); pf.style.width=Math.round(((current-min)/(max-min+1))*100)+'%'; pb.appendChild(pf); div.appendChild(pb); }
   var num=el('div','big-num',isFull?'✓':String(current)); num.style.color=isFull?'#ff4444':(type==='elite'?'#ff9944':'#c8a96e'); div.appendChild(num);
-  var cn=el('div','char-name-ilha',isFull?'Cheias!':getIlhaNome(ilha,current)); if(!isFull) cn.style.color=type==='refinados'?'#ffd88a':'#ffb066'; div.appendChild(cn);
+  if (!isFull && server !== 'eu') {
+    var cnIn = document.createElement('input');
+    cnIn.className = 'info-input';
+    cnIn.style.cssText = 'font-size:10px;padding:3px 4px;text-align:center;width:100%;color:#ffd88a';
+    cnIn.placeholder = 'Nome slot '+current;
+    cnIn.value = getIlhaNome(ilha, current) !== 'Slot '+current ? getIlhaNome(ilha, current) : '';
+    cnIn.dataset.slot = current;
+    cnIn.onchange = (function(sl){ return function(){ setIlhaNome(ilha, sl, this.value); }; })(current);
+    div.appendChild(cnIn);
+  } else {
+    var cn=el('div','char-name-ilha',isFull?'Cheias!':getIlhaNome(ilha,current));
+    if(!isFull) cn.style.color=type==='refinados'?'#ffd88a':'#ffb066';
+    div.appendChild(cn);
+  }
   if(!isFull){ var rem=max-current; var re=el('div','remaining',rem===0?'⚠ ÚLTIMA!':rem+' rest.'); re.style.color=rem===0?'#ff4444':rem<=3?'#ffa500':'#a0b8d0'; div.appendChild(re); }
   else div.appendChild(el('div','status-msg','CHEIAS'));
   var br=document.createElement('div'); br.className='grid'; br.style.cssText='grid-template-columns:1fr 1fr;gap:4px;width:100%';
@@ -484,7 +509,19 @@ function makeComposeCard(composeState) {
     var isCheio=composeState[s]===1, isAtual=s===atual;
     var row=document.createElement('div'); row.className='compose-row'+(isAtual?' atual':'')+(isCheio?' cheio':'');
     var num=el('div','compose-num',String(s)); num.style.color=isCheio?'#555':isAtual?'#90ee90':'#87cefa';
-    var nome=el('div','compose-nome',getIlhaNome(ilha,s)); nome.style.color=isCheio?'#555':isAtual?'#90ee90':'#87cefa';
+    var nome;
+    if (server !== 'eu') {
+      nome = document.createElement('input');
+      nome.className = 'compose-nome';
+      nome.style.cssText = 'background:#0a0a14;border:none;color:'+(isCheio?'#555':isAtual?'#90ee90':'#87cefa')+';font-size:9px;width:100%;outline:none;';
+      nome.placeholder = 'Slot '+s;
+      var savedNome = getIlhaNome(ilha, s);
+      nome.value = savedNome !== 'Slot '+s ? savedNome : '';
+      nome.onchange = (function(sl){ return function(){ setIlhaNome(ilha, sl, this.value); }; })(s);
+    } else {
+      nome = el('div','compose-nome',getIlhaNome(ilha,s));
+      nome.style.color = isCheio?'#555':isAtual?'#90ee90':'#87cefa';
+    }
     var tag=document.createElement('div');
     if(isCheio){tag.className='compose-tag tag-cheio';tag.textContent='✓';}
     else if(isAtual){tag.className='compose-tag tag-atual';tag.textContent='ATUAL';}
