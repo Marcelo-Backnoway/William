@@ -137,7 +137,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .cal-day:active { transform: scale(0.88); }
 .cal-day.empty { background: transparent; cursor: default; }
 .cal-day.work   { background: #1a2a3a; color: #87CEFA; border: 1px solid #2a4a6a; }
-.cal-day.folga  { background: #1a2a1a; color: #90EE90; border: 1px solid #2a4a2a; }
+.cal-day.folga  { background: #1a0a0a; color: #ff6666; border: 1px solid #6a2a2a; }
 .cal-day.ferias { background: #2a1a3a; color: #DDA0DD; border: 1px solid #4a2a6a; }
 .cal-day.aniv   { background: #3a2a0a; color: #FFD700; border: 2px solid #c8a96e; }
 .cal-day.today  { border: 2px solid #c8a96e !important; }
@@ -190,6 +190,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .drive-btn { display: block; width: 100%; padding: 12px; background: #1a1a2a; border: 1px solid #4285f4; border-radius: 10px; color: #4285f4; font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; margin-bottom: 8px; text-decoration: none; }
 
 /* BOTOES GERAIS */
+.btn-add-mula { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:13px; background:linear-gradient(135deg,#1a2a1a,#0f1a0f); border:2px solid #90EE90; border-radius:12px; color:#90EE90; font-size:14px; font-weight:700; cursor:pointer; margin-bottom:10px; }
+.btn-add-mula:active { opacity:0.7; transform:scale(0.97); }
+.distrib-card { background:#0f1a0f; border:1px solid #2a4a2a; border-radius:12px; padding:14px; margin-bottom:10px; }
+.distrib-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #1a2a1a; font-size:12px; }
+.distrib-row:last-child { border-bottom:none; }
+.distrib-label { color:#888; }
+.distrib-val { font-weight:700; color:#90EE90; }
 .btn-reset { display: block; width: 100%; padding: 10px; background: #1a1a2a; border: 1px solid #333; border-radius: 10px; color: #555; font-size: 12px; font-weight: 600; cursor: pointer; text-align: center; margin-bottom: 8px; }
 button:active { opacity: 0.7; transform: scale(0.97); }
 
@@ -228,6 +235,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   <div class="tab" onclick="setTab('chars')">⚔️ Personagens</div>
   <div class="tab" onclick="setTab('dash')">📅 Agenda</div>
   <div class="tab" onclick="setTab('gold')">💰 Gold</div>
+  <div class="tab" onclick="setTab('tutorial')">📖 Ajuda</div>
   <div class="tab" onclick="setTab('backup')">💾 Backup</div>
 </div>
 
@@ -364,7 +372,7 @@ function setServer(sv) {
 function setTab(t) {
   tab = t;
   document.querySelectorAll('.tab').forEach(function(b){ b.classList.remove('active'); });
-  var idx = {ilhas:0,chars:1,dash:2,gold:3,backup:4};
+  var idx = {ilhas:0,chars:1,dash:2,gold:3,tutorial:4,backup:5};
   document.querySelectorAll('.tab')[idx[t]].classList.add('active');
   render();
 }
@@ -380,6 +388,7 @@ function render() {
   else if (tab==='chars') renderChars(main);
   else if (tab==='dash')  renderDash(main);
   else if (tab==='gold') renderGold(main);
+  else if (tab==='tutorial') renderTutorial(main);
   else if (tab==='backup') renderBackup(main);
 }
 
@@ -451,6 +460,15 @@ function renderIlhas(main) {
     panel.appendChild(card);
   });
   main.appendChild(panel);
+
+  // Botão + Nova Mula
+  var addMulaBtn = document.createElement('button'); addMulaBtn.className='btn-add-mula';
+  addMulaBtn.innerHTML='➕ Nova Mula em '+ilha.toUpperCase();
+  addMulaBtn.onclick=function(){ showAddMulaModal(ilha); };
+  main.appendChild(addMulaBtn);
+
+  // Distribuição atual
+  renderDistribuicao(main, ilha);
 
   var rb = document.createElement('button'); rb.className='btn-reset';
   rb.textContent='↺ Resetar '+ilha.toUpperCase();
@@ -798,6 +816,105 @@ function addObj2(){var i=document.getElementById('objIn');if(!i||!i.value.trim()
 // BACKUP
 // ══════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════
+// MULA DISTRIBUTION SYSTEM
+// ══════════════════════════════════════════════════════
+function calcDistribuicao(total) {
+  // Proporção fixa e determinística
+  // Compose: ~13%, Elite: ~7%, Refinados: resto
+  var compose = Math.max(4, Math.round(total * 0.13));
+  var elite   = Math.max(2, Math.round(total * 0.07));
+  var refin   = total - compose - elite;
+  if (refin < 1) refin = 1;
+  // Slots
+  var refinStart = 1,       refinEnd = refin;
+  var eliteStart = refin+1, eliteEnd = refin+elite;
+  var compStart  = refin+elite+1, compEnd = total;
+  return { total:total, refin:refin, elite:elite, compose:compose,
+           refinStart:refinStart, refinEnd:refinEnd,
+           eliteStart:eliteStart, eliteEnd:eliteEnd,
+           compStart:compStart,   compEnd:compEnd };
+}
+
+function getTotalMulas(isl) {
+  // Conta quantas mulas existem na ilha (slots nomeados)
+  var s = loadState(), k = server+'_ilha_nomes_'+isl;
+  var nomes = s[k] || {};
+  // Para EU, conta os chars do ILHA_CHARS
+  if (server === 'eu') return ILHA_CHARS[isl].length - 1; // -1 por causa do índice 0
+  // Para outros servidores, conta os nomes salvos
+  var max = 0;
+  Object.keys(nomes).forEach(function(n){ if(parseInt(n)>max) max=parseInt(n); });
+  return max || 0;
+}
+
+function renderDistribuicao(main, isl) {
+  var total = getTotalMulas(isl);
+  if (total === 0) return;
+  var d = calcDistribuicao(total);
+  var card = document.createElement('div'); card.className='distrib-card';
+  var title = el('div','card-title','📊 Distribuição atual — '+total+' mulas');
+  card.appendChild(title);
+  var rows = [
+    {label:'⚔️ Refinados', val:'Slots '+d.refinStart+' a '+d.refinEnd+' ('+d.refin+' mulas)'},
+    {label:'⭐ Elite',      val:'Slots '+d.eliteStart+' a '+d.eliteEnd+' ('+d.elite+' mulas)'},
+    {label:'💎 Compose',   val:'Slots '+d.compStart+' a '+d.compEnd+' ('+d.compose+' mulas)'},
+  ];
+  rows.forEach(function(r){
+    var row=document.createElement('div'); row.className='distrib-row';
+    row.appendChild(el('span','distrib-label',r.label));
+    row.appendChild(el('span','distrib-val',r.val));
+    card.appendChild(row);
+  });
+  main.appendChild(card);
+}
+
+function showAddMulaModal(isl) {
+  var total = getTotalMulas(isl);
+  var novoTotal = total + 1;
+  var d = calcDistribuicao(novoTotal);
+
+  // Determina onde essa nova mula vai cair
+  var slot = novoTotal;
+  var tipo, cor;
+  if (slot >= d.compStart)  { tipo='💎 Compose';   cor='#88ddff'; }
+  else if (slot >= d.eliteStart) { tipo='⭐ Elite'; cor='#ff9944'; }
+  else                      { tipo='⚔️ Refinado';  cor='#c8a96e'; }
+
+  document.getElementById('modalTitle').textContent = '➕ Nova Mula — '+isl.toUpperCase();
+  document.getElementById('modalText').style.display='none';
+
+  // Cria conteúdo customizado no modal
+  var modal = document.querySelector('.modal');
+  var existing = document.getElementById('addMulaForm');
+  if (existing) existing.remove();
+
+  var form = document.createElement('div'); form.id='addMulaForm';
+  form.innerHTML =
+    '<div style="margin-bottom:10px;font-size:12px;color:#888;">Nome do personagem:</div>'+
+    '<input id="novaMulaNome" type="text" placeholder="Ex: Salsaparrilha" style="width:100%;background:#0a0a14;border:1px solid #c8a96e;border-radius:8px;padding:10px;font-size:15px;color:#e8e8e8;outline:none;font-family:inherit;margin-bottom:12px;">'+
+    '<div style="background:#1a1a2e;border-radius:10px;padding:12px;margin-bottom:10px;">'+
+    '<div style="font-size:11px;color:#666;margin-bottom:4px;">Será alocada como:</div>'+
+    '<div style="font-size:16px;font-weight:700;color:'+cor+';">'+tipo+'</div>'+
+    '<div style="font-size:12px;color:#888;margin-top:2px;">Slot '+slot+' de '+isl.toUpperCase()+'</div>'+
+    '</div>';
+  modal.insertBefore(form, document.querySelector('.modal-btns'));
+
+  document.getElementById('modalOk').textContent = '✅ Adicionar';
+  document.getElementById('modalOk').onclick = function(){
+    var nome = document.getElementById('novaMulaNome').value.trim();
+    if (!nome) { alert('Digite um nome!'); return; }
+    setIlhaNome(isl, slot, nome);
+    form.remove();
+    document.getElementById('modalText').style.display='';
+    closeModal();
+    render();
+    alert('✅ '+nome+' adicionada como '+tipo+' no slot '+slot+' do '+isl.toUpperCase()+'!');
+  };
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(function(){ var inp=document.getElementById('novaMulaNome'); if(inp) inp.focus(); }, 200);
+}
+
+// ══════════════════════════════════════════════════════
 // GOLD
 // ══════════════════════════════════════════════════════
 function getGoldState() {
@@ -926,6 +1043,38 @@ function formatGold(n){
   if(n>=1000000) return (n/1000000).toFixed(2).replace('.',',')+'M';
   if(n>=1000) return (n/1000).toFixed(1).replace('.',',')+'k';
   return n.toLocaleString('pt-BR');
+}
+
+function renderTutorial(main) {
+  var steps = [
+    { icon:'📱', title:'1. Instale o Google Drive', text:'Baixe o app "Google Drive" na Play Store (já vem em muitos celulares). Faça login com sua conta Google.' },
+    { icon:'📁', title:'2. Crie uma pasta de contas', text:'Abra o Drive → toque no "+" → "Nova pasta" → dê o nome "📁 Contas Casa 2026". Dentro dela crie subpastas: Janeiro, Fevereiro, etc.' },
+    { icon:'📸', title:'3. Fotografar uma conta', text:'Quando chegar uma conta (água, luz, etc.), abra o Drive → entre na pasta do mês → toque em "+" → "Digitalizar" → tire a foto. O Drive salva como PDF automaticamente!' },
+    { icon:'✏️', title:'4. Nomear o arquivo', text:'Nomeie assim: "Agua_Julho_2026.pdf" ou "CPFL_Julho_2026.pdf". Com esse padrão, a busca no Drive encontra em segundos!' },
+    { icon:'🔍', title:'5. Buscar uma conta', text:'Na tela principal do Drive, toque na lupa 🔍 → digite "Agua" ou "CPFL" → aparecem todos os comprovantes daquele tipo!' },
+    { icon:'📤', title:'6. Compartilhar com a esposa', text:'Toque no arquivo → toque nos "..." → "Compartilhar" → escolha WhatsApp → selecione a conversa com ela. O PDF chega direto no celular dela!' },
+    { icon:'☁️', title:'7. Tudo na nuvem', text:'O Drive guarda tudo no servidor do Google. Mesmo que perca ou formate o celular, todos os comprovantes ficam salvos. Acesse de qualquer dispositivo!' },
+    { icon:'💡', title:'Dica extra', text:'Você pode até fotografar pelo próprio WhatsApp e salvar no Drive depois — mas usar o "Digitalizar" do Drive já converte pra PDF direto, com melhor qualidade!' },
+  ];
+
+  steps.forEach(function(s){
+    var card = document.createElement('div'); card.className='card';
+    card.style.marginBottom='10px';
+    var header = document.createElement('div');
+    header.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:8px;';
+    var icon = el('div','',s.icon); icon.style.cssText='font-size:24px;flex-shrink:0;';
+    var title = el('div','',s.title); title.style.cssText='font-size:13px;font-weight:700;color:#c8a96e;';
+    header.appendChild(icon); header.appendChild(title);
+    var text = el('p','',s.text); text.style.cssText='font-size:13px;color:#aaa;line-height:1.5;';
+    card.appendChild(header); card.appendChild(text);
+    main.appendChild(card);
+  });
+
+  var driveBtn = document.createElement('a');
+  driveBtn.href='https://drive.google.com/drive/my-drive'; driveBtn.target='_blank';
+  driveBtn.className='drive-btn'; driveBtn.style.cssText='display:block;width:100%;padding:14px;background:#1a1a2a;border:1px solid #4285f4;border-radius:12px;color:#4285f4;font-size:14px;font-weight:600;text-align:center;text-decoration:none;margin-top:4px;';
+  driveBtn.textContent='📁 Abrir Google Drive agora';
+  main.appendChild(driveBtn);
 }
 
 function renderBackup(main) {
