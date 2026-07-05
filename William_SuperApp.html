@@ -235,6 +235,8 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   <div class="tab" onclick="setTab('chars')">⚔️ Personagens</div>
   <div class="tab" onclick="setTab('dash')">📅 Agenda</div>
   <div class="tab" onclick="setTab('gold')">💰 Gold</div>
+  <div class="tab" onclick="setTab('nomes')">📝 Nomes</div>
+  <div class="tab" onclick="setTab('notas')">📓 Notas</div>
   <div class="tab" onclick="setTab('tutorial')">📖 Ajuda</div>
   <div class="tab" onclick="setTab('backup')">💾 Backup</div>
 </div>
@@ -372,7 +374,7 @@ function setServer(sv) {
 function setTab(t) {
   tab = t;
   document.querySelectorAll('.tab').forEach(function(b){ b.classList.remove('active'); });
-  var idx = {ilhas:0,chars:1,dash:2,gold:3,tutorial:4,backup:5};
+  var idx = {ilhas:0,chars:1,dash:2,gold:3,nomes:4,notas:5,tutorial:6,backup:7};
   document.querySelectorAll('.tab')[idx[t]].classList.add('active');
   render();
 }
@@ -388,6 +390,8 @@ function render() {
   else if (tab==='chars') renderChars(main);
   else if (tab==='dash')  renderDash(main);
   else if (tab==='gold') renderGold(main);
+  else if (tab==='nomes') renderNomes(main);
+  else if (tab==='notas') renderNotas(main);
   else if (tab==='tutorial') renderTutorial(main);
   else if (tab==='backup') renderBackup(main);
 }
@@ -836,15 +840,14 @@ function calcDistribuicao(total) {
 }
 
 function getTotalMulas(isl) {
-  // Conta quantas mulas existem na ilha (slots nomeados)
+  // Base: EU usa array fixo, outros começam do zero
+  var base = server === 'eu' ? ILHA_CHARS[isl].length - 1 : 0;
+  // Verifica se existem mulas extras salvas além da base
   var s = loadState(), k = server+'_ilha_nomes_'+isl;
   var nomes = s[k] || {};
-  // Para EU, conta os chars do ILHA_CHARS
-  if (server === 'eu') return ILHA_CHARS[isl].length - 1; // -1 por causa do índice 0
-  // Para outros servidores, conta os nomes salvos
-  var max = 0;
-  Object.keys(nomes).forEach(function(n){ if(parseInt(n)>max) max=parseInt(n); });
-  return max || 0;
+  var maxNome = 0;
+  Object.keys(nomes).forEach(function(n){ var num=parseInt(n); if(num>maxNome) maxNome=num; });
+  return Math.max(base, maxNome);
 }
 
 function renderDistribuicao(main, isl) {
@@ -1043,6 +1046,190 @@ function formatGold(n){
   if(n>=1000000) return (n/1000000).toFixed(2).replace('.',',')+'M';
   if(n>=1000) return (n/1000).toFixed(1).replace('.',',')+'k';
   return n.toLocaleString('pt-BR');
+}
+
+// ══════════════════════════════════════════════════════
+// NOMES — Banco de Rascunhos
+// ══════════════════════════════════════════════════════
+function getNomes() {
+  var s = loadState();
+  return s.nomes_rascunho || [];
+}
+function setNomes(data) {
+  var s = loadState(); s.nomes_rascunho = data; saveState(s);
+}
+
+function renderNomes(main) {
+  var nomes = getNomes();
+
+  var card = document.createElement('div'); card.className='card';
+  card.appendChild(el('div','card-title','📝 BANCO DE NOMES — '+nomes.length+' anotados'));
+
+  // Campo de adicionar
+  var hint = el('p','','Viu um nome legal? Anota aqui antes de esquecer! 💡');
+  hint.style.cssText='font-size:12px;color:#555;margin-bottom:12px;';
+  card.appendChild(hint);
+
+  var addRow = document.createElement('div');
+  addRow.style.cssText='display:flex;gap:8px;margin-bottom:16px;';
+  var inp = document.createElement('input');
+  inp.id='nomeInput'; inp.type='text'; inp.placeholder='Ex: Lautaro, Xevious, Salsaparrilha...';
+  inp.style.cssText='flex:1;background:#1a1a2e;border:1px solid #c8a96e;border-radius:10px;padding:11px 12px;font-size:14px;color:#e8e8e8;outline:none;font-family:inherit;';
+  inp.addEventListener('keydown',function(e){ if(e.key==='Enter') addNome(); });
+  var addBtn = document.createElement('button');
+  addBtn.textContent='＋'; addBtn.style.cssText='background:#c8a96e;color:#111;border:none;border-radius:10px;padding:11px 18px;font-size:20px;font-weight:700;cursor:pointer;';
+  addBtn.onclick = addNome;
+  addRow.appendChild(inp); addRow.appendChild(addBtn);
+  card.appendChild(addRow);
+
+  // Lista de nomes
+  if (nomes.length === 0) {
+    var empty = el('div','','Nenhum nome ainda. Quando ver um nome incrível, anota aqui! ⚔️');
+    empty.style.cssText='text-align:center;color:#555;font-size:13px;padding:24px 0;';
+    card.appendChild(empty);
+  } else {
+    nomes.forEach(function(n, i) {
+      var row = document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0f0f1e;border-radius:10px;margin-bottom:7px;border:1px solid '+(n.usado?'#2d6a4f':'#2a2a3a')+';';
+
+      // Nome
+      var nomeEl = el('div','', (n.usado?'✅ ':'')+n.nome);
+      nomeEl.style.cssText='flex:1;font-size:15px;font-weight:700;color:'+(n.usado?'#74c69d':'#e8e8e8')+';'+(n.usado?'text-decoration:line-through;opacity:0.6;':'');
+
+      // Data
+      var dataEl = el('div','',n.data);
+      dataEl.style.cssText='font-size:10px;color:#555;white-space:nowrap;';
+
+      // Botão usar/desuso
+      var usarBtn = document.createElement('button');
+      usarBtn.textContent = n.usado ? '↩' : '✅';
+      usarBtn.title = n.usado ? 'Desmarcar' : 'Marcar como usado';
+      usarBtn.style.cssText='background:'+(n.usado?'#2a2a3a':'#1a2a1a')+';border:1px solid '+(n.usado?'#444':'#2d6a4f')+';color:'+(n.usado?'#aaa':'#74c69d')+';border-radius:8px;padding:6px 10px;font-size:14px;cursor:pointer;';
+      usarBtn.onclick=(function(idx){ return function(){ var ns=getNomes(); ns[idx].usado=!ns[idx].usado; setNomes(ns); render(); }; })(i);
+
+      // Botão deletar
+      var delBtn = document.createElement('button');
+      delBtn.textContent='🗑️';
+      delBtn.style.cssText='background:none;border:none;font-size:16px;cursor:pointer;padding:4px;opacity:0.5;';
+      delBtn.onclick=(function(idx){ return function(){ if(!confirm('Remover "'+getNomes()[idx].nome+'"?')) return; var ns=getNomes(); ns.splice(idx,1); setNomes(ns); render(); }; })(i);
+
+      row.appendChild(nomeEl); row.appendChild(dataEl); row.appendChild(usarBtn); row.appendChild(delBtn);
+      card.appendChild(row);
+    });
+
+    // Botão limpar usados
+    var usados = nomes.filter(function(n){ return n.usado; }).length;
+    if (usados > 0) {
+      var limparBtn = document.createElement('button');
+      limparBtn.className='btn-reset';
+      limparBtn.textContent='🗑️ Limpar '+usados+' nome'+(usados>1?'s':'')+' já usado'+(usados>1?'s':'');
+      limparBtn.style.cssText='margin-top:8px;color:#aa3333;border-color:#aa3333;';
+      limparBtn.onclick=function(){
+        if(confirm('Remover todos os nomes marcados como usados?')){
+          setNomes(getNomes().filter(function(n){return !n.usado;}));
+          render();
+        }
+      };
+      card.appendChild(limparBtn);
+    }
+  }
+
+  main.appendChild(card);
+}
+
+function addNome() {
+  var inp = document.getElementById('nomeInput');
+  if (!inp || !inp.value.trim()) return;
+  var ns = getNomes();
+  var hoje = new Date().toLocaleDateString('pt-BR');
+  ns.unshift({ nome: inp.value.trim(), data: hoje, usado: false });
+  setNomes(ns);
+  vibe([30]);
+  render();
+}
+
+// ══════════════════════════════════════════════════════
+// NOTAS DIÁRIAS
+// ══════════════════════════════════════════════════════
+function getNotas() { var s=loadState(); return s.notas_diarias||[]; }
+function setNotas(d) { var s=loadState(); s.notas_diarias=d; saveState(s); }
+
+function renderNotas(main) {
+  var notas = getNotas();
+  var card = document.createElement('div'); card.className='card';
+  card.appendChild(el('div','card-title','📓 NOTAS & IDEIAS — '+notas.length+' registradas'));
+
+  var hint = el('p','','Anote ideias, lembretes, observações do dia. Cada nota fica com horário automático! ⏰');
+  hint.style.cssText='font-size:12px;color:#555;margin-bottom:12px;line-height:1.5;';
+  card.appendChild(hint);
+
+  // Campo de texto
+  var ta = document.createElement('textarea');
+  ta.id='notaInput'; ta.placeholder='Digite sua ideia, lembrete ou observação...';
+  ta.style.cssText='width:100%;background:#1a1a2e;border:1px solid #c8a96e;border-radius:10px;padding:11px 12px;font-size:14px;color:#e8e8e8;outline:none;font-family:inherit;resize:vertical;min-height:80px;margin-bottom:8px;';
+  card.appendChild(ta);
+
+  var addBtn = document.createElement('button');
+  addBtn.textContent='💾 Salvar nota';
+  addBtn.style.cssText='width:100%;background:#c8a96e;color:#111;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:16px;';
+  addBtn.onclick = function(){
+    var inp=document.getElementById('notaInput');
+    if(!inp||!inp.value.trim()){alert('Digite algo antes de salvar!');return;}
+    var now=new Date();
+    var data=now.toLocaleDateString('pt-BR');
+    var hora=now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    var ns=getNotas();
+    ns.unshift({texto:inp.value.trim(),data:data,hora:hora});
+    setNotas(ns); vibe([30]); render();
+  };
+  card.appendChild(addBtn);
+
+  // Lista de notas
+  if(notas.length===0){
+    var empty=el('div','','Nenhuma nota ainda. Tem uma ideia? Anota aí! 💡');
+    empty.style.cssText='text-align:center;color:#555;font-size:13px;padding:20px 0;';
+    card.appendChild(empty);
+  } else {
+    notas.forEach(function(n,i){
+      var row=document.createElement('div');
+      row.style.cssText='background:#0f0f1e;border:1px solid #2a2a3a;border-radius:10px;padding:12px;margin-bottom:8px;';
+
+      // Header: data + hora + deletar
+      var hdr=document.createElement('div');
+      hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;';
+      var stamp=el('div','','📅 '+n.data+' às '+n.hora);
+      stamp.style.cssText='font-size:10px;color:#666;font-weight:600;';
+      var del=document.createElement('button');
+      del.textContent='🗑️'; del.title='Deletar nota';
+      del.style.cssText='background:none;border:none;font-size:16px;cursor:pointer;color:#555;padding:2px 6px;';
+      del.onclick=(function(idx){return function(){
+        if(confirm('Deletar esta nota?')){
+          var ns=getNotas(); ns.splice(idx,1); setNotas(ns); render();
+        }
+      };})(i);
+      hdr.appendChild(stamp); hdr.appendChild(del);
+      row.appendChild(hdr);
+
+      // Texto da nota
+      var txt=el('div','',n.texto);
+      txt.style.cssText='font-size:13px;color:#e8e8e8;line-height:1.6;white-space:pre-wrap;';
+      row.appendChild(txt);
+      card.appendChild(row);
+    });
+
+    // Botão limpar tudo
+    var limpar=document.createElement('button');
+    limpar.className='btn-reset';
+    limpar.textContent='🗑️ Apagar todas as notas';
+    limpar.style.cssText='margin-top:4px;color:#aa3333;border-color:#aa3333;';
+    limpar.onclick=function(){
+      if(confirm('Apagar TODAS as notas? Essa ação não pode ser desfeita!')){
+        setNotas([]); render();
+      }
+    };
+    card.appendChild(limpar);
+  }
+  main.appendChild(card);
 }
 
 function renderTutorial(main) {
