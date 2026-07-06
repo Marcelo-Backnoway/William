@@ -421,13 +421,15 @@ function renderIlhas(main) {
 
   // Painel inferior
   var panel = document.createElement('div'); panel.className='info-panel';
+  var ranges = getIlhaRanges(ilha);
+  var cSlots = ranges.compSlots && ranges.compSlots.length ? ranges.compSlots : (function(){var a=[];for(var si=27;si<=30;si++)a.push(si);return a;})();
   var cols = [
     {type:'refinados', cur:st.refinados, color:'#ffd88a'},
-    {type:'compose',   cur:(function(){ var slots=[27,28,29,30]; return slots.find(function(x){ return st.compose[x]!==1; })||27; })(), color:'#a8e6c0'},
+    {type:'compose',   cur:(function(){ return cSlots.find(function(x){ return st.compose[x]!==1; })||cSlots[0]; })(), color:'#a8e6c0'},
     {type:'elite',     cur:st.elite,     color:'#ffb066'}
   ];
   cols.forEach(function(col){
-    var isFull = (col.type==='refinados'&&col.cur>24)||(col.type==='elite'&&col.cur>26);
+    var isFull = (col.type==='refinados'&&col.cur>ranges.refinados[1])||(col.type==='elite'&&col.cur>ranges.elite[1]);
     var nome = isFull?'CHEIAS':getIlhaNome(ilha, col.cur);
     var lk = col.type+'_'+col.cur;
 
@@ -480,11 +482,13 @@ function renderIlhas(main) {
 }
 
 function getIlhaNome(isl, n) {
-  if (server === 'eu') return (ILHA_CHARS[isl]&&ILHA_CHARS[isl][n])?ILHA_CHARS[isl][n]:'???';
-  // Outros servidores: busca no estado salvo
+  // SEMPRE verifica nomes salvos primeiro (funciona pra todos os servidores)
   var s = loadState(), k = server+'_ilha_nomes_'+isl;
   var nomes = s[k] || {};
-  return nomes[n] || 'Slot '+n;
+  if (nomes[n]) return nomes[n];
+  // Fallback pro array fixo do EU
+  if (server === 'eu' && ILHA_CHARS[isl] && ILHA_CHARS[isl][n]) return ILHA_CHARS[isl][n];
+  return 'Slot '+n;
 }
 function setIlhaNome(isl, n, nome) {
   var s = loadState(), k = server+'_ilha_nomes_'+isl;
@@ -492,9 +496,20 @@ function setIlhaNome(isl, n, nome) {
   s[k][n] = nome;
   saveState(s);
 }
+function getIlhaTipos(isl) {
+  var s = loadState(), k = server+'_ilha_tipos_'+isl;
+  return s[k] || {};
+}
+function setIlhaTipo(isl, slot, tipo) {
+  var s = loadState(), k = server+'_ilha_tipos_'+isl;
+  if (!s[k]) s[k] = {};
+  s[k][slot] = tipo;
+  saveState(s);
+}
 
 function makeQueueCard(type, current) {
-  var min={refinados:1,elite:25}[type]||1, max={refinados:24,elite:26}[type]||24;
+  var ranges = getIlhaRanges(ilha);
+  var min = ranges[type][0], max = ranges[type][1];
   var isFull=current>max, isLast=current===max;
   var div=document.createElement('div');
   div.className='fcard'+(isFull?' full':isLast?' almostfull':'');
@@ -524,7 +539,9 @@ function makeQueueCard(type, current) {
 }
 
 function makeComposeCard(composeState) {
-  var slots=[27,28,29,30], allFull=slots.every(function(s){ return composeState[s]===1; });
+  var ranges=getIlhaRanges(ilha);
+  var slots = ranges.compSlots && ranges.compSlots.length ? ranges.compSlots : (function(){var a=[];for(var si=27;si<=30;si++)a.push(si);return a;})();
+  var allFull=slots.every(function(s){ return composeState[s]===1; });
   var atual=slots.find(function(s){ return composeState[s]!==1; });
   var div=document.createElement('div'); div.className='fcard'+(allFull?' full':'');
   div.appendChild(el('div','flabel compose','COMPOSE'));
@@ -564,7 +581,8 @@ function saveIlhaMeta(field, key, val) { var st=getIlhaState(ilha); st[field][ke
 
 function navIlha(type,dir) {
   var st=getIlhaState(ilha);
-  var min={refinados:1,elite:25}[type], max={refinados:24,elite:26}[type];
+  var ranges=getIlhaRanges(ilha);
+  var min=ranges[type][0], max=ranges[type][1];
   if(dir===1&&st[type]<=max) st[type]++;
   if(dir===-1&&st[type]>min) st[type]--;
   if(st[type]===max) vibe([50,30,50,30,100]);
@@ -572,7 +590,9 @@ function navIlha(type,dir) {
   setIlhaState(ilha,st); render();
 }
 function navCompose(dir) {
-  var st=getIlhaState(ilha), slots=[27,28,29,30];
+  var st=getIlhaState(ilha);
+  var ranges=getIlhaRanges(ilha);
+  var slots = ranges.compSlots && ranges.compSlots.length ? ranges.compSlots : (function(){var a=[];for(var si=27;si<=30;si++)a.push(si);return a;})();
   var allFull=slots.every(function(s){ return st.compose[s]===1; });
   if(dir===1){ if(allFull){ slots.forEach(function(s){st.compose[s]=0;}); vibe([10,10,10]); }
     else{ var a=slots.find(function(s){return st.compose[s]!==1;}); if(a){st.compose[a]=1;vibe([30]);} }
@@ -823,13 +843,10 @@ function addObj2(){var i=document.getElementById('objIn');if(!i||!i.value.trim()
 // MULA DISTRIBUTION SYSTEM
 // ══════════════════════════════════════════════════════
 function calcDistribuicao(total) {
-  // Proporção fixa e determinística
-  // Compose: ~13%, Elite: ~7%, Refinados: resto
   var compose = Math.max(4, Math.round(total * 0.13));
   var elite   = Math.max(2, Math.round(total * 0.07));
   var refin   = total - compose - elite;
   if (refin < 1) refin = 1;
-  // Slots
   var refinStart = 1,       refinEnd = refin;
   var eliteStart = refin+1, eliteEnd = refin+elite;
   var compStart  = refin+elite+1, compEnd = total;
@@ -839,15 +856,51 @@ function calcDistribuicao(total) {
            compStart:compStart,   compEnd:compEnd };
 }
 
+function determineNewMulaType(currentTotal) {
+  // Compara distribuição atual vs com +1 mula
+  var d_old = calcDistribuicao(currentTotal);
+  var d_new = calcDistribuicao(currentTotal + 1);
+  if (d_new.refin > d_old.refin)    return 'refinados';
+  if (d_new.elite > d_old.elite)    return 'elite';
+  return 'compose';
+}
+
 function getTotalMulas(isl) {
-  // Base: EU usa array fixo, outros começam do zero
   var base = server === 'eu' ? ILHA_CHARS[isl].length - 1 : 0;
-  // Verifica se existem mulas extras salvas além da base
   var s = loadState(), k = server+'_ilha_nomes_'+isl;
   var nomes = s[k] || {};
   var maxNome = 0;
   Object.keys(nomes).forEach(function(n){ var num=parseInt(n); if(num>maxNome) maxNome=num; });
   return Math.max(base, maxNome);
+}
+
+function getIlhaRanges(isl) {
+  var base = server==='eu' ? ILHA_CHARS[isl].length-1 : 0;
+  var refinSlots=[], eliteSlots=[], compSlots=[];
+  if (base > 0) {
+    var d = calcDistribuicao(base);
+    for(var i=d.refinStart;i<=d.refinEnd;i++) refinSlots.push(i);
+    for(var i=d.eliteStart;i<=d.eliteEnd;i++) eliteSlots.push(i);
+    for(var i=d.compStart; i<=d.compEnd; i++) compSlots.push(i);
+  }
+  var tipos = getIlhaTipos(isl);
+  Object.keys(tipos).forEach(function(slot){
+    var s=parseInt(slot), t=tipos[slot];
+    if(t==='refinados') refinSlots.push(s);
+    else if(t==='elite') eliteSlots.push(s);
+    else compSlots.push(s);
+  });
+  refinSlots.sort(function(a,b){return a-b;});
+  eliteSlots.sort(function(a,b){return a-b;});
+  compSlots.sort(function(a,b){return a-b;});
+  return {
+    refinados:  refinSlots.length ? [refinSlots[0], refinSlots[refinSlots.length-1]] : [1,24],
+    elite:      eliteSlots.length ? [eliteSlots[0], eliteSlots[eliteSlots.length-1]] : [25,26],
+    compose:    compSlots.length  ? [compSlots[0],  compSlots[compSlots.length-1]]   : [27,30],
+    compSlots:  compSlots,
+    refinSlots: refinSlots,
+    eliteSlots: eliteSlots
+  };
 }
 
 function renderDistribuicao(main, isl) {
@@ -874,14 +927,12 @@ function renderDistribuicao(main, isl) {
 function showAddMulaModal(isl) {
   var total = getTotalMulas(isl);
   var novoTotal = total + 1;
-  var d = calcDistribuicao(novoTotal);
-
-  // Determina onde essa nova mula vai cair
+  var tipoKey = determineNewMulaType(total);
   var slot = novoTotal;
   var tipo, cor;
-  if (slot >= d.compStart)  { tipo='💎 Compose';   cor='#88ddff'; }
-  else if (slot >= d.eliteStart) { tipo='⭐ Elite'; cor='#ff9944'; }
-  else                      { tipo='⚔️ Refinado';  cor='#c8a96e'; }
+  if (tipoKey==='compose')   { tipo='💎 Compose';   cor='#88ddff'; }
+  else if (tipoKey==='elite'){ tipo='⭐ Elite';     cor='#ff9944'; }
+  else                       { tipo='⚔️ Refinado';  cor='#c8a96e'; }
 
   document.getElementById('modalTitle').textContent = '➕ Nova Mula — '+isl.toUpperCase();
   document.getElementById('modalText').style.display='none';
@@ -906,7 +957,13 @@ function showAddMulaModal(isl) {
   document.getElementById('modalOk').onclick = function(){
     var nome = document.getElementById('novaMulaNome').value.trim();
     if (!nome) { alert('Digite um nome!'); return; }
+    // Salva o nome e o tipo
     setIlhaNome(isl, slot, nome);
+    setIlhaTipo(isl, slot, tipoKey);
+    // Inicializa compose como vazio
+    if (tipoKey === 'compose') {
+      var st = getIlhaState(isl); st.compose[slot] = 0; setIlhaState(isl, st);
+    }
     form.remove();
     document.getElementById('modalText').style.display='';
     closeModal();
