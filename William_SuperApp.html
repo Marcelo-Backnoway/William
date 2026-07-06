@@ -932,11 +932,21 @@ function renderDistribuicao(main, isl) {
 }
 
 function showGerenciarMulas(isl) {
+  // Busca TODOS os nomes salvos manualmente (independente de ter tipo ou não)
+  var s = loadState();
+  var kn = server+'_ilha_nomes_'+isl;
+  var nomesSalvos = s[kn] || {};
   var tipos = getIlhaTipos(isl);
-  var slots = Object.keys(tipos).map(Number).sort(function(a,b){return a-b;});
+  
+  // Coleta todos os slots que têm nome OU tipo salvo
+  var todosSlots = new Set();
+  Object.keys(nomesSalvos).forEach(function(sl){ todosSlots.add(parseInt(sl)); });
+  Object.keys(tipos).forEach(function(sl){ todosSlots.add(parseInt(sl)); });
+  
+  var slots = Array.from(todosSlots).sort(function(a,b){return a-b;});
 
   if (slots.length === 0) {
-    alert('Nenhuma mula extra adicionada ainda em '+isl.toUpperCase()+'!');
+    alert('Nenhuma mula personalizada encontrada em '+isl.toUpperCase()+'!');
     return;
   }
 
@@ -951,7 +961,7 @@ function showGerenciarMulas(isl) {
   form.style.cssText='max-height:300px;overflow-y:auto;';
 
   slots.forEach(function(slot) {
-    var tipo = tipos[slot];
+    var tipo = tipos[slot] || (slot<=24?'refinados':slot<=26?'elite':'compose');
     var nome = getIlhaNome(isl, slot);
     var cor = tipo==='compose'?'#88ddff':tipo==='elite'?'#ff9944':'#c8a96e';
     var icon = tipo==='compose'?'💎':tipo==='elite'?'⭐':'⚔️';
@@ -996,9 +1006,8 @@ function showGerenciarMulas(isl) {
   clearAll.style.cssText='width:100%;margin-top:8px;padding:10px;background:#1a0f0f;border:1px solid #aa3333;border-radius:10px;color:#ff6666;font-size:13px;font-weight:700;cursor:pointer;';
   clearAll.textContent='🗑️ Remover TODAS as mulas extras ('+slots.length+')';
   clearAll.onclick=function(){
-    if(!confirm('Remover TODAS as '+slots.length+' mulas extras de '+isl.toUpperCase()+'?')) return;
+    if(!confirm('Remover TODAS as '+slots.length+' mulas listadas de '+isl.toUpperCase()+'?')) return;
     var state = loadState();
-    delete state[server+'_ilha_nomes_'+isl+'_extras'];
     var kn = server+'_ilha_nomes_'+isl;
     var kt = server+'_ilha_tipos_'+isl;
     var ist = getIlhaState(isl);
