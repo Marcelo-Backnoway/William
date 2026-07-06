@@ -467,11 +467,18 @@ function renderIlhas(main) {
   });
   main.appendChild(panel);
 
-  // Botão + Nova Mula
+  // Botões Nova Mula + Gerenciar
+  var mulaRow = document.createElement('div'); mulaRow.style.cssText='display:flex;gap:8px;margin-bottom:8px;';
   var addMulaBtn = document.createElement('button'); addMulaBtn.className='btn-add-mula';
-  addMulaBtn.innerHTML='➕ Nova Mula em '+ilha.toUpperCase();
+  addMulaBtn.style.flex='1';
+  addMulaBtn.innerHTML='➕ Nova Mula';
   addMulaBtn.onclick=function(){ showAddMulaModal(ilha); };
-  main.appendChild(addMulaBtn);
+  var gerBtn = document.createElement('button');
+  gerBtn.style.cssText='background:#1a1a2e;border:1px solid #555;border-radius:12px;color:#aaa;font-size:13px;font-weight:700;cursor:pointer;padding:13px 14px;white-space:nowrap;';
+  gerBtn.textContent='⚙️ Gerenciar';
+  gerBtn.onclick=function(){ showGerenciarMulas(ilha); };
+  mulaRow.appendChild(addMulaBtn); mulaRow.appendChild(gerBtn);
+  main.appendChild(mulaRow);
 
   // Distribuição atual
   renderDistribuicao(main, ilha);
@@ -923,6 +930,106 @@ function renderDistribuicao(main, isl) {
   });
   main.appendChild(card);
 }
+
+function showGerenciarMulas(isl) {
+  var tipos = getIlhaTipos(isl);
+  var slots = Object.keys(tipos).map(Number).sort(function(a,b){return a-b;});
+
+  if (slots.length === 0) {
+    alert('Nenhuma mula extra adicionada ainda em '+isl.toUpperCase()+'!');
+    return;
+  }
+
+  document.getElementById('modalTitle').textContent = '⚙️ Gerenciar Mulas Extras — '+isl.toUpperCase();
+  var modal = document.querySelector('.modal');
+  document.getElementById('modalText').style.display='none';
+
+  var existing = document.getElementById('gerenciarForm');
+  if (existing) existing.remove();
+
+  var form = document.createElement('div'); form.id='gerenciarForm';
+  form.style.cssText='max-height:300px;overflow-y:auto;';
+
+  slots.forEach(function(slot) {
+    var tipo = tipos[slot];
+    var nome = getIlhaNome(isl, slot);
+    var cor = tipo==='compose'?'#88ddff':tipo==='elite'?'#ff9944':'#c8a96e';
+    var icon = tipo==='compose'?'💎':tipo==='elite'?'⭐':'⚔️';
+
+    var row = document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 10px;background:#0f0f1e;border-radius:8px;margin-bottom:6px;border:1px solid #2a2a3a;';
+
+    var info = document.createElement('div'); info.style.flex='1';
+    info.innerHTML='<div style="font-size:13px;font-weight:700;color:#e8e8e8;">'+nome+'</div>'+
+      '<div style="font-size:10px;color:'+cor+';">'+icon+' '+tipo.toUpperCase()+' — Slot '+slot+'</div>';
+
+    var del = document.createElement('button');
+    del.textContent='🗑️';
+    del.style.cssText='background:#1a0f0f;border:1px solid #aa3333;border-radius:8px;color:#ff6666;font-size:14px;cursor:pointer;padding:6px 10px;';
+    del.onclick=(function(s){ return function(){
+      if(!confirm('Remover mula "'+getIlhaNome(isl,s)+'" do slot '+s+'?')) return;
+      // Remove nome, tipo e compose state
+      var state = loadState();
+      var kn = server+'_ilha_nomes_'+isl;
+      var kt = server+'_ilha_tipos_'+isl;
+      if(state[kn]) delete state[kn][s];
+      if(state[kt]) delete state[kt][s];
+      // Remove do compose se for compose
+      var ist = getIlhaState(isl);
+      if(ist.compose && ist.compose[s] !== undefined) delete ist.compose[s];
+      saveState(state);
+      setIlhaState(isl, ist);
+      // Reopen modal updated
+      form.remove();
+      document.getElementById('modalText').style.display='';
+      closeModal();
+      render();
+      showGerenciarMulas(isl);
+    };})(slot);
+
+    row.appendChild(info); row.appendChild(del);
+    form.appendChild(row);
+  });
+
+  // Botão limpar todas
+  var clearAll = document.createElement('button');
+  clearAll.style.cssText='width:100%;margin-top:8px;padding:10px;background:#1a0f0f;border:1px solid #aa3333;border-radius:10px;color:#ff6666;font-size:13px;font-weight:700;cursor:pointer;';
+  clearAll.textContent='🗑️ Remover TODAS as mulas extras ('+slots.length+')';
+  clearAll.onclick=function(){
+    if(!confirm('Remover TODAS as '+slots.length+' mulas extras de '+isl.toUpperCase()+'?')) return;
+    var state = loadState();
+    delete state[server+'_ilha_nomes_'+isl+'_extras'];
+    var kn = server+'_ilha_nomes_'+isl;
+    var kt = server+'_ilha_tipos_'+isl;
+    var ist = getIlhaState(isl);
+    slots.forEach(function(s){
+      if(state[kn]) delete state[kn][s];
+      if(state[kt]) delete state[kt][s];
+      if(ist.compose && ist.compose[s]!==undefined) delete ist.compose[s];
+    });
+    saveState(state);
+    setIlhaState(isl, ist);
+    form.remove();
+    document.getElementById('modalText').style.display='';
+    closeModal();
+    render();
+  };
+  form.appendChild(clearAll);
+  modal.insertBefore(form, document.querySelector('.modal-btns'));
+
+  document.getElementById('modalOk').style.display='none';
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+// Override closeModal to reset modal state
+var _closeModal = closeModal;
+closeModal = function(){
+  var existing = document.getElementById('gerenciarForm') || document.getElementById('addMulaForm');
+  if(existing) existing.remove();
+  document.getElementById('modalText').style.display='';
+  document.getElementById('modalOk').style.display='';
+  _closeModal();
+};
 
 function showAddMulaModal(isl) {
   var total = getTotalMulas(isl);
