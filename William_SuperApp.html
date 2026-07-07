@@ -429,7 +429,8 @@ function renderIlhas(main) {
     {type:'elite',     cur:st.elite,     color:'#ffb066'}
   ];
   cols.forEach(function(col){
-    var isFull = (col.type==='refinados'&&col.cur>ranges.refinados[1])||(col.type==='elite'&&col.cur>ranges.elite[1]);
+    var typeSlots = col.type==='refinados'?ranges.refinSlots:(col.type==='elite'?ranges.eliteSlots:null);
+    var isFull = typeSlots ? (typeSlots.indexOf(col.cur)===-1 && col.cur>typeSlots[typeSlots.length-1]) : false;
     var nome = isFull?'CHEIAS':getIlhaNome(ilha, col.cur);
     var lk = col.type+'_'+col.cur;
 
@@ -516,12 +517,16 @@ function setIlhaTipo(isl, slot, tipo) {
 
 function makeQueueCard(type, current) {
   var ranges = getIlhaRanges(ilha);
-  var min = ranges[type][0], max = ranges[type][1];
-  var isFull=current>max, isLast=current===max;
+  var slots = (type==='refinados' ? ranges.refinSlots : ranges.eliteSlots) || [];
+  if (slots.length === 0) slots = type==='refinados' ? [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24] : [25,26];
+  var curIdx = slots.indexOf(current);
+  if (curIdx === -1) curIdx = 0;
+  var isFull = current > slots[slots.length-1];
+  var isLast = current === slots[slots.length-1];
   var div=document.createElement('div');
   div.className='fcard'+(isFull?' full':isLast?' almostfull':'');
   div.appendChild(el('div','flabel '+type,type==='refinados'?'REFINADOS':'ELITE'));
-  if(!isFull){ var pb=el('div','progress-bar'),pf=el('div','progress-fill '+type); pf.style.width=Math.round(((current-min)/(max-min+1))*100)+'%'; pb.appendChild(pf); div.appendChild(pb); }
+  if(!isFull){ var pb=el('div','progress-bar'),pf=el('div','progress-fill '+type); pf.style.width=Math.round(((curIdx+1)/slots.length)*100)+'%'; pb.appendChild(pf); div.appendChild(pb); }
   var num=el('div','big-num',isFull?'✓':String(current)); num.style.color=isFull?'#ff4444':(type==='elite'?'#ff9944':'#c8a96e'); div.appendChild(num);
   if (!isFull && server !== 'eu') {
     var cnIn = document.createElement('input');
@@ -537,10 +542,10 @@ function makeQueueCard(type, current) {
     if(!isFull) cn.style.color=type==='refinados'?'#ffd88a':'#ffb066';
     div.appendChild(cn);
   }
-  if(!isFull){ var rem=max-current; var re=el('div','remaining',rem===0?'⚠ ÚLTIMA!':rem+' rest.'); re.style.color=rem===0?'#ff4444':rem<=3?'#ffa500':'#a0b8d0'; div.appendChild(re); }
+  if(!isFull){ var rem=slots.length-1-curIdx; var re=el('div','remaining',rem===0?'⚠ ÚLTIMA!':rem+' rest.'); re.style.color=rem===0?'#ff4444':rem<=3?'#ffa500':'#a0b8d0'; div.appendChild(re); }
   else div.appendChild(el('div','status-msg','CHEIAS'));
   var br=document.createElement('div'); br.className='grid'; br.style.cssText='grid-template-columns:1fr 1fr;gap:4px;width:100%';
-  var prev=btn('◀','btn-nav-char btn-prev-char',function(){ navIlha(type,-1); }); prev.disabled=current<=min;
+  var prev=btn('◀','btn-nav-char btn-prev-char',function(){ navIlha(type,-1); }); prev.disabled=curIdx<=0;
   br.appendChild(prev); br.appendChild(btn(isFull?'↺':'▶','btn-nav-char btn-next-char',function(){ navIlha(type,1); }));
   div.appendChild(br); return div;
 }
@@ -589,10 +594,14 @@ function saveIlhaMeta(field, key, val) { var st=getIlhaState(ilha); st[field][ke
 function navIlha(type,dir) {
   var st=getIlhaState(ilha);
   var ranges=getIlhaRanges(ilha);
-  var min=ranges[type][0], max=ranges[type][1];
-  if(dir===1&&st[type]<=max) st[type]++;
-  if(dir===-1&&st[type]>min) st[type]--;
-  if(st[type]===max) vibe([50,30,50,30,100]);
+  var slots=(type==='refinados'?ranges.refinSlots:ranges.eliteSlots)||[];
+  if(slots.length===0) return;
+  var curIdx=slots.indexOf(st[type]);
+  if(curIdx===-1) curIdx=0;
+  var newIdx=curIdx+dir;
+  if(newIdx<0||newIdx>=slots.length) return;
+  st[type]=slots[newIdx];
+  if(newIdx===slots.length-1) vibe([50,30,50,30,100]);
   else vibe(dir===1?[30]:[10,10,10]);
   setIlhaState(ilha,st); render();
 }
