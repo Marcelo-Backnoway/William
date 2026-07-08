@@ -62,9 +62,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .compose-num  { font-size: 12px; font-weight: 700; min-width: 18px; text-align: center; flex-shrink: 0; }
 .compose-nome { font-size: 9px; flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 600; }
 .compose-tag  { font-size: 7px; padding: 1px 3px; border-radius: 3px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
-.login-preview { width: 100%; margin-top: 4px; padding: 6px 4px; background: #0a1a0a; border-radius: 8px; border: 1px solid #1a3a1a; }
-.login-cur  { font-size: 11px; color: #90EE90; font-weight: 700; text-align: center; }
-.login-next { font-size: 10px; color: #4a7a4a; text-align: center; margin-top: 2px; }
+
 .tag-atual { background:#55aa55;color:#fff; }
 .tag-cheio { background:#aa3333;color:#fff; }
 .tag-livre { background:#333;color:#888; }
@@ -445,12 +443,15 @@ function renderIlhas(main) {
     card.appendChild(cn);
 
     // Login
-    var lr = document.createElement('div'); lr.className='info-login-row';
-    lr.appendChild(el('span','','🔑'));
+    var lbl2 = el('div','','🔑 Login');
+    lbl2.style.cssText='font-size:10px;color:#87CEFA;font-weight:700;margin-bottom:3px;';
+    card.appendChild(lbl2);
     var li = document.createElement('input'); li.className='info-input'; li.type='text';
-    li.placeholder='login'; li.value=st.logins[lk]||'';
+    li.placeholder='Ex: Scorpius15';
+    li.style.cssText='width:100%;background:#1a1a2e;border:1px solid #87CEFA;border-radius:8px;padding:8px 6px;font-size:14px;color:#87CEFA;font-weight:700;outline:none;text-align:center;margin-bottom:4px;';
+    li.value=st.logins[lk]||'';
     li.dataset.key=lk; li.onchange=function(){ saveIlhaMeta('logins',this.dataset.key,this.value); };
-    lr.appendChild(li); card.appendChild(lr);
+    card.appendChild(li);
 
     // Level
     var lvr = document.createElement('div'); lvr.className='info-row';
@@ -551,23 +552,6 @@ function makeQueueCard(type, current) {
   var prev=btn('◀','btn-nav-char btn-prev-char',function(){ navIlha(type,-1); }); prev.disabled=curIdx<=0;
   br.appendChild(prev); br.appendChild(btn(isFull?'↺':'▶','btn-nav-char btn-next-char',function(){ navIlha(type,1); }));
   div.appendChild(br);
-
-  // Preview de login: atual e próximo
-  if (!isFull) {
-    var preview = document.createElement('div'); preview.className='login-preview';
-    var curLabel = (type==='refinados'?'R':'E') + (curIdx+1);
-    var curLine = document.createElement('div'); curLine.className='login-cur';
-    curLine.textContent = curLabel + ' — ' + getIlhaNome(ilha, current);
-    preview.appendChild(curLine);
-    if (curIdx + 1 < slots.length) {
-      var nextSlot = slots[curIdx + 1];
-      var nextLabel = (type==='refinados'?'R':'E') + (curIdx+2);
-      var nextLine = document.createElement('div'); nextLine.className='login-next';
-      nextLine.textContent = 'Prox: ' + nextLabel + ' — ' + getIlhaNome(ilha, nextSlot);
-      preview.appendChild(nextLine);
-    }
-    div.appendChild(preview);
-  }
 
   return div;
 }
