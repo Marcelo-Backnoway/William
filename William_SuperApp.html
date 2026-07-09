@@ -442,16 +442,24 @@ function renderIlhas(main) {
     cn.style.color = isFull?'#ff4444':col.color;
     card.appendChild(cn);
 
-    // Login
-    var lbl2 = el('div','','🔑 Login');
-    lbl2.style.cssText='font-size:10px;color:#87CEFA;font-weight:700;margin-bottom:3px;';
-    card.appendChild(lbl2);
-    var li = document.createElement('input'); li.className='info-input'; li.type='text';
-    li.placeholder='Ex: Scorpius15';
-    li.style.cssText='width:100%;background:#1a1a2e;border:1px solid #87CEFA;border-radius:8px;padding:8px 6px;font-size:14px;color:#87CEFA;font-weight:700;outline:none;text-align:center;margin-bottom:4px;';
-    li.value=st.logins[lk]||'';
-    li.dataset.key=lk; li.onchange=function(){ saveIlhaMeta('logins',this.dataset.key,this.value); };
-    card.appendChild(li);
+    // Countdown — quantas restam
+    var countDiv = document.createElement('div');
+    countDiv.style.cssText='width:100%;text-align:center;padding:4px 2px;';
+    if (col.type === 'compose') {
+      // Compose: mostra livres restantes
+      var cSlotsFull = cSlots.filter(function(x){ return st.compose[x]===1; }).length;
+      var cLivres = cSlots.length - cSlotsFull;
+      var cTxt = cLivres===0?'Última':String(cLivres);
+      var cColor = cLivres===0?'#ff4444':cLivres<=2?'#ffa500':'#c8a96e';
+      countDiv.innerHTML='<div style="font-size:9px;color:#555;margin-bottom:2px;">LIVRES</div><div style="font-size:32px;font-weight:800;color:'+cColor+';line-height:1;">'+cTxt+'</div>';
+    } else if (typeSlots && typeSlots.length > 0) {
+      var posAtual = typeSlots.indexOf(col.cur);
+      var restam = typeSlots.length - posAtual - 1;
+      var rTxt = restam===0?'Última':String(restam);
+      var rColor = restam===0?'#ff4444':restam<=3?'#ffa500':'#c8a96e';
+      countDiv.innerHTML='<div style="font-size:9px;color:#555;margin-bottom:2px;">RESTAM</div><div style="font-size:32px;font-weight:800;color:'+rColor+';line-height:1;">'+rTxt+'</div>';
+    }
+    card.appendChild(countDiv);
 
     // Level
     var lvr = document.createElement('div'); lvr.className='info-row';
