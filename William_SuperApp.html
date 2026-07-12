@@ -1296,14 +1296,44 @@ function formatGold(n){
 }
 
 // ══════════════════════════════════════════════════════
-// NOMES — Banco de Rascunhos
 // ══════════════════════════════════════════════════════
+// NOMES — Banco de Rascunhos + LIXEIRA 30 DIAS
+// ══════════════════════════════════════════════════════
+
 function getNomes() {
   var s = loadState();
   return s.nomes_rascunho || [];
 }
 function setNomes(data) {
-  var s = loadState(); s.nomes_rascunho = data; saveState(s);
+  var s = loadState(); 
+  s.nomes_rascunho = data; 
+  saveState(s);
+}
+
+// === FUNÇÕES DA LIXEIRA ===
+function getLixeira() {
+  var s = loadState();
+  return s.lixeira_nomes || [];
+}
+function setLixeira(data) {
+  var s = loadState();
+  s.lixeira_nomes = data;
+  saveState(s);
+}
+function moverParaLixeira(nome, usado) {
+  if (!nome) return;
+  var lx = getLixeira();
+  lx.unshift({
+    nome: nome,
+    usado: !!usado,
+    deletadoEm: Date.now()
+  });
+  // Limpa itens com mais de 30 dias
+  var agora = Date.now();
+  lx = lx.filter(function(item) {
+    return (agora - item.deletadoEm) < 30 * 24 * 60 * 60 * 1000;
+  });
+  setLixeira(lx);
 }
 
 function renderNomes(main) {
@@ -1312,7 +1342,6 @@ function renderNomes(main) {
   var card = document.createElement('div'); card.className='card';
   card.appendChild(el('div','card-title','📝 BANCO DE NOMES — '+nomes.length+' anotados'));
 
-  // Campo de adicionar
   var hint = el('p','','Viu um nome legal? Anota aqui antes de esquecer! 💡');
   hint.style.cssText='font-size:12px;color:#555;margin-bottom:12px;';
   card.appendChild(hint);
@@ -1329,7 +1358,6 @@ function renderNomes(main) {
   addRow.appendChild(inp); addRow.appendChild(addBtn);
   card.appendChild(addRow);
 
-  // Lista de nomes
   if (nomes.length === 0) {
     var empty = el('div','','Nenhum nome ainda. Quando ver um nome incrível, anota aqui! ⚔️');
     empty.style.cssText='text-align:center;color:#555;font-size:13px;padding:24px 0;';
@@ -1339,32 +1367,33 @@ function renderNomes(main) {
       var row = document.createElement('div');
       row.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0f0f1e;border-radius:10px;margin-bottom:7px;border:1px solid '+(n.usado?'#2d6a4f':'#2a2a3a')+';';
 
-      // Nome
       var nomeEl = el('div','', (n.usado?'✅ ':'')+n.nome);
       nomeEl.style.cssText='flex:1;font-size:15px;font-weight:700;color:'+(n.usado?'#74c69d':'#e8e8e8')+';'+(n.usado?'text-decoration:line-through;opacity:0.6;':'');
 
-      // Data
       var dataEl = el('div','',n.data);
       dataEl.style.cssText='font-size:10px;color:#555;white-space:nowrap;';
 
-      // Botão usar/desuso
       var usarBtn = document.createElement('button');
       usarBtn.textContent = n.usado ? '↩' : '✅';
       usarBtn.title = n.usado ? 'Desmarcar' : 'Marcar como usado';
       usarBtn.style.cssText='background:'+(n.usado?'#2a2a3a':'#1a2a1a')+';border:1px solid '+(n.usado?'#444':'#2d6a4f')+';color:'+(n.usado?'#aaa':'#74c69d')+';border-radius:8px;padding:6px 10px;font-size:14px;cursor:pointer;';
-      usarBtn.onclick=(function(idx){ return function(){ var ns=getNomes(); ns[idx].usado=!ns[idx].usado; setNomes(ns); render(); }; })(i);
+      usarBtn.onclick=(function(idx){ return function(){ 
+        var ns=getNomes(); ns[idx].usado=!ns[idx].usado; setNomes(ns); render(); 
+      }; })(i);
 
-      // Botão deletar
       var delBtn = document.createElement('button');
       delBtn.textContent='🗑️';
       delBtn.style.cssText='background:none;border:none;font-size:16px;cursor:pointer;padding:4px;opacity:0.5;';
-      delBtn.onclick=(function(idx){ return function(){ var ns=getNomes(); var n=ns[idx]; moverParaLixeira(n.nome,n.usado); ns.splice(idx,1); setNomes(ns); render(); }; })(i);
+      delBtn.onclick=(function(idx){ return function(){ 
+        var ns=getNomes(); var n=ns[idx]; 
+        moverParaLixeira(n.nome, n.usado); 
+        ns.splice(idx,1); setNomes(ns); render(); 
+      }; })(i);
 
       row.appendChild(nomeEl); row.appendChild(dataEl); row.appendChild(usarBtn); row.appendChild(delBtn);
       card.appendChild(row);
     });
 
-    // Botão limpar usados
     var usados = nomes.filter(function(n){ return n.usado; }).length;
     if (usados > 0) {
       var limparBtn = document.createElement('button');
@@ -1373,20 +1402,23 @@ function renderNomes(main) {
       limparBtn.style.cssText='margin-top:8px;color:#aa3333;border-color:#aa3333;';
       limparBtn.onclick=function(){
         if(confirm('Remover todos os nomes marcados como usados?')){
-          var ns=getNomes(); ns.filter(function(n){return n.usado;}).forEach(function(n){ moverParaLixeira(n.nome,true); });
-          setNomes(ns.filter(function(n){return !n.usado;})); render();
+          var ns=getNomes(); 
+          ns.filter(function(n){return n.usado;}).forEach(function(n){ moverParaLixeira(n.nome,true); });
+          setNomes(ns.filter(function(n){return !n.usado;})); 
+          render();
         }
       };
       card.appendChild(limparBtn);
     }
   }
 
-  // Seção da Lixeira
+  // === LIXEIRA ===
   var lx = getLixeira();
   if(lx.length > 0){
     var lxCard = document.createElement('div'); lxCard.className='card';
     lxCard.style.marginTop='10px';
     lxCard.appendChild(el('div','card-title','🗑️ LIXEIRA — '+lx.length+' nome'+(lx.length>1?'s':'')+' (30 dias)'));
+
     lx.forEach(function(n,i){
       var row=document.createElement('div');
       row.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 10px;background:#1a0f0f;border-radius:8px;margin-bottom:5px;border:1px solid #3a1a1a;';
@@ -1409,6 +1441,7 @@ function renderNomes(main) {
       row.appendChild(nomeEl); row.appendChild(dEl); row.appendChild(restBtn); row.appendChild(permBtn);
       lxCard.appendChild(row);
     });
+
     var vazia=document.createElement('button'); vazia.className='btn-reset';
     vazia.textContent='🗑️ Esvaziar lixeira'; vazia.style.cssText='margin-top:6px;color:#aa3333;border-color:#aa3333;';
     vazia.onclick=function(){ if(confirm('Esvaziar lixeira permanentemente?')){ setLixeira([]); render(); } };
@@ -1428,6 +1461,7 @@ function addNome() {
   setNomes(ns);
   vibe([30]);
   render();
+  inp.value = '';
 }
 
 // ══════════════════════════════════════════════════════
