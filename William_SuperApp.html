@@ -1336,7 +1336,13 @@ function renderNomes(main) {
   card.appendChild(el('div','card-title','📝 BANCO DE NOMES — '+nomes.length+' anotados'));
 
   var hint = el('p','','Viu um nome legal? Anota aqui antes de esquecer! 💡');
-  hint.style.cssText = 'font-size:12px;color:#555;margin-bottom:12px;';
+  function renderNomes(main) {
+  var nomes = getNomes();
+  var card = document.createElement('div'); card.className='card';
+  card.appendChild(el('div','card-title','📝 BANCO DE NOMES — '+nomes.length+' anotados'));
+
+  var hint = el('p','','Viu um nome legal? Anota aqui antes de esquecer! 💡');
+  hint.style.cssText='font-size:12px;color:#555;margin-bottom:12px;';
   card.appendChild(hint);
 
   var addRow = document.createElement('div');
@@ -1351,6 +1357,19 @@ function renderNomes(main) {
   addRow.appendChild(inp); addRow.appendChild(addBtn);
   card.appendChild(addRow);
 
+  if (nomes.length === 0) {
+    card.appendChild(el('div','','Nenhum nome salvo ainda.'));
+  } else {
+    nomes.forEach(function(n) {
+      var row = document.createElement('div');
+      row.style.cssText='padding:10px;background:#0f0f1e;border-radius:10px;margin-bottom:6px;';
+      row.innerHTML = (n.usado ? '✅ ' : '') + '<b>' + n.nome + '</b> <small>(' + (n.data || '') + ')</small>';
+      card.appendChild(row);
+    });
+  }
+
+  main.appendChild(card);
+}
   if (nomes.length === 0) {
     card.appendChild(el('div','','Nenhum nome salvo ainda.'));
   } else {
