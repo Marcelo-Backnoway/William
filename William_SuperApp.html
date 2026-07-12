@@ -401,54 +401,6 @@ function render() {
 // ILHAS
 // ══════════════════════════════════════════════════════
 function renderIlhas(main) {
-  // ── BUSCA DE MULAS ──
-  var sWrap = document.createElement('div');
-  sWrap.style.cssText='padding:0 0 8px;';
-  var sInp = document.createElement('input');
-  sInp.id='mulaSearch'; sInp.type='text';
-  sInp.placeholder='🔍 Buscar mula... (ex: Proudmoore)';
-  sInp.style.cssText='width:100%;background:#1e1e2e;border:1px solid #333;border-radius:10px;padding:10px 14px;font-size:14px;color:#e8e8e8;outline:none;font-family:inherit;';
-  sInp.autocomplete='off';
-  var sRes = document.createElement('div'); sRes.id='mulaResults'; sRes.style.cssText='margin-top:4px;';
-  sInp.oninput = function(){
-    var q=this.value.trim().toLowerCase(); var rd=document.getElementById('mulaResults');
-    if(!q||q.length<2){rd.innerHTML='';return;}
-    var ilhas=['scorpius','rigel','hubble'], found=[];
-    ilhas.forEach(function(isl){
-      var ranges=getIlhaRanges(isl);
-      var allSlots=ranges.refinSlots.concat(ranges.eliteSlots).concat(ranges.compSlots);
-      allSlots.forEach(function(slot){
-        var nome=getIlhaNome(isl,slot);
-        if(nome&&nome!=='Slot '+slot&&nome.toLowerCase().indexOf(q)>=0){
-          var tipo='',pos=0;
-          if(ranges.refinSlots.indexOf(slot)>=0){tipo='Refinado';pos=ranges.refinSlots.indexOf(slot)+1;}
-          else if(ranges.eliteSlots.indexOf(slot)>=0){tipo='Elite';pos=ranges.eliteSlots.indexOf(slot)+1;}
-          else{tipo='Compose';pos=ranges.compSlots.indexOf(slot)+1;}
-          var islCap=isl.charAt(0).toUpperCase()+isl.slice(1);
-          found.push({nome:nome,login:islCap+slot,isl:islCap,tipo:tipo,pos:pos});
-        }
-      });
-    });
-    if(found.length===0){
-      rd.innerHTML='<div style="font-size:12px;color:#555;padding:6px 2px;">Nenhuma mula encontrada</div>';
-    } else {
-      rd.innerHTML='';
-      found.forEach(function(f){
-        var row=document.createElement('div');
-        row.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#141424;border:1px solid #2a2a3a;border-radius:8px;margin-bottom:4px;';
-        var left=document.createElement('div');
-        left.innerHTML='<div style="font-size:14px;font-weight:700;color:#e8e8e8;">'+f.nome+'</div><div style="font-size:10px;color:#888;margin-top:1px;">'+f.isl+' · '+f.tipo+' #'+f.pos+'</div>';
-        var right=document.createElement('div');
-        right.style.cssText='font-size:15px;font-weight:800;color:#c8a96e;';
-        right.textContent=f.login;
-        row.appendChild(left); row.appendChild(right);
-        rd.appendChild(row);
-      });
-    }
-  };
-  sWrap.appendChild(sInp); sWrap.appendChild(sRes);
-  main.appendChild(sWrap);
-
   // Ilha tabs
   var itabs = document.createElement('div'); itabs.className = 'ilha-tabs';
   ['scorpius','rigel','hubble'].forEach(function(isl){
@@ -496,11 +448,10 @@ function renderIlhas(main) {
     if (col.type === 'compose') {
       // Compose: mostra livres restantes
       var cSlotsFull = cSlots.filter(function(x){ return st.compose[x]===1; }).length;
-      var cLivres = cSlots.length - cSlotsFull - 1; // -1 pois a atual está em uso
-      if(cLivres < 0) cLivres = 0;
+      var cLivres = cSlots.length - cSlotsFull;
       var cTxt = cLivres===0?'Última':String(cLivres);
       var cColor = cLivres===0?'#ff4444':cLivres<=2?'#ffa500':'#c8a96e';
-      countDiv.innerHTML='<div style="font-size:9px;color:#555;margin-bottom:2px;">RESTAM</div><div style="font-size:32px;font-weight:800;color:'+cColor+';line-height:1;">'+cTxt+'</div>';
+      countDiv.innerHTML='<div style="font-size:9px;color:#555;margin-bottom:2px;">LIVRES</div><div style="font-size:32px;font-weight:800;color:'+cColor+';line-height:1;">'+cTxt+'</div>';
     } else if (typeSlots && typeSlots.length > 0) {
       var posAtual = typeSlots.indexOf(col.cur);
       var restam = typeSlots.length - posAtual - 1;
@@ -1296,45 +1247,23 @@ function formatGold(n){
 }
 
 // ══════════════════════════════════════════════════════
+// NOMES — Banco de Rascunhos
 // ══════════════════════════════════════════════════════
-// NOMES — Banco de Rascunhos + LIXEIRA 30 DIAS
-// ══════════════════════════════════════════════════════
-
 function getNomes() {
   var s = loadState();
   return s.nomes_rascunho || [];
 }
 function setNomes(data) {
-  var s = loadState(); 
-  s.nomes_rascunho = data; 
-  saveState(s);
-}
-
-function getLixeira() {
-  var s = loadState();
-  return s.lixeira_nomes || [];
-}
-function setLixeira(data) {
-  var s = loadState();
-  s.lixeira_nomes = data;
-  saveState(s);
-}
-function moverParaLixeira(nome, usado) {
-  if (!nome) return;
-  var lx = getLixeira();
-  lx.unshift({ nome: nome, usado: !!usado, deletadoEm: Date.now() });
-  var agora = Date.now();
-  lx = lx.filter(function(item) {
-    return (agora - item.deletadoEm) < 30 * 24 * 60 * 60 * 1000;
-  });
-  setLixeira(lx);
+  var s = loadState(); s.nomes_rascunho = data; saveState(s);
 }
 
 function renderNomes(main) {
   var nomes = getNomes();
+
   var card = document.createElement('div'); card.className='card';
   card.appendChild(el('div','card-title','📝 BANCO DE NOMES — '+nomes.length+' anotados'));
 
+  // Campo de adicionar
   var hint = el('p','','Viu um nome legal? Anota aqui antes de esquecer! 💡');
   hint.style.cssText='font-size:12px;color:#555;margin-bottom:12px;';
   card.appendChild(hint);
@@ -1342,8 +1271,8 @@ function renderNomes(main) {
   var addRow = document.createElement('div');
   addRow.style.cssText='display:flex;gap:8px;margin-bottom:16px;';
   var inp = document.createElement('input');
-  inp.id='nomeInput'; inp.type='text'; inp.placeholder='Ex: Lautaro, Xevious...';
-  inp.style.cssText='flex:1;background:#1a1a2e;border:1px solid #c8a96e;border-radius:10px;padding:11px 12px;font-size:14px;color:#e8e8e8;outline:none;';
+  inp.id='nomeInput'; inp.type='text'; inp.placeholder='Ex: Lautaro, Xevious, Salsaparrilha...';
+  inp.style.cssText='flex:1;background:#1a1a2e;border:1px solid #c8a96e;border-radius:10px;padding:11px 12px;font-size:14px;color:#e8e8e8;outline:none;font-family:inherit;';
   inp.addEventListener('keydown',function(e){ if(e.key==='Enter') addNome(); });
   var addBtn = document.createElement('button');
   addBtn.textContent='＋'; addBtn.style.cssText='background:#c8a96e;color:#111;border:none;border-radius:10px;padding:11px 18px;font-size:20px;font-weight:700;cursor:pointer;';
@@ -1351,15 +1280,56 @@ function renderNomes(main) {
   addRow.appendChild(inp); addRow.appendChild(addBtn);
   card.appendChild(addRow);
 
+  // Lista de nomes
   if (nomes.length === 0) {
-    card.appendChild(el('div','','Nenhum nome salvo ainda.'));
+    var empty = el('div','','Nenhum nome ainda. Quando ver um nome incrível, anota aqui! ⚔️');
+    empty.style.cssText='text-align:center;color:#555;font-size:13px;padding:24px 0;';
+    card.appendChild(empty);
   } else {
-    nomes.forEach(function(n) {
+    nomes.forEach(function(n, i) {
       var row = document.createElement('div');
-      row.style.cssText='padding:10px;background:#0f0f1e;border-radius:10px;margin-bottom:6px;';
-      row.innerHTML = (n.usado ? '✅ ' : '') + '<b>' + n.nome + '</b> <small>(' + (n.data || '') + ')</small>';
+      row.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0f0f1e;border-radius:10px;margin-bottom:7px;border:1px solid '+(n.usado?'#2d6a4f':'#2a2a3a')+';';
+
+      // Nome
+      var nomeEl = el('div','', (n.usado?'✅ ':'')+n.nome);
+      nomeEl.style.cssText='flex:1;font-size:15px;font-weight:700;color:'+(n.usado?'#74c69d':'#e8e8e8')+';'+(n.usado?'text-decoration:line-through;opacity:0.6;':'');
+
+      // Data
+      var dataEl = el('div','',n.data);
+      dataEl.style.cssText='font-size:10px;color:#555;white-space:nowrap;';
+
+      // Botão usar/desuso
+      var usarBtn = document.createElement('button');
+      usarBtn.textContent = n.usado ? '↩' : '✅';
+      usarBtn.title = n.usado ? 'Desmarcar' : 'Marcar como usado';
+      usarBtn.style.cssText='background:'+(n.usado?'#2a2a3a':'#1a2a1a')+';border:1px solid '+(n.usado?'#444':'#2d6a4f')+';color:'+(n.usado?'#aaa':'#74c69d')+';border-radius:8px;padding:6px 10px;font-size:14px;cursor:pointer;';
+      usarBtn.onclick=(function(idx){ return function(){ var ns=getNomes(); ns[idx].usado=!ns[idx].usado; setNomes(ns); render(); }; })(i);
+
+      // Botão deletar
+      var delBtn = document.createElement('button');
+      delBtn.textContent='🗑️';
+      delBtn.style.cssText='background:none;border:none;font-size:16px;cursor:pointer;padding:4px;opacity:0.5;';
+      delBtn.onclick=(function(idx){ return function(){ if(!confirm('Remover "'+getNomes()[idx].nome+'"?')) return; var ns=getNomes(); ns.splice(idx,1); setNomes(ns); render(); }; })(i);
+
+      row.appendChild(nomeEl); row.appendChild(dataEl); row.appendChild(usarBtn); row.appendChild(delBtn);
       card.appendChild(row);
     });
+
+    // Botão limpar usados
+    var usados = nomes.filter(function(n){ return n.usado; }).length;
+    if (usados > 0) {
+      var limparBtn = document.createElement('button');
+      limparBtn.className='btn-reset';
+      limparBtn.textContent='🗑️ Limpar '+usados+' nome'+(usados>1?'s':'')+' já usado'+(usados>1?'s':'');
+      limparBtn.style.cssText='margin-top:8px;color:#aa3333;border-color:#aa3333;';
+      limparBtn.onclick=function(){
+        if(confirm('Remover todos os nomes marcados como usados?')){
+          setNomes(getNomes().filter(function(n){return !n.usado;}));
+          render();
+        }
+      };
+      card.appendChild(limparBtn);
+    }
   }
 
   main.appendChild(card);
@@ -1369,28 +1339,91 @@ function addNome() {
   var inp = document.getElementById('nomeInput');
   if (!inp || !inp.value.trim()) return;
   var ns = getNomes();
-  ns.unshift({ nome: inp.value.trim(), data: new Date().toLocaleDateString('pt-BR'), usado: false });
+  var hoje = new Date().toLocaleDateString('pt-BR');
+  ns.unshift({ nome: inp.value.trim(), data: hoje, usado: false });
   setNomes(ns);
+  vibe([30]);
   render();
-  inp.value = '';
 }
-        body.style.cssText='padding:0 12px 12px;border-top:1px solid #2a2a3a;';
-        var stamp2 = el('div','','📅 '+n.data+' às '+n.hora);
-        stamp2.style.cssText='font-size:10px;color:#555;padding:8px 0 6px;';
-        var txt = el('div','',n.texto);
-        txt.style.cssText='font-size:13px;color:#e8e8e8;line-height:1.7;white-space:pre-wrap;';
-        body.appendChild(stamp2); body.appendChild(txt);
-        row.appendChild(body);
-      }
+
+// ══════════════════════════════════════════════════════
+// NOTAS DIÁRIAS
+// ══════════════════════════════════════════════════════
+function getNotas() { var s=loadState(); return s.notas_diarias||[]; }
+function setNotas(d) { var s=loadState(); s.notas_diarias=d; saveState(s); }
+
+function renderNotas(main) {
+  var notas = getNotas();
+  var card = document.createElement('div'); card.className='card';
+  card.appendChild(el('div','card-title','📓 NOTAS & IDEIAS — '+notas.length+' registradas'));
+
+  var hint = el('p','','Anote ideias, lembretes, observações do dia. Cada nota fica com horário automático! ⏰');
+  hint.style.cssText='font-size:12px;color:#555;margin-bottom:12px;line-height:1.5;';
+  card.appendChild(hint);
+
+  // Campo de texto
+  var ta = document.createElement('textarea');
+  ta.id='notaInput'; ta.placeholder='Digite sua ideia, lembrete ou observação...';
+  ta.style.cssText='width:100%;background:#1a1a2e;border:1px solid #c8a96e;border-radius:10px;padding:11px 12px;font-size:14px;color:#e8e8e8;outline:none;font-family:inherit;resize:vertical;min-height:80px;margin-bottom:8px;';
+  card.appendChild(ta);
+
+  var addBtn = document.createElement('button');
+  addBtn.textContent='💾 Salvar nota';
+  addBtn.style.cssText='width:100%;background:#c8a96e;color:#111;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:16px;';
+  addBtn.onclick = function(){
+    var inp=document.getElementById('notaInput');
+    if(!inp||!inp.value.trim()){alert('Digite algo antes de salvar!');return;}
+    var now=new Date();
+    var data=now.toLocaleDateString('pt-BR');
+    var hora=now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    var ns=getNotas();
+    ns.unshift({texto:inp.value.trim(),data:data,hora:hora});
+    setNotas(ns); vibe([30]); render();
+  };
+  card.appendChild(addBtn);
+
+  // Lista de notas
+  if(notas.length===0){
+    var empty=el('div','','Nenhuma nota ainda. Tem uma ideia? Anota aí! 💡');
+    empty.style.cssText='text-align:center;color:#555;font-size:13px;padding:20px 0;';
+    card.appendChild(empty);
+  } else {
+    notas.forEach(function(n,i){
+      var row=document.createElement('div');
+      row.style.cssText='background:#0f0f1e;border:1px solid #2a2a3a;border-radius:10px;padding:12px;margin-bottom:8px;';
+
+      // Header: data + hora + deletar
+      var hdr=document.createElement('div');
+      hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;';
+      var stamp=el('div','','📅 '+n.data+' às '+n.hora);
+      stamp.style.cssText='font-size:10px;color:#666;font-weight:600;';
+      var del=document.createElement('button');
+      del.textContent='🗑️'; del.title='Deletar nota';
+      del.style.cssText='background:none;border:none;font-size:16px;cursor:pointer;color:#555;padding:2px 6px;';
+      del.onclick=(function(idx){return function(){
+        if(confirm('Deletar esta nota?')){
+          var ns=getNotas(); ns.splice(idx,1); setNotas(ns); render();
+        }
+      };})(i);
+      hdr.appendChild(stamp); hdr.appendChild(del);
+      row.appendChild(hdr);
+
+      // Texto da nota
+      var txt=el('div','',n.texto);
+      txt.style.cssText='font-size:13px;color:#e8e8e8;line-height:1.6;white-space:pre-wrap;';
+      row.appendChild(txt);
       card.appendChild(row);
     });
 
+    // Botão limpar tudo
     var limpar=document.createElement('button');
     limpar.className='btn-reset';
     limpar.textContent='🗑️ Apagar todas as notas';
     limpar.style.cssText='margin-top:4px;color:#aa3333;border-color:#aa3333;';
     limpar.onclick=function(){
-      if(confirm('Apagar TODAS as notas?')){ setNotas([]); window._notaAberta=null; render(); }
+      if(confirm('Apagar TODAS as notas? Essa ação não pode ser desfeita!')){
+        setNotas([]); render();
+      }
     };
     card.appendChild(limpar);
   }
@@ -1445,36 +1478,16 @@ function renderBackup(main) {
 }
 function doExport(){
   var data=JSON.stringify(loadState(),null,2);
-  var blob=new Blob([data],{type:'application/json'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  var hoje=new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
-  a.href=url; a.download='William_Backup_'+hoje+'.json';
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a); URL.revokeObjectURL(url);
-  setTimeout(function(){
-    if(confirm('Backup baixado com sucesso! ✅
-
-Abrir o Google Drive para salvar na pasta William?')){
-      window.open('https://drive.google.com/drive/my-drive','_blank');
-    }
-  },800);
+  openModal('📤 Exportar — copie e salve no WhatsApp',data,true,'📋 Copiar & Fechar',function(){
+    navigator.clipboard.writeText(data).then(function(){alert('✅ Copiado!');}).catch(function(){document.getElementById('modalText').select();document.execCommand('copy');alert('✅ Copiado!');});
+    closeModal();
+  });
 }
 function doImport(){
-  var inp=document.createElement('input'); inp.type='file'; inp.accept='.json';
-  inp.onchange=function(e){
-    var file=e.target.files[0]; if(!file) return;
-    var reader=new FileReader();
-    reader.onload=function(ev){
-      try{
-        var d=JSON.parse(ev.target.result);
-        saveState(d); render();
-        alert('✅ Backup restaurado com sucesso!');
-      }catch(err){ alert('❌ Arquivo inválido.'); }
-    };
-    reader.readAsText(file);
-  };
-  inp.click();
+  openModal('📥 Importar — cole o backup aqui','',false,'✅ Restaurar',function(){
+    try{var d=JSON.parse(document.getElementById('modalText').value);saveState(d);closeModal();render();alert('✅ Restaurado!');}
+    catch(e){alert('❌ Texto inválido.');}
+  });
 }
 function openModal(title,text,readOnly,okLabel,onOk){
   document.getElementById('modalTitle').textContent=title;
