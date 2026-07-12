@@ -1452,7 +1452,50 @@ function renderNotas(main) {
           render();
         }
       };})(i);
+function renderNomes(main) {
+  var nomes = getNomes();
+  var card = document.createElement('div'); card.className='card';
+  card.appendChild(el('div','card-title','📝 BANCO DE NOMES — '+nomes.length+' anotados'));
 
+  var hint = el('p','','Viu um nome legal? Anota aqui antes de esquecer! 💡');
+  hint.style.cssText = 'font-size:12px;color:#555;margin-bottom:12px;';
+  card.appendChild(hint);
+
+  var addRow = document.createElement('div');
+  addRow.style.cssText='display:flex;gap:8px;margin-bottom:16px;';
+  var inp = document.createElement('input');
+  inp.id='nomeInput'; inp.type='text'; inp.placeholder='Ex: Lautaro, Xevious...';
+  inp.style.cssText='flex:1;background:#1a1a2e;border:1px solid #c8a96e;border-radius:10px;padding:11px 12px;font-size:14px;color:#e8e8e8;outline:none;';
+  inp.addEventListener('keydown',function(e){ if(e.key==='Enter') addNome(); });
+  var addBtn = document.createElement('button');
+  addBtn.textContent='＋'; addBtn.style.cssText='background:#c8a96e;color:#111;border:none;border-radius:10px;padding:11px 18px;font-size:20px;font-weight:700;cursor:pointer;';
+  addBtn.onclick = addNome;
+  addRow.appendChild(inp); addRow.appendChild(addBtn);
+  card.appendChild(addRow);
+
+  if (nomes.length === 0) {
+    card.appendChild(el('div','','Nenhum nome salvo ainda.'));
+  } else {
+    nomes.forEach(function(n, i) {
+      var row = document.createElement('div');
+      row.style.cssText='padding:10px;background:#0f0f1e;border-radius:10px;margin-bottom:6px;';
+      row.innerHTML = (n.usado ? '✅ ' : '') + '<b>' + n.nome + '</b> <small>(' + n.data + ')</small>';
+      card.appendChild(row);
+    });
+  }
+
+  main.appendChild(card);
+}
+
+function addNome() {
+  var inp = document.getElementById('nomeInput');
+  if (!inp || !inp.value.trim()) return;
+  var ns = getNomes();
+  ns.unshift({ nome: inp.value.trim(), data: new Date().toLocaleDateString('pt-BR'), usado: false });
+  setNomes(ns);
+  render();
+  inp.value = '';
+}
       hdr.appendChild(arrow); hdr.appendChild(titulo); hdr.appendChild(stamp); hdr.appendChild(del);
       row.appendChild(hdr);
 
