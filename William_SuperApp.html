@@ -1336,12 +1336,6 @@ function renderNomes(main) {
   card.appendChild(el('div','card-title','📝 BANCO DE NOMES — '+nomes.length+' anotados'));
 
   var hint = el('p','','Viu um nome legal? Anota aqui antes de esquecer! 💡');
-  function renderNomes(main) {
-  var nomes = getNomes();
-  var card = document.createElement('div'); card.className='card';
-  card.appendChild(el('div','card-title','📝 BANCO DE NOMES — '+nomes.length+' anotados'));
-
-  var hint = el('p','','Viu um nome legal? Anota aqui antes de esquecer! 💡');
   hint.style.cssText='font-size:12px;color:#555;margin-bottom:12px;';
   card.appendChild(hint);
 
@@ -1370,98 +1364,6 @@ function renderNomes(main) {
 
   main.appendChild(card);
 }
-  if (nomes.length === 0) {
-    card.appendChild(el('div','','Nenhum nome salvo ainda.'));
-  } else {
-    nomes.forEach(function(n, i) {
-      var row = document.createElement('div');
-      row.style.cssText='padding:10px;background:#0f0f1e;border-radius:10px;margin-bottom:6px;';
-      row.innerHTML = (n.usado ? '✅ ' : '') + '<b>' + n.nome + '</b> <small>(' + n.data + ')</small>';
-      card.appendChild(row);
-    });
-  }
-
-  main.appendChild(card);
-}
-function addNome() {
-  var inp = document.getElementById('nomeInput');
-  if (!inp || !inp.value.trim()) return;
-  var ns = getNomes();
-  var hoje = new Date().toLocaleDateString('pt-BR');
-  ns.unshift({ nome: inp.value.trim(), data: hoje, usado: false });
-  setNomes(ns);
-  vibe([30]);
-  render();
-  inp.value = '';
-}
-
-// ══════════════════════════════════════════════════════
-// NOTAS DIÁRIAS
-// ══════════════════════════════════════════════════════
-function getNotas() { var s=loadState(); return s.notas_diarias||[]; }
-function setNotas(d) { var s=loadState(); s.notas_diarias=d; saveState(s); }
-
-function renderNotas(main) {
-  var notas = getNotas();
-  var aberto = window._notaAberta !== undefined ? window._notaAberta : null;
-
-  var card = document.createElement('div'); card.className='card';
-  card.appendChild(el('div','card-title','📓 NOTAS & IDEIAS — '+notas.length+' registradas'));
-
-  // Campos: Título + Texto
-  var fTitulo = document.createElement('input');
-  fTitulo.id='notaTitulo'; fTitulo.type='text'; fTitulo.placeholder='Título da nota...';
-  fTitulo.style.cssText='width:100%;background:#1a1a2e;border:1px solid #c8a96e;border-radius:10px;padding:10px 12px;font-size:15px;color:#c8a96e;font-weight:700;outline:none;font-family:inherit;margin-bottom:8px;';
-  card.appendChild(fTitulo);
-
-  var ta = document.createElement('textarea');
-  ta.id='notaInput'; ta.placeholder='Escreva sua nota aqui...';
-  ta.style.cssText='width:100%;background:#1a1a2e;border:1px solid #333;border-radius:10px;padding:10px 12px;font-size:14px;color:#e8e8e8;outline:none;font-family:inherit;resize:vertical;min-height:80px;margin-bottom:8px;';
-  card.appendChild(ta);
-
-  var addBtn = document.createElement('button');
-  addBtn.textContent='💾 Salvar nota';
-  addBtn.style.cssText='width:100%;background:#c8a96e;color:#111;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:14px;';
-  addBtn.onclick = function(){
-    var titulo=document.getElementById('notaTitulo').value.trim();
-    var texto=document.getElementById('notaInput').value.trim();
-    if(!titulo){alert('Digite um título!');return;}
-    if(!texto){alert('Digite o texto da nota!');return;}
-    var now=new Date();
-    var ns=getNotas();
-    ns.unshift({titulo:titulo, texto:texto, data:now.toLocaleDateString('pt-BR'), hora:now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})});
-    setNotas(ns); vibe([30]); window._notaAberta=0; render();
-  };
-  card.appendChild(addBtn);
-
-  // Lista de títulos
-  if(notas.length===0){
-    var empty=el('div','','Nenhuma nota ainda. 💡');
-    empty.style.cssText='text-align:center;color:#555;font-size:13px;padding:16px 0;';
-    card.appendChild(empty);
-  } else {
-    notas.forEach(function(n,i){
-      var isOpen = (aberto===i);
-
-      var row = document.createElement('div');
-      row.style.cssText='background:#0f0f1e;border:1px solid '+(isOpen?'#c8a96e':'#2a2a3a')+';border-radius:10px;margin-bottom:7px;overflow:hidden;';
-
-      // Cabeçalho clicável
-      var hdr = document.createElement('div');
-      hdr.style.cssText='display:flex;align-items:center;gap:8px;padding:11px 12px;cursor:pointer;';
-      hdr.onclick=(function(idx){ return function(){
-        window._notaAberta = (window._notaAberta===idx) ? null : idx;
-        render();
-      
-      var row = document.createElement('div');
-      row.style.cssText='padding:10px;background:#0f0f1e;border-radius:10px;margin-bottom:6px;';
-      row.innerHTML = (n.usado ? '✅ ' : '') + '<b>' + n.nome + '</b> <small>(' + n.data + ')</small>';
-      card.appendChild(row);
-    });
-  }
-
-  main.appendChild(card);
-}
 
 function addNome() {
   var inp = document.getElementById('nomeInput');
@@ -1472,12 +1374,6 @@ function addNome() {
   render();
   inp.value = '';
 }
-      hdr.appendChild(arrow); hdr.appendChild(titulo); hdr.appendChild(stamp); hdr.appendChild(del);
-      row.appendChild(hdr);
-
-      // Texto expandido
-      if(isOpen){
-        var body = document.createElement('div');
         body.style.cssText='padding:0 12px 12px;border-top:1px solid #2a2a3a;';
         var stamp2 = el('div','','📅 '+n.data+' às '+n.hora);
         stamp2.style.cssText='font-size:10px;color:#555;padding:8px 0 6px;';
