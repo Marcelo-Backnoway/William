@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>👤 William Personagens</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a14; color: #e8e8e8; min-height: 100vh; }
+
+.topbar { background: #111122; border-bottom: 1px solid #2a2a3a; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.topbar h1 { font-size: 12px; color: #c8a96e; letter-spacing: 1px; font-weight: 700; }
+.clock { font-size: 17px; font-weight: 700; color: #c8a96e; font-variant-numeric: tabular-nums; }
+
+.server-bar { display: flex; background: #0d0d1a; border-bottom: 1px solid #2a2a3a; position: sticky; top: 37px; z-index: 99; }
+.srv-btn { flex: 1; padding: 8px 4px; text-align: center; font-size: 11px; font-weight: 700; cursor: pointer; border-bottom: 3px solid transparent; color: #555; transition: all 0.2s; }
+.srv-btn.active-eu       { color: #90EE90; border-color: #90EE90; background: #0f1a0f; }
+.srv-btn.active-america  { color: #87CEFA; border-color: #87CEFA; background: #0f141a; }
+.srv-btn.active-murica   { color: #ff9944; border-color: #ff9944; background: #1a120a; }
+
+.container { padding: 10px; max-width: 480px; margin: 0 auto; }
+
+/* PERSONAGENS */
+.char-nav-card { background: #141424; border: 1px solid #2a2a3a; border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+.char-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.char-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; background: #1a1a2e; border: 2px solid #c8a96e; color: #c8a96e; }
+.char-title { flex: 1; }
+.char-title .nome { font-size: 17px; font-weight: 700; color: #e8e8e8; }
+.char-title .cat  { font-size: 10px; color: #888; margin-top: 2px; }
+.char-counter { font-size: 11px; color: #555; }
+
+.char-fields { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.char-field { display: flex; align-items: center; gap: 8px; background: #0f0f1e; border-radius: 10px; padding: 10px 12px; border: 1px solid #2a2a3a; }
+.char-field-label { font-size: 12px; font-weight: 700; min-width: 60px; }
+.char-field-label.lv  { color: #c8a96e; }
+.char-field-label.lg  { color: #87CEFA; }
+.char-field-label.bk  { color: #74c69d; }
+.char-field-input { flex: 1; background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 8px 10px; font-size: 14px; color: #e8e8e8; outline: none; font-family: inherit; }
+.char-field-input:focus { border-color: #c8a96e; }
+
+.char-nav-row { display: flex; gap: 6px; }
+.btn-nav-char { flex: 1; padding: 11px; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; transition: transform 0.1s; }
+.btn-nav-char:active { transform: scale(0.93); }
+.btn-prev-char { background: #2a2a3a; color: #aaa; }
+.btn-next-char { background: #c8a96e; color: #111; }
+
+.add-char-card { background: #141424; border: 1px dashed #333; border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+.add-char-title { font-size: 12px; color: #c8a96e; font-weight: 700; margin-bottom: 10px; }
+.add-field { margin-bottom: 8px; }
+.add-field label { font-size: 10px; color: #666; display: block; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+.add-field input, .add-field select { width: 100%; background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 9px 10px; font-size: 13px; color: #e8e8e8; outline: none; font-family: inherit; }
+.add-field input:focus, .add-field select:focus { border-color: #c8a96e; }
+.btn-add-char { width: 100%; padding: 12px; background: #c8a96e; color: #111; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 4px; }
+
+.btn-reset { display: block; width: 100%; padding: 10px; background: #1a1a2a; border: 1px solid #333; border-radius: 10px; color: #555; font-size: 12px; font-weight: 600; cursor: pointer; text-align: center; margin-bottom: 8px; }
+.login-overlay { position: fixed; inset: 0; background: #0a0a14; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.login-box { background: #141424; border: 1px solid #2a2a3a; border-radius: 16px; padding: 28px 22px; width: 100%; max-width: 320px; text-align: center; }
+.login-box h2 { font-size: 15px; color: #c8a96e; letter-spacing: 1px; margin-bottom: 4px; }
+.login-box p { font-size: 11px; color: #666; margin-bottom: 18px; }
+.login-box input { width: 100%; background: #1a1a2e; border: 1px solid #333; border-radius: 10px; padding: 11px 12px; font-size: 14px; color: #e8e8e8; outline: none; font-family: inherit; margin-bottom: 10px; }
+.login-box input:focus { border-color: #c8a96e; }
+.login-box button { width: 100%; background: #c8a96e; color: #111; border: none; border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 4px; }
+.login-box button:disabled { opacity: 0.6; }
+.login-error { font-size: 11px; color: #ff6666; margin-top: 10px; min-height: 14px; }
+</style>
+</head>
+<body>
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <h2>⚔ WILLIAM</h2>
+    <p>Acesso restrito — entre com sua conta</p>
+    <input type="email" id="loginEmail" placeholder="E-mail" autocomplete="username">
+    <input type="password" id="loginSenha" placeholder="Senha" autocomplete="current-password">
+    <button id="loginBtn">Entrar</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+
+<div class="topbar">
+  <h1>⚔ WILLIAM — PERSONAGENS</h1>
+  <div class="clock" id="clock">00:00</div>
+</div>
+
+<div class="server-bar">
+  <div class="srv-btn" id="srv-eu"      onclick="setServer('eu')">🇪🇺 EU</div>
+  <div class="srv-btn" id="srv-america" onclick="setServer('america')">🇺🇸 América</div>
+  <div class="srv-btn" id="srv-murica"  onclick="setServer('murica')">💀 Murica</div>
+</div>
+
+<div class="container" id="main"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// PERSONAGENS PADRÃO (EU)
+// ══════════════════════════════════════════════════════
+var EU_CHARS_DEFAULT = [
+  {nome:'Archlord',     cat:'Principal',        nivel:130, login:'', banco:''},
+  {nome:'Baygon',       cat:'Principal',        nivel:130, login:'', banco:''},
+  {nome:'Maditau',      cat:'Principal',        nivel:130, login:'', banco:''},
+  {nome:'Varian',       cat:'Principal',        nivel:117, login:'', banco:''},
+  {nome:'Harpia',       cat:'Intermediário',    nivel:103, login:'', banco:''},
+  {nome:'Mariposa',     cat:'Intermediário',    nivel:117, login:'', banco:''},
+  {nome:'Mxyzptlk',    cat:'Intermediário',    nivel:130, login:'', banco:''},
+  {nome:'Neymarjr10',  cat:'Intermediário',    nivel:129, login:'', banco:''},
+  {nome:'Revoar',       cat:'Intermediário',    nivel:127, login:'', banco:''},
+  {nome:'Seaview',      cat:'Intermediário',    nivel:113, login:'', banco:''},
+  {nome:'SennaF1',      cat:'Intermediário',    nivel:123, login:'', banco:''},
+  {nome:'SkyEye',       cat:'Intermediário',    nivel:89,  login:'', banco:''},
+  {nome:'Voyager1',     cat:'Intermediário',    nivel:87,  login:'', banco:''},
+  {nome:'Voyager2',     cat:'Intermediário',    nivel:1,   login:'', banco:''},
+  {nome:'HAVAN',        cat:'Suporte/Diárias',  nivel:123, login:'', banco:''},
+  {nome:'HAVAN2',       cat:'Suporte/Diárias',  nivel:83,  login:'', banco:''},
+  {nome:'Isnard',       cat:'Suporte/Diárias',  nivel:110, login:'', banco:''},
+  {nome:'Mesbla',       cat:'Suporte/Diárias',  nivel:111, login:'', banco:''},
+  {nome:'Sakurada',     cat:'Suporte/Diárias',  nivel:106, login:'', banco:''},
+  {nome:'Botelis',      cat:'Armazém',          nivel:99,  login:'', banco:''},
+  {nome:'Locken',       cat:'Armazém',          nivel:105, login:'', banco:''},
+  {nome:'Mappin',       cat:'Armazém',          nivel:124, login:'', banco:''},
+  {nome:'Ringneck',     cat:'Armazém',          nivel:101, login:'', banco:''},
+  {nome:'Salim',        cat:'Armazém',          nivel:110, login:'', banco:''},
+  {nome:'Soulwand',     cat:'Armazém',          nivel:110, login:'', banco:''},
+  {nome:'Supertramp',   cat:'Armazém',          nivel:94,  login:'', banco:''},
+  {nome:'Tronelis',     cat:'Armazém',          nivel:112, login:'', banco:''},
+  {nome:'Troneon',      cat:'Armazém',          nivel:112, login:'', banco:''},
+  {nome:'Warith',       cat:'Armazém',          nivel:null,login:'', banco:''},
+  {nome:'Wormhole',     cat:'Armazém',          nivel:null,login:'', banco:''},
+  {nome:'Zerion',       cat:'Armazém',          nivel:null,login:'', banco:''},
+];
+
+var KEY = 'william_superapp_v1'; // mesma chave do SuperApp — dados ficam sincronizados
+var server = 'eu';
+var charIdx = 0;
+
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+function loadState() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) { return {}; } }
+function saveState(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch(e) {} }
+
+function getChars() {
+  var s = loadState(), k = server+'_chars';
+  if (!s[k]) { s[k] = server==='eu' ? JSON.parse(JSON.stringify(EU_CHARS_DEFAULT)) : []; saveState(s); }
+  return s[k];
+}
+function setChars(data) { var s=loadState(); s[server+'_chars']=data; saveState(s); }
+
+// ══════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════
+function el(tag,cls,txt){var e=document.createElement(tag);e.className=cls;if(txt!==undefined)e.textContent=txt;return e;}
+function btn(txt,cls,fn){var b=document.createElement('button');b.className=cls;b.textContent=txt;b.onclick=fn;return b;}
+function vibe(p){try{if(navigator.vibrate)navigator.vibrate(p);}catch(e){}}
+function tick(){var n=new Date();document.getElementById('clock').textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');}
+tick(); setInterval(tick,10000);
+
+function setServer(sv) {
+  server = sv; charIdx = 0;
+  document.querySelectorAll('.srv-btn').forEach(function(b){ b.className='srv-btn'; });
+  document.getElementById('srv-'+sv).className='srv-btn active-'+sv;
+  render();
+}
+
+// ══════════════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════════════
+function render(){
+  var main = document.getElementById('main');
+  main.innerHTML = '';
+  renderChars(main);
+}
+
+function renderChars(main) {
+  var chars = getChars();
+  if (chars.length === 0) {
+    renderAddChar(main, true); return;
+  }
+  if (charIdx >= chars.length) charIdx = chars.length-1;
+  var c = chars[charIdx];
+
+  var navCard = document.createElement('div'); navCard.className='char-nav-card';
+
+  // Header
+  var hdr = document.createElement('div'); hdr.className='char-header';
+  var av = document.createElement('div'); av.className='char-avatar';
+  av.textContent = (c.nome||'?').substring(0,2).toUpperCase();
+  var ti = document.createElement('div'); ti.className='char-title';
+  ti.innerHTML='<div class="nome">'+c.nome+'</div><div class="cat">'+c.cat+'</div>';
+  var ct = el('div','char-counter',(charIdx+1)+'/'+chars.length);
+  hdr.appendChild(av); hdr.appendChild(ti); hdr.appendChild(ct);
+  navCard.appendChild(hdr);
+
+  // Fields
+  var fields = document.createElement('div'); fields.className='char-fields';
+
+  var lvRow = document.createElement('div'); lvRow.className='char-field';
+  lvRow.appendChild(el('div','char-field-label lv','⚡ Level'));
+  var lvIn = document.createElement('input'); lvIn.className='char-field-input'; lvIn.type='number';
+  lvIn.value=c.nivel||''; lvIn.placeholder='—';
+  lvIn.onchange=function(){ var ch=getChars(); ch[charIdx].nivel=this.value?Number(this.value):null; setChars(ch); renderCharCounter(); };
+  lvRow.appendChild(lvIn); fields.appendChild(lvRow);
+
+  var lgRow = document.createElement('div'); lgRow.className='char-field';
+  lgRow.appendChild(el('div','char-field-label lg','🔑 Login'));
+  var lgIn = document.createElement('input'); lgIn.className='char-field-input'; lgIn.type='text';
+  lgIn.value=c.login||''; lgIn.placeholder='usuário/senha';
+  lgIn.onchange=function(){ var ch=getChars(); ch[charIdx].login=this.value; setChars(ch); };
+  lgRow.appendChild(lgIn); fields.appendChild(lgRow);
+
+  var bkRow = document.createElement('div'); bkRow.className='char-field';
+  bkRow.appendChild(el('div','char-field-label bk','💰 Banco'));
+  var bkIn = document.createElement('input'); bkIn.className='char-field-input'; bkIn.type='text';
+  bkIn.value=c.banco||''; bkIn.placeholder='—';
+  bkIn.onchange=function(){ var ch=getChars(); ch[charIdx].banco=this.value; setChars(ch); };
+  bkRow.appendChild(bkIn); fields.appendChild(bkRow);
+
+  navCard.appendChild(fields);
+
+  // Nav buttons
+  var nr = document.createElement('div'); nr.className='char-nav-row';
+  var prev=btn('◀ Anterior','btn-nav-char btn-prev-char',function(){ if(charIdx>0){charIdx--;render();} });
+  prev.disabled = charIdx===0;
+  var next=btn('Próximo ▶','btn-nav-char btn-next-char',function(){ if(charIdx<chars.length-1){charIdx++;render();} });
+  next.disabled = charIdx===chars.length-1;
+  nr.appendChild(prev); nr.appendChild(next);
+  navCard.appendChild(nr);
+
+  // Del button
+  var del = document.createElement('button'); del.className='btn-reset'; del.style.marginTop='8px';
+  del.textContent='🗑️ Remover este personagem';
+  del.onclick = function(){ if(confirm('Remover '+c.nome+'?')){ var ch=getChars(); ch.splice(charIdx,1); setChars(ch); if(charIdx>=ch.length) charIdx=Math.max(0,ch.length-1); render(); } };
+  navCard.appendChild(del);
+  main.appendChild(navCard);
+
+  renderAddChar(main, false);
+}
+
+function renderCharCounter() {
+  var ct = document.querySelector('.char-counter');
+  if (ct) ct.textContent = (charIdx+1)+'/'+getChars().length;
+}
+
+function renderAddChar(main, empty) {
+  var ac = document.createElement('div'); ac.className='add-char-card';
+  ac.innerHTML='<div class="add-char-title">➕ '+(empty?'Adicionar primeiro personagem':'Adicionar personagem')+'</div>';
+
+  var f1=document.createElement('div'); f1.className='add-field';
+  f1.innerHTML='<label>Nome</label><input id="ac_nome" type="text" placeholder="Ex: Archlord">';
+  var f2=document.createElement('div'); f2.className='add-field';
+  f2.innerHTML='<label>Categoria</label><select id="ac_cat"><option>Principal</option><option>Intermediário</option><option>Suporte/Diárias</option><option>Armazém</option><option>Mula / Trade</option></select>';
+  var f3=document.createElement('div'); f3.className='add-field';
+  f3.innerHTML='<label>Level</label><input id="ac_nivel" type="number" placeholder="—">';
+  var f4=document.createElement('div'); f4.className='add-field';
+  f4.innerHTML='<label>Login</label><input id="ac_login" type="text" placeholder="usuário">';
+  var f5=document.createElement('div'); f5.className='add-field';
+  f5.innerHTML='<label>💰 Banco</label><input id="ac_banco" type="text" placeholder="—">';
+
+  var addBtn = document.createElement('button'); addBtn.className='btn-add-char';
+  addBtn.textContent='✅ Adicionar';
+  addBtn.onclick = function(){
+    var nome=document.getElementById('ac_nome').value.trim();
+    if(!nome){ alert('Digite um nome!'); return; }
+    var ch=getChars();
+    ch.push({ nome:nome, cat:document.getElementById('ac_cat').value, nivel:document.getElementById('ac_nivel').value?Number(document.getElementById('ac_nivel').value):null, login:document.getElementById('ac_login').value, banco:document.getElementById('ac_banco').value });
+    setChars(ch); charIdx=ch.length-1; render();
+  };
+  [f1,f2,f3,f4,f5,addBtn].forEach(function(e){ ac.appendChild(e); });
+  main.appendChild(ac);
+}
+
+// INIT
+document.getElementById('srv-eu').className='srv-btn active-eu';
+render();
+</script>
+
+
+
+<!-- 🔄 SINCRONIZAÇÃO EM NUVEM (Firebase) + LOGIN -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBNKjp7hLNK6mzAX2GK49WEZq-NKgQ9o5Y",
+  authDomain: "williamapp-31dff.firebaseapp.com",
+  projectId: "williamapp-31dff",
+  storageBucket: "williamapp-31dff.firebasestorage.app",
+  messagingSenderId: "171912065024",
+  appId: "1:171912065024:web:9c47f66f4b8e7fc727a8e5"
+};
+
+const ALLOWED_EMAIL = "marcelodossantosfc@gmail.com";
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
+const docRef = doc(db, "william", "state");
+
+var overlay = document.getElementById('loginOverlay');
+var emailIn = document.getElementById('loginEmail');
+var senhaIn = document.getElementById('loginSenha');
+var loginBtn = document.getElementById('loginBtn');
+var errEl = document.getElementById('loginError');
+
+function showError(msg){ errEl.textContent = msg; }
+
+function tryLogin(){
+  var email = emailIn.value.trim();
+  var senha = senhaIn.value;
+  if(!email || !senha){ showError('Preencha e-mail e senha.'); return; }
+  loginBtn.disabled = true; loginBtn.textContent = 'Entrando...';
+  showError('');
+  signInWithEmailAndPassword(auth, email, senha)
+    .catch(function(e){
+      loginBtn.disabled = false; loginBtn.textContent = 'Entrar';
+      showError('E-mail ou senha incorretos.');
+    });
+}
+loginBtn.onclick = tryLogin;
+senhaIn.addEventListener('keydown', function(e){ if(e.key==='Enter') tryLogin(); });
+emailIn.addEventListener('keydown', function(e){ if(e.key==='Enter') senhaIn.focus(); });
+
+window._applyingRemote = false;
+var _pendingRemote = null;
+var _saveTimeout = null;
+
+function isTypingNow(){
+  var ae = document.activeElement;
+  return ae && (ae.tagName==='INPUT' || ae.tagName==='TEXTAREA' || ae.tagName==='SELECT');
+}
+
+function applyRemote(remoteStr){
+  if (isTypingNow()) { _pendingRemote = remoteStr; return; }
+  window._applyingRemote = true;
+  localStorage.setItem(window.KEY || 'william_superapp_v1', remoteStr);
+  window._applyingRemote = false;
+  if (typeof window.render === 'function') window.render();
+}
+
+// Se o usuário estava digitando quando chegou uma atualização, aplica assim que ele sair do campo
+document.addEventListener('focusout', function(){
+  if (_pendingRemote) {
+    var p = _pendingRemote; _pendingRemote = null;
+    setTimeout(function(){ applyRemote(p); }, 200);
+  }
+});
+
+var _origSaveState = window.saveState;
+window.saveState = function(s) {
+  _origSaveState(s);
+  if (!window._applyingRemote && auth.currentUser && auth.currentUser.email === ALLOWED_EMAIL) {
+    clearTimeout(_saveTimeout);
+    _saveTimeout = setTimeout(function(){
+      setDoc(docRef, s).catch(function(e){ console.error('Erro ao sincronizar:', e); });
+    }, 600);
+  }
+};
+
+var unsubscribe = null;
+
+onAuthStateChanged(auth, function(user){
+  if (user && user.email === ALLOWED_EMAIL) {
+    overlay.style.display = 'none';
+    loginBtn.disabled = false; loginBtn.textContent = 'Entrar';
+
+    if (!unsubscribe) {
+      unsubscribe = onSnapshot(docRef, function(snap){
+        if (!snap.exists()) { setDoc(docRef, window.loadState()); return; }
+        var remoteStr = JSON.stringify(snap.data());
+        var localStr = JSON.stringify(window.loadState());
+        if (localStr === remoteStr) return;
+        applyRemote(remoteStr);
+      }, function(err){ console.error('Erro de sincronização:', err); });
+    }
+  } else if (user && user.email !== ALLOWED_EMAIL) {
+    signOut(auth);
+    overlay.style.display = 'flex';
+    showError('Conta não autorizada.');
+  } else {
+    overlay.style.display = 'flex';
+  }
+});
+</script>
+
+</body>
+</html>
