@@ -226,9 +226,7 @@ function addGold(){
 }
 
 function formatGold(n){
-  if(n>=1000000) return (n/1000000).toFixed(2).replace('.',',')+'M';
-  if(n>=1000) return (n/1000).toFixed(1).replace('.',',')+'k';
-  return n.toLocaleString('pt-BR');
+  return Math.round(n).toLocaleString('pt-BR');
 }
 
 // INIT
