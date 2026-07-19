@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>William Senhas</title>
+<style>
+  :root{
+    --bg:#0d0f14;
+    --panel:#161a22;
+    --panel2:#1e2430;
+    --gold:#d4af37;
+    --gold-dim:#8a7328;
+    --text:#e8e6df;
+    --muted:#8b93a3;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:'Segoe UI', Roboto, Arial, sans-serif;
+    background:radial-gradient(circle at 50% 0%, #1a1f2b 0%, var(--bg) 60%);
+    color:var(--text); min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .wrap{max-width:420px; width:100%; padding:24px 20px; text-align:center;}
+  h1{
+    font-size:1.4rem; letter-spacing:1px; color:var(--gold);
+    margin:0 0 6px; text-shadow:0 0 14px rgba(212,175,55,.3);
+  }
+  .subtitle{color:var(--muted); font-size:.8rem; margin-bottom:34px;}
+
+  .grid{display:flex; flex-direction:column; gap:16px;}
+  a.card{
+    text-decoration:none; color:var(--text);
+    background:var(--panel); border:1px solid #232a38; border-radius:16px;
+    padding:22px 18px; display:flex; align-items:center; gap:16px;
+    transition:.15s;
+  }
+  a.card:active{transform:scale(.97); border-color:var(--gold-dim);}
+  .cardIcon{
+    width:54px; height:54px; border-radius:14px; flex-shrink:0;
+    background:linear-gradient(135deg,var(--gold),#a3872b);
+    display:flex; align-items:center; justify-content:center; font-size:1.7rem;
+  }
+  .cardInfo{text-align:left; flex:1;}
+  .cardTitle{font-size:1.02rem; font-weight:700;}
+  .cardDesc{font-size:.76rem; color:var(--muted); margin-top:3px;}
+  .arrow{color:var(--gold); font-size:1.2rem;}
+
+  .footer{margin-top:36px; font-size:.7rem; color:var(--muted); opacity:.6;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🔐 WILLIAM SENHAS</h1>
+    <div class="subtitle">Escolha o painel</div>
+
+    <div class="grid">
+      <a class="card" href="Senhas_Titulos.html">
+        <div class="cardIcon">📋</div>
+        <div class="cardInfo">
+          <div class="cardTitle">Títulos</div>
+          <div class="cardDesc">Título da conta → código de referência</div>
+        </div>
+        <div class="arrow">›</div>
+      </a>
+
+      <a class="card" href="Senhas_Complementos.html">
+        <div class="cardIcon">🧩</div>
+        <div class="cardInfo">
+          <div class="cardTitle">Complementos</div>
+          <div class="cardDesc">Código → complemento da senha</div>
+        </div>
+        <div class="arrow">›</div>
+      </a>
+    </div>
+
+    <div class="footer">William · sincronizado via Firebase</div>
+  </div>
+</body>
+</html>
