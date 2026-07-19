@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>William Senhas — Títulos</title>
+<style>
+  :root{
+    --bg:#0d0f14;
+    --panel:#161a22;
+    --panel2:#1e2430;
+    --gold:#d4af37;
+    --gold-dim:#8a7328;
+    --text:#e8e6df;
+    --muted:#8b93a3;
+    --danger:#c0453a;
+    --ok:#3aa16a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:'Segoe UI', Roboto, Arial, sans-serif;
+    background:radial-gradient(circle at 50% 0%, #1a1f2b 0%, var(--bg) 60%);
+    color:var(--text); min-height:100vh;
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:18px 16px 60px;}
+  h1{
+    font-size:1.3rem; text-align:center; letter-spacing:1px;
+    color:var(--gold); margin:14px 0 4px;
+    text-shadow:0 0 12px rgba(212,175,55,.25);
+  }
+  .subtitle{text-align:center;color:var(--muted);font-size:.78rem;margin-bottom:20px;}
+  .syncTag{display:flex;align-items:center;justify-content:center;gap:6px;font-size:.72rem;color:var(--muted);margin-bottom:10px;}
+  .syncDot{width:8px;height:8px;border-radius:50%;background:var(--muted);}
+  .syncDot.on{background:var(--ok); box-shadow:0 0 6px var(--ok);}
+  .syncDot.off{background:var(--danger);}
+
+  #screen-auth, #screen-lock{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:65vh;gap:14px;}
+  .lockIcon{font-size:2.6rem;}
+  #pinInput{
+    width:180px; text-align:center; font-size:1.6rem; letter-spacing:8px;
+    padding:12px 10px; border-radius:10px; border:1px solid var(--gold-dim);
+    background:var(--panel); color:var(--gold); outline:none;
+  }
+  input[type=email], input[type=password]{
+    width:240px; padding:12px 14px; border-radius:10px; border:1px solid #2a3040;
+    background:var(--panel); color:var(--text); font-size:.95rem; outline:none;
+  }
+  input[type=email]:focus, input[type=password]:focus{border-color:var(--gold-dim);}
+
+  button{
+    cursor:pointer; border:none; border-radius:10px; font-weight:600;
+    font-size:.9rem; padding:11px 16px; transition:.15s;
+  }
+  .btnGold{background:linear-gradient(135deg,var(--gold),#a3872b);color:#1a1408;}
+  .btnGold:active{transform:scale(.97);}
+  .btnGhost{background:var(--panel2);color:var(--text);}
+  .btnDanger{background:var(--danger);color:#fff;}
+  .btnRow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+
+  #errMsg, #authErr{color:var(--danger);font-size:.8rem;min-height:1.1rem;text-align:center;}
+
+  #app{display:none;}
+  .topBar{display:flex;gap:8px;margin-bottom:14px;}
+  .topBar input[type=text]{
+    flex:1; padding:11px 12px; border-radius:10px; border:1px solid #2a3040;
+    background:var(--panel); color:var(--text); font-size:.9rem; outline:none;
+  }
+  .topBar input:focus{border-color:var(--gold-dim);}
+  .iconBtn{background:var(--panel2); color:var(--gold); font-size:1.1rem; width:44px; border-radius:10px;}
+
+  .card{
+    background:var(--panel); border:1px solid #232a38; border-radius:12px;
+    padding:12px 14px; margin-bottom:10px; display:flex; align-items:center; gap:10px;
+  }
+  .card .num{
+    background:var(--panel2); color:var(--gold); font-weight:700;
+    min-width:42px; height:38px; padding:0 6px; border-radius:9px; display:flex;
+    align-items:center; justify-content:center; font-size:.95rem; letter-spacing:.5px;
+  }
+  .card .info{flex:1; min-width:0;}
+  .card .titulo{font-size:.95rem; font-weight:600; word-break:break-word;}
+  .card .cat{font-size:.72rem; color:var(--muted); margin-top:2px;}
+  .card .actions{display:flex; gap:6px;}
+  .card .actions button{padding:7px 9px; font-size:.9rem;}
+
+  .empty{text-align:center; color:var(--muted); margin-top:40px; font-size:.85rem; line-height:1.6;}
+
+  .fab{
+    position:fixed; bottom:22px; right:22px; width:58px; height:58px;
+    border-radius:50%; background:linear-gradient(135deg,var(--gold),#a3872b);
+    color:#1a1408; font-size:1.8rem; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 6px 18px rgba(0,0,0,.4); z-index:20;
+  }
+
+  .modalBg{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.6);
+    align-items:flex-end; justify-content:center; z-index:30;
+  }
+  .modal{
+    background:var(--panel); width:100%; max-width:520px; border-radius:16px 16px 0 0;
+    padding:20px 18px 26px; animation:slideUp .2s ease-out;
+  }
+  @keyframes slideUp{from{transform:translateY(30px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .modal h3{margin:0 0 14px; color:var(--gold); font-size:1.05rem;}
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:.75rem; color:var(--muted); margin-bottom:5px;}
+  .field input{
+    width:100%; padding:11px 12px; border-radius:10px; border:1px solid #2a3040;
+    background:var(--panel2); color:var(--text); font-size:.95rem; outline:none;
+  }
+  .field input:focus{border-color:var(--gold-dim);}
+  .modalActions{display:flex; gap:8px; margin-top:16px;}
+  .modalActions button{flex:1;}
+
+  .footerBar{display:flex; justify-content:center; gap:10px; margin-top:24px; flex-wrap:wrap;}
+  .footerBar button{background:var(--panel2); color:var(--muted); font-size:.78rem; padding:9px 12px;}
+
+  #toast{
+    position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
+    background:var(--panel2); color:var(--text); padding:10px 18px; border-radius:20px;
+    font-size:.82rem; opacity:0; pointer-events:none; transition:.25s; z-index:50;
+    border:1px solid var(--gold-dim);
+  }
+  #toast.show{opacity:1; bottom:110px;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <h1>🔐 WILLIAM · TÍTULOS</h1>
+  <div class="subtitle">Camada 1 — título ↔ código de referência</div>
+  <div class="syncTag"><span class="syncDot" id="syncDot"></span><span id="syncLabel">conectando...</span></div>
+
+  <!-- LOGIN FIREBASE (só a 1ª vez no aparelho) -->
+  <div id="screen-auth">
+    <div class="lockIcon">☁️</div>
+    <div style="color:var(--muted); font-size:.85rem;">Entrar na conta (só uma vez neste aparelho)</div>
+    <input type="email" id="authEmail" placeholder="e-mail">
+    <input type="password" id="authSenha" placeholder="senha">
+    <div id="authErr"></div>
+    <div class="btnRow">
+      <button class="btnGold" id="authBtn">Entrar</button>
+    </div>
+  </div>
+
+  <!-- PIN LOCAL (trava rápida no aparelho) -->
+  <div id="screen-lock" style="display:none;">
+    <div class="lockIcon">🛡️</div>
+    <div id="lockLabel" style="color:var(--muted); font-size:.85rem;">Criando seu PIN de acesso</div>
+    <input type="password" id="pinInput" inputmode="numeric" maxlength="6" placeholder="••••">
+    <div id="errMsg"></div>
+    <div class="btnRow">
+      <button class="btnGold" id="pinConfirmBtn">Confirmar</button>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="app">
+    <div class="topBar">
+      <input type="text" id="searchBox" placeholder="Buscar título...">
+      <button class="iconBtn" id="lockBtn" title="Bloquear">🔒</button>
+    </div>
+
+    <div id="list"></div>
+    <div id="emptyMsg" class="empty" style="display:none;">
+      Nenhuma conta cadastrada ainda.<br>Toque no + para adicionar a primeira.
+    </div>
+
+    <div class="footerBar">
+      <button id="exportBtn">⬇️ Exportar JSON</button>
+      <button id="importBtn">⬆️ Importar JSON</button>
+      <button id="changePinBtn">🔑 Trocar PIN</button>
+      <button id="logoutBtn">🚪 Sair da conta</button>
+    </div>
+    <input type="file" id="importFile" accept=".json" style="display:none;">
+  </div>
+
+  <div class="fab" id="fabAdd" style="display:none;">+</div>
+</div>
+
+<!-- MODAL ADD/EDIT -->
+<div class="modalBg" id="modalBg">
+  <div class="modal">
+    <h3 id="modalTitle">Nova conta</h3>
+    <div class="field">
+      <label>Título (ex: Gmail, Banco, Conquer EU...)</label>
+      <input type="text" id="fTitulo" placeholder="Título da conta">
+    </div>
+    <div class="field">
+      <label>Código de referência</label>
+      <input type="text" id="fNumero" placeholder="Ex: A7 ou B12">
+    </div>
+    <div class="field">
+      <label>Categoria (opcional)</label>
+      <input type="text" id="fCategoria" placeholder="Ex: Banco, Jogo, Social...">
+    </div>
+    <div class="modalActions">
+      <button class="btnGhost" id="cancelBtn">Cancelar</button>
+      <button class="btnDanger" id="deleteBtn" style="display:none;">Excluir</button>
+      <button class="btnGold" id="saveBtn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut,
+  setPersistence, browserLocalPersistence
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, collection, addDoc, updateDoc, deleteDoc, doc,
+  onSnapshot, query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ---- SUA CONFIGURAÇÃO FIREBASE ----
+const firebaseConfig = {
+  apiKey: "AIzaSyBNKjp7hLNK6mzAX2GK49WEZq-NKgQ9o5Y",
+  authDomain: "williamapp-31dff.firebaseapp.com",
+  projectId: "williamapp-31dff",
+  storageBucket: "williamapp-31dff.firebasestorage.app",
+  messagingSenderId: "171912065024",
+  appId: "1:171912065024:web:9c47f66f4b8e7fc727a8e5"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const COLLECTION_NAME = "senhas_titulos";
+
+const LS_PIN = 'st_pinHash';
+const SS_UNLOCKED = 'st_unlocked';
+
+let data = [];
+let editingId = null;
+let unsubscribeSnapshot = null;
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+function setSync(state){ // 'on' | 'off' | 'connecting'
+  const dot = document.getElementById('syncDot');
+  const label = document.getElementById('syncLabel');
+  dot.className = 'syncDot ' + (state==='on' ? 'on' : state==='off' ? 'off' : '');
+  label.textContent = state==='on' ? 'sincronizado' : state==='off' ? 'sem conexão' : 'conectando...';
+}
+
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+/* ---------- AUTH SCREEN ---------- */
+const authErr = document.getElementById('authErr');
+document.getElementById('authBtn').addEventListener('click', async ()=>{
+  const email = document.getElementById('authEmail').value.trim();
+  const senha = document.getElementById('authSenha').value;
+  authErr.textContent='';
+  if(!email || !senha){ authErr.textContent='Preencha e-mail e senha.'; return; }
+  try{
+    await setPersistence(auth, browserLocalPersistence);
+    await signInWithEmailAndPassword(auth, email, senha);
+    toast('Login realizado');
+  }catch(err){
+    authErr.textContent = 'Falha no login. Confira e-mail/senha.';
+  }
+});
+
+/* ---------- PIN LOCK (local) ---------- */
+const pinInput = document.getElementById('pinInput');
+const lockLabel = document.getElementById('lockLabel');
+const errMsg = document.getElementById('errMsg');
+let pinSetupStage = 0;
+let firstPin = '';
+
+function hasPin(){ return !!localStorage.getItem(LS_PIN); }
+
+function initLock(){
+  pinSetupStage = 0; firstPin='';
+  lockLabel.textContent = hasPin() ? 'Digite seu PIN' : 'Crie um PIN de acesso (4 a 6 dígitos)';
+  pinInput.value=''; pinInput.focus();
+}
+
+async function handlePinConfirm(){
+  const val = pinInput.value.trim();
+  errMsg.textContent='';
+  if(val.length < 4){ errMsg.textContent='PIN deve ter ao menos 4 dígitos.'; return; }
+
+  if(!hasPin()){
+    if(pinSetupStage === 0){
+      firstPin = val; pinSetupStage = 1;
+      lockLabel.textContent = 'Confirme o PIN';
+      pinInput.value=''; pinInput.focus();
+      return;
+    } else {
+      if(val !== firstPin){
+        errMsg.textContent = 'PINs não coincidem. Tente novamente.';
+        pinSetupStage = 0; firstPin='';
+        lockLabel.textContent = 'Crie um PIN de acesso (4 a 6 dígitos)';
+        pinInput.value=''; return;
+      }
+      const hash = await sha256(val);
+      localStorage.setItem(LS_PIN, hash);
+      showApp();
+      toast('PIN criado com sucesso');
+      return;
+    }
+  } else {
+    const hash = await sha256(val);
+    if(hash === localStorage.getItem(LS_PIN)){ showApp(); }
+    else { errMsg.textContent = 'PIN incorreto.'; pinInput.value=''; }
+  }
+}
+document.getElementById('pinConfirmBtn').addEventListener('click', handlePinConfirm);
+pinInput.addEventListener('keydown', e=>{ if(e.key==='Enter') handlePinConfirm(); });
+
+function showApp(){
+  sessionStorage.setItem(SS_UNLOCKED,'1');
+  document.getElementById('screen-lock').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('fabAdd').style.display='flex';
+}
+function showLock(){
+  document.getElementById('screen-auth').style.display='none';
+  document.getElementById('app').style.display='none';
+  document.getElementById('fabAdd').style.display='none';
+  document.getElementById('screen-lock').style.display='flex';
+  initLock();
+}
+document.getElementById('lockBtn').addEventListener('click', ()=>{
+  sessionStorage.removeItem(SS_UNLOCKED);
+  showLock();
+});
+document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+  if(confirm('Sair da conta neste aparelho?')){
+    if(unsubscribeSnapshot) unsubscribeSnapshot();
+    await signOut(auth);
+    sessionStorage.removeItem(SS_UNLOCKED);
+    toast('Sessão encerrada');
+  }
+});
+
+/* ---------- FIRESTORE SYNC ---------- */
+function subscribeData(){
+  setSync('connecting');
+  const q = query(collection(db, COLLECTION_NAME), orderBy('titulo'));
+  unsubscribeSnapshot = onSnapshot(q,
+    (snapshot)=>{
+      data = snapshot.docs.map(d=>({ id: d.id, ...d.data() }));
+      setSync('on');
+      render(document.getElementById('searchBox').value);
+    },
+    (err)=>{
+      console.error(err);
+      setSync('off');
+      toast('Sem conexão com o servidor');
+    }
+  );
+}
+
+/* ---------- RENDER ---------- */
+function render(filter=''){
+  const list = document.getElementById('list');
+  const empty = document.getElementById('emptyMsg');
+  list.innerHTML='';
+  const filtered = data.filter(d=> (d.titulo||'').toLowerCase().includes(filter.toLowerCase()) || String(d.numero||'').toLowerCase().includes(filter.toLowerCase()))
+                       .sort((a,b)=> (a.titulo||'').localeCompare(b.titulo||''));
+  if(filtered.length===0){ empty.style.display='block'; return; }
+  empty.style.display='none';
+
+  filtered.forEach(item=>{
+    const card = document.createElement('div');
+    card.className='card';
+    card.innerHTML = `
+      <div class="num">${escapeHtml(item.numero||'')}</div>
+      <div class="info">
+        <div class="titulo">${escapeHtml(item.titulo||'')}</div>
+        ${item.categoria ? `<div class="cat">${escapeHtml(item.categoria)}</div>` : ''}
+      </div>
+      <div class="actions">
+        <button class="btnGhost editBtn">✏️</button>
+      </div>
+    `;
+    card.querySelector('.editBtn').addEventListener('click', ()=> openModal(item.id));
+    list.appendChild(card);
+  });
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+document.getElementById('searchBox').addEventListener('input', e=> render(e.target.value));
+
+/* ---------- MODAL ---------- */
+const modalBg = document.getElementById('modalBg');
+function openModal(id=null){
+  editingId = id;
+  const fTitulo = document.getElementById('fTitulo');
+  const fNumero = document.getElementById('fNumero');
+  const fCategoria = document.getElementById('fCategoria');
+  const deleteBtn = document.getElementById('deleteBtn');
+
+  if(id){
+    const item = data.find(d=>d.id===id);
+    document.getElementById('modalTitle').textContent = 'Editar conta';
+    fTitulo.value = item.titulo || '';
+    fNumero.value = item.numero || '';
+    fCategoria.value = item.categoria || '';
+    deleteBtn.style.display='inline-block';
+  } else {
+    document.getElementById('modalTitle').textContent = 'Nova conta';
+    fTitulo.value=''; fNumero.value=''; fCategoria.value='';
+    deleteBtn.style.display='none';
+  }
+  modalBg.style.display='flex';
+}
+function closeModal(){ modalBg.style.display='none'; editingId=null; }
+
+document.getElementById('fabAdd').addEventListener('click', ()=> openModal());
+document.getElementById('cancelBtn').addEventListener('click', closeModal);
+modalBg.addEventListener('click', e=>{ if(e.target===modalBg) closeModal(); });
+
+document.getElementById('saveBtn').addEventListener('click', async ()=>{
+  const titulo = document.getElementById('fTitulo').value.trim();
+  const numero = document.getElementById('fNumero').value.trim();
+  const categoria = document.getElementById('fCategoria').value.trim();
+  if(!titulo || !numero){ toast('Preencha título e código'); return; }
+
+  try{
+    if(editingId){
+      await updateDoc(doc(db, COLLECTION_NAME, editingId), { titulo, numero, categoria });
+    } else {
+      await addDoc(collection(db, COLLECTION_NAME), { titulo, numero, categoria, createdAt: serverTimestamp() });
+    }
+    closeModal();
+    toast('Salvo e sincronizado');
+  }catch(err){
+    console.error(err);
+    toast('Erro ao salvar — verifique a conexão');
+  }
+});
+
+document.getElementById('deleteBtn').addEventListener('click', async ()=>{
+  if(!editingId) return;
+  if(confirm('Excluir esta conta?')){
+    try{
+      await deleteDoc(doc(db, COLLECTION_NAME, editingId));
+      closeModal();
+      toast('Excluído');
+    }catch(err){
+      toast('Erro ao excluir');
+    }
+  }
+});
+
+/* ---------- EXPORT / IMPORT (backup local extra) ---------- */
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const clean = data.map(({id, ...rest})=>rest);
+  const blob = new Blob([JSON.stringify(clean,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download='william_titulos_backup.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Backup exportado');
+});
+
+document.getElementById('importBtn').addEventListener('click', ()=> document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev=>{
+    try{
+      const imported = JSON.parse(ev.target.result);
+      if(Array.isArray(imported)){
+        if(!confirm(`Isso vai adicionar ${imported.length} registro(s) ao banco sincronizado. Continuar?`)) return;
+        for(const item of imported){
+          await addDoc(collection(db, COLLECTION_NAME), {
+            titulo: item.titulo||'', numero: item.numero||'', categoria: item.categoria||'', createdAt: serverTimestamp()
+          });
+        }
+        toast('Importado com sucesso');
+      } else { toast('Arquivo inválido'); }
+    }catch(err){ toast('Erro ao importar'); }
+  };
+  reader.readAsText(file);
+});
+
+/* ---------- CHANGE PIN ---------- */
+document.getElementById('changePinBtn').addEventListener('click', ()=>{
+  if(confirm('Isso vai apagar o PIN atual e pedir para criar um novo. Continuar?')){
+    localStorage.removeItem(LS_PIN);
+    showLock();
+  }
+});
+
+/* ---------- INIT: FIREBASE AUTH STATE ---------- */
+onAuthStateChanged(auth, (user)=>{
+  if(user){
+    document.getElementById('screen-auth').style.display='none';
+    subscribeData();
+    if(sessionStorage.getItem(SS_UNLOCKED)==='1' && hasPin()){
+      showApp();
+    } else {
+      showLock();
+    }
+  } else {
+    if(unsubscribeSnapshot) unsubscribeSnapshot();
+    setSync('off');
+    document.getElementById('screen-auth').style.display='flex';
+    document.getElementById('screen-lock').style.display='none';
+    document.getElementById('app').style.display='none';
+    document.getElementById('fabAdd').style.display='none';
+  }
+});
+</script>
+</body>
+</html>
