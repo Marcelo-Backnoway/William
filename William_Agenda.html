@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>📅 William Agenda</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a14; color: #e8e8e8; min-height: 100vh; }
+
+.topbar { background: #111122; border-bottom: 1px solid #2a2a3a; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.topbar h1 { font-size: 12px; color: #c8a96e; letter-spacing: 1px; font-weight: 700; }
+.clock { font-size: 17px; font-weight: 700; color: #c8a96e; font-variant-numeric: tabular-nums; }
+
+.server-bar { display: flex; background: #0d0d1a; border-bottom: 1px solid #2a2a3a; position: sticky; top: 37px; z-index: 99; }
+.srv-btn { flex: 1; padding: 8px 4px; text-align: center; font-size: 11px; font-weight: 700; cursor: pointer; border-bottom: 3px solid transparent; color: #555; transition: all 0.2s; }
+.srv-btn.active-eu       { color: #90EE90; border-color: #90EE90; background: #0f1a0f; }
+.srv-btn.active-america  { color: #87CEFA; border-color: #87CEFA; background: #0f141a; }
+.srv-btn.active-murica   { color: #ff9944; border-color: #ff9944; background: #1a120a; }
+
+.container { padding: 10px; max-width: 480px; margin: 0 auto; }
+
+.card { background: #141424; border: 1px solid #2a2a3a; border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+.card-title { font-size: 11px; font-weight: 700; color: #c8a96e; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
+
+/* SUB-ABAS AGENDA */
+.ilha-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+.ilha-tab { flex: 1; padding: 7px 4px; text-align: center; font-size: 11px; font-weight: 700; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; background: #1a1a2a; color: #555; }
+.ilha-tab.active-rigel { background: #0f1a0f; color: #90EE90; border: 1px solid #90EE90; }
+
+/* ESCALA */
+.month-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.month-nav button { background: #2a2a3a; border: none; color: #c8a96e; font-size: 16px; padding: 4px 10px; border-radius: 8px; cursor: pointer; }
+.month-title { font-size: 14px; font-weight: 700; }
+.weekdays { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; margin-bottom: 3px; }
+.weekday { font-size: 9px; color: #555; text-align: center; font-weight: 700; }
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+.cal-day { aspect-ratio: 1; border-radius: 7px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; cursor: pointer; transition: transform 0.1s; }
+.cal-day:active { transform: scale(0.88); }
+.cal-day.empty { background: transparent; cursor: default; }
+.cal-day.work   { background: #1a2a3a; color: #87CEFA; border: 1px solid #2a4a6a; }
+.cal-day.folga  { background: #1a0a0a; color: #ff6666; border: 1px solid #6a2a2a; }
+.cal-day.ferias { background: #2a1a3a; color: #DDA0DD; border: 1px solid #4a2a6a; }
+.cal-day.aniv   { background: #3a2a0a; color: #FFD700; border: 2px solid #c8a96e; }
+.cal-day.today  { border: 2px solid #c8a96e !important; }
+.cal-day.past   { opacity: 0.4; }
+.cal-icon { font-size: 7px; line-height: 1; }
+.legend { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #888; }
+.legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+/* CONTAS */
+.mes-selector { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.mes-selector button { background: #2a2a3a; border: none; color: #c8a96e; font-size: 16px; padding: 4px 10px; border-radius: 8px; cursor: pointer; }
+.mes-label { font-size: 14px; font-weight: 700; }
+.resumo-contas { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.resumo-box { background: #0f0f1e; border-radius: 10px; padding: 10px; text-align: center; border: 1px solid #2a2a3a; }
+.resumo-box .rlabel { font-size: 10px; color: #666; margin-bottom: 3px; }
+.resumo-box .rval { font-size: 15px; font-weight: 700; }
+.resumo-box.pago .rval { color: #74c69d; }
+.resumo-box.pend .rval { color: #ff9944; }
+.conta-item { display: flex; align-items: center; gap: 10px; padding: 10px; background: #0f0f1e; border-radius: 10px; margin-bottom: 7px; border: 1px solid #2a2a3a; cursor: pointer; }
+.conta-item.pago { border-color: #2d6a4f; background: #0f1a14; }
+.conta-check { width: 22px; height: 22px; border-radius: 6px; border: 2px solid #444; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+.conta-item.pago .conta-check { background: #2d6a4f; border-color: #2d6a4f; }
+.conta-info { flex: 1; }
+.conta-nome { font-size: 13px; font-weight: 600; }
+.conta-item.pago .conta-nome { color: #74c69d; }
+.conta-venc { font-size: 10px; color: #666; margin-top: 1px; }
+.conta-pagaem { color: #74c69d; }
+.conta-valor { font-size: 13px; font-weight: 700; color: #c8a96e; }
+.conta-item.pago .conta-valor { color: #74c69d; }
+.edit-conta { background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 7px 10px; font-size: 13px; color: #e8e8e8; outline: none; width: 100%; font-family: inherit; margin-top: 3px; }
+.edit-conta:focus { border-color: #c8a96e; }
+
+/* GÁS CONTROLE */
+.gas-field { margin-bottom: 8px; }
+.gas-field label { font-size: 10px; color: #888; display: block; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+.gas-field input { width: 100%; background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 9px 10px; font-size: 13px; color: #e8e8e8; outline: none; font-family: inherit; }
+.gas-field input:focus { border-color: #c8a96e; }
+.gas-btn-row { display: flex; gap: 8px; margin-top: 4px; }
+.gas-btn { flex: 1; padding: 10px; background: #c8a96e; color: #111; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.gas-btn.secondary { background: #1a1a2a; color: #aaa; border: 1px solid #444; }
+.gas-item { padding: 10px 12px; background: #0f0f1e; border-radius: 10px; margin-bottom: 7px; border: 1px solid #2a2a3a; }
+.gas-item.ativo { border-color: #c8a96e; background: #1a1608; }
+.gas-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.gas-numero { font-size: 14px; font-weight: 700; color: #FFD700; }
+.gas-del { color: #444; font-size: 16px; cursor: pointer; padding: 2px 4px; }
+.gas-datas { font-size: 11px; color: #888; }
+.gas-duracao { font-size: 12px; font-weight: 700; color: #74c69d; margin-top: 3px; }
+.gas-duracao.aberto { color: #FFD700; }
+
+/* MOTO — ÓLEO E FILTRO */
+.moto-item { padding: 10px 12px; background: #0f0f1e; border-radius: 10px; margin-bottom: 7px; border: 1px solid #2a2a3a; }
+.moto-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.moto-numero { font-size: 13px; font-weight: 700; color: #87CEFA; }
+.moto-del { color: #444; font-size: 16px; cursor: pointer; padding: 2px 4px; }
+.moto-row { display: flex; gap: 8px; margin-bottom: 6px; }
+.moto-field { flex: 1; }
+.moto-field label { font-size: 9px; color: #666; display: block; margin-bottom: 2px; text-transform: uppercase; }
+.moto-field input { width: 100%; background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 7px 8px; font-size: 12px; color: #e8e8e8; outline: none; font-family: inherit; }
+.moto-field input:focus { border-color: #c8a96e; }
+.moto-proxima { font-size: 11px; color: #74c69d; font-weight: 700; margin-top: 2px; }
+
+/* OBJETIVOS */
+.obj-item { display: flex; align-items: center; gap: 10px; padding: 10px; background: #0f0f1e; border-radius: 10px; margin-bottom: 7px; border: 1px solid #2a2a3a; }
+.obj-item.done { border-color: #2d6a4f; background: #0f1a14; }
+.obj-check { width: 22px; height: 22px; border-radius: 11px; border: 2px solid #444; display: flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; flex-shrink: 0; }
+.obj-item.done .obj-check { background: #2d6a4f; border-color: #2d6a4f; }
+.obj-text { flex: 1; font-size: 13px; }
+.obj-item.done .obj-text { color: #74c69d; text-decoration: line-through; }
+.obj-del { color: #444; font-size: 18px; cursor: pointer; padding: 4px; }
+.add-row { display: flex; gap: 8px; margin-top: 8px; }
+.add-input { flex: 1; background: #1a1a2e; border: 1px solid #333; border-radius: 10px; padding: 10px 12px; font-size: 13px; color: #e8e8e8; outline: none; font-family: inherit; }
+.add-input:focus { border-color: #c8a96e; }
+.add-btn { background: #c8a96e; color: #111; border: none; border-radius: 10px; padding: 10px 16px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.login-overlay { position: fixed; inset: 0; background: #0a0a14; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.login-box { background: #141424; border: 1px solid #2a2a3a; border-radius: 16px; padding: 28px 22px; width: 100%; max-width: 320px; text-align: center; }
+.login-box h2 { font-size: 15px; color: #c8a96e; letter-spacing: 1px; margin-bottom: 4px; }
+.login-box p { font-size: 11px; color: #666; margin-bottom: 18px; }
+.login-box input { width: 100%; background: #1a1a2e; border: 1px solid #333; border-radius: 10px; padding: 11px 12px; font-size: 14px; color: #e8e8e8; outline: none; font-family: inherit; margin-bottom: 10px; }
+.login-box input:focus { border-color: #c8a96e; }
+.login-box button { width: 100%; background: #c8a96e; color: #111; border: none; border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 4px; }
+.login-box button:disabled { opacity: 0.6; }
+.login-error { font-size: 11px; color: #ff6666; margin-top: 10px; min-height: 14px; }
+</style>
+</head>
+<body>
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <h2>⚔ WILLIAM</h2>
+    <p>Acesso restrito — entre com sua conta</p>
+    <input type="email" id="loginEmail" placeholder="E-mail" autocomplete="username">
+    <input type="password" id="loginSenha" placeholder="Senha" autocomplete="current-password">
+    <button id="loginBtn">Entrar</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+
+<div class="topbar">
+  <h1>⚔ WILLIAM — AGENDA</h1>
+  <div class="clock" id="clock">00:00</div>
+</div>
+
+<div class="server-bar">
+  <div class="srv-btn" id="srv-eu"      onclick="setServer('eu')">🇪🇺 EU</div>
+  <div class="srv-btn" id="srv-america" onclick="setServer('america')">🇺🇸 América</div>
+  <div class="srv-btn" id="srv-murica"  onclick="setServer('murica')">💀 Murica</div>
+</div>
+
+<div class="container" id="main"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// CONFIG FIXA (escala 12x36, férias, datas especiais)
+// ══════════════════════════════════════════════════════
+var KEY = 'william_superapp_v1'; // mesma chave do SuperApp — dados ficam sincronizados
+var server = 'eu';
+var dashTab = 'escala';
+var calMonth = new Date().getMonth();
+var calYear  = new Date().getFullYear();
+var contasMes = new Date().getMonth();
+var contasAno = new Date().getFullYear();
+
+var CONTAS_DEFAULT = [
+  {id:'star',  nome:'🏍️ Star Monitoramento', valor:'', venc:'até dia 09'},
+  {id:'iptu',  nome:'🏠 IPTU',               valor:'', venc:'vence 30 / paga até 06'},
+  {id:'agua',  nome:'💧 Água',               valor:'', venc:'até dia 09'},
+  {id:'cpfl',  nome:'⚡ CPFL (Luz)',          valor:'', venc:'até dia 15'},
+  {id:'vivo',  nome:'📱 Vivo Controle',       valor:'', venc:'vence 26 / paga até 22'},
+  {id:'sant',  nome:'🏦 Santander',           valor:'', venc:'vence dia 27'},
+  {id:'bignet',nome:'🌐 BigNet',             valor:'', venc:'vence dia 30'},
+];
+
+var PLANTAO_INICIO = new Date(2026,6,2);
+var FERIAS_INICIO  = '2026-09-28';
+var FERIAS_FIM     = '2026-10-28';
+var FOLGA_ESP      = '2026-11-19';
+var ANIVERSARIO    = '2026-11-22';
+
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+function loadState() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) { return {}; } }
+function saveState(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch(e) {} }
+
+function getContas(mes,ano) {
+  var s=loadState(), k=server+'_contas_'+ano+'_'+mes;
+  if(!s[k]){ s[k]=CONTAS_DEFAULT.map(function(c){ return Object.assign({},c,{pago:false,pagoEm:''}); }); saveState(s); }
+  else {
+    var mudou=false;
+    s[k].forEach(function(c){ if(c.pagoEm===undefined){ c.pagoEm=''; mudou=true; } });
+    if(mudou) saveState(s);
+  }
+  return s[k];
+}
+function setContas(mes,ano,data){ var s=loadState(); s[server+'_contas_'+ano+'_'+mes]=data; saveState(s); }
+
+function getObj(){ var s=loadState(); return s[server+'_obj']||[]; }
+function setObj(d){ var s=loadState(); s[server+'_obj']=d; saveState(s); }
+
+function getFerias(){ var s=loadState(); return s[server+'_ferias']||[]; }
+function setFerias(d){ var s=loadState(); s[server+'_ferias']=d; saveState(s); }
+
+function getGas(){ var s=loadState(); return s[server+'_gas']||[]; }
+function setGas(d){ var s=loadState(); s[server+'_gas']=d; saveState(s); }
+
+var KM_INTERVALO = 2800;
+function getMoto(){ var s=loadState(); return s.moto_oleo||[]; }
+function setMoto(d){ var s=loadState(); s.moto_oleo=d.slice(0,5); saveState(s); }
+
+// ══════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════
+function el(tag,cls,txt){var e=document.createElement(tag);e.className=cls;if(txt!==undefined)e.textContent=txt;return e;}
+function vibe(p){try{if(navigator.vibrate)navigator.vibrate(p);}catch(e){}}
+function tick(){var n=new Date();document.getElementById('clock').textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');}
+tick(); setInterval(tick,10000);
+function fmtData(iso){ if(!iso) return ''; var p=iso.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+
+function setServer(sv) {
+  server = sv;
+  document.querySelectorAll('.srv-btn').forEach(function(b){ b.className='srv-btn'; });
+  document.getElementById('srv-'+sv).className='srv-btn active-'+sv;
+  render();
+}
+
+// ══════════════════════════════════════════════════════
+// RENDER PRINCIPAL
+// ══════════════════════════════════════════════════════
+function render() {
+  var main = document.getElementById('main');
+  var dtabs = document.createElement('div'); dtabs.className='ilha-tabs';
+  [['escala','📅 Escala'],['contas','💰 Contas'],['obj','🎯 Objetivos']].forEach(function(d){
+    var b=document.createElement('button');
+    b.className='ilha-tab'+(dashTab===d[0]?' active-rigel':'');
+    b.textContent=d[1]; b.onclick=(function(k){return function(){dashTab=k;render();}})(d[0]);
+    dtabs.appendChild(b);
+  });
+  main.innerHTML=''; main.appendChild(dtabs);
+  if(dashTab==='escala') renderEscala(main);
+  else if(dashTab==='contas') renderContas(main);
+  else renderObj(main);
+}
+
+// ══════════════════════════════════════════════════════
+// ESCALA
+// ══════════════════════════════════════════════════════
+function renderEscala(main) {
+  var today=new Date(), meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var firstDay=new Date(calYear,calMonth,1), lastDay=new Date(calYear,calMonth+1,0);
+  var card=document.createElement('div'); card.className='card';
+  var mn=document.createElement('div'); mn.className='month-nav';
+  var pb=document.createElement('button'); pb.textContent='‹'; pb.onclick=function(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}render();};
+  var nb=document.createElement('button'); nb.textContent='›'; nb.onclick=function(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}render();};
+  mn.appendChild(pb); mn.appendChild(el('div','month-title',meses[calMonth]+' '+calYear)); mn.appendChild(nb);
+  card.appendChild(mn);
+  var wd=document.createElement('div'); wd.className='weekdays';
+  ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].forEach(function(d){ var e=el('div','weekday',d); wd.appendChild(e); });
+  card.appendChild(wd);
+  var cg=document.createElement('div'); cg.className='cal-grid';
+  for(var i=0;i<firstDay.getDay();i++){var emp=document.createElement('div');emp.className='cal-day empty';cg.appendChild(emp);}
+  for(var d=1;d<=lastDay.getDate();d++){
+    var dt=new Date(calYear,calMonth,d);
+    var ds=dt.toISOString().split('T')[0];
+    var isToday=dt.toDateString()===today.toDateString();
+    var isPast=dt<today&&!isToday;
+    var ferias=getFerias(); var isFer=ferias.indexOf(ds)>=0;
+    var isFerPer=ds>=FERIAS_INICIO&&ds<=FERIAS_FIM;
+    var isFolgaEsp=ds===FOLGA_ESP;
+    var isAniv=ds===ANIVERSARIO;
+    var isWork=!isFer&&!isFerPer&&!isFolgaEsp&&!isAniv&&isWorkDay(dt);
+    var cls='cal-day';
+    if(isAniv) cls+=' aniv';
+    else if(isFer||isFerPer||isFolgaEsp) cls+=' ferias';
+    else if(isWork) cls+=' work';
+    else cls+=' folga';
+    if(isToday) cls+=' today';
+    if(isPast)  cls+=' past';
+    var icon=isAniv?'🎂':(isFer||isFerPer||isFolgaEsp)?'🌴':isWork?'🔒':'😴';
+    var dayEl=document.createElement('div'); dayEl.className=cls;
+    dayEl.innerHTML='<span>'+d+'</span><span class="cal-icon">'+icon+'</span>';
+    dayEl.onclick=(function(dds){ return function(){ var f=getFerias(),idx=f.indexOf(dds); if(idx>=0)f.splice(idx,1); else f.push(dds); setFerias(f); render(); }; })(ds);
+    cg.appendChild(dayEl);
+  }
+  card.appendChild(cg);
+  var leg=document.createElement('div'); leg.className='legend';
+  [{bg:'#1a2a3a',bc:'#2a4a6a',txt:'Plantão'},{bg:'#1a2a1a',bc:'#2a4a2a',txt:'Folga'},{bg:'#2a1a3a',bc:'#4a2a6a',txt:'Férias'},{bg:'#3a2a0a',bc:'#c8a96e',txt:'🎂 Aniv.'}].forEach(function(l){
+    var li=document.createElement('div'); li.className='legend-item';
+    var dot=document.createElement('div'); dot.className='legend-dot'; dot.style.cssText='background:'+l.bg+';border:1px solid '+l.bc;
+    li.appendChild(dot); li.appendChild(document.createTextNode(' '+l.txt)); leg.appendChild(li);
+  });
+  card.appendChild(leg);
+  main.appendChild(card);
+}
+
+function isWorkDay(date) {
+  var diff=Math.floor((date-PLANTAO_INICIO)/(1000*60*60*24));
+  return diff>=0 && diff%2===0;
+}
+
+// ══════════════════════════════════════════════════════
+// CONTAS + GÁS CONTROLE
+// ══════════════════════════════════════════════════════
+function renderContas(main) {
+  var meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var contas=getContas(contasMes,contasAno);
+  var totP=0,totPend=0;
+  contas.forEach(function(c){ var v=parseFloat((c.valor||'0').replace(',','.'))||0; if(c.pago)totP+=v; else totPend+=v; });
+
+  var card=document.createElement('div'); card.className='card';
+  var ms=document.createElement('div'); ms.className='mes-selector';
+  var mpb=document.createElement('button'); mpb.textContent='‹'; mpb.onclick=function(){contasMes--;if(contasMes<0){contasMes=11;contasAno--;}render();};
+  var mnb=document.createElement('button'); mnb.textContent='›'; mnb.onclick=function(){contasMes++;if(contasMes>11){contasMes=0;contasAno++;}render();};
+  ms.appendChild(mpb); ms.appendChild(el('div','mes-label',meses[contasMes]+' '+contasAno)); ms.appendChild(mnb);
+  card.appendChild(ms);
+
+  var rc=document.createElement('div'); rc.className='resumo-contas';
+  rc.innerHTML='<div class="resumo-box pago"><div class="rlabel">✅ Pago</div><div class="rval">R$ '+totP.toFixed(2).replace('.',',')+'</div></div><div class="resumo-box pend"><div class="rlabel">⏳ Pendente</div><div class="rval">R$ '+totPend.toFixed(2).replace('.',',')+'</div></div>';
+  card.appendChild(rc);
+
+  contas.forEach(function(c,i){
+    var ci=document.createElement('div'); ci.className='conta-item'+(c.pago?' pago':'');
+    ci.onclick=function(){
+      var cs=getContas(contasMes,contasAno);
+      cs[i].pago=!cs[i].pago;
+      if(cs[i].pago && !cs[i].pagoEm){
+        var hoje=new Date();
+        cs[i].pagoEm=String(hoje.getDate()).padStart(2,'0')+'/'+String(hoje.getMonth()+1).padStart(2,'0');
+      }
+      setContas(contasMes,contasAno,cs); render();
+    };
+    var pagoEmHtml=c.pago&&c.pagoEm?' <span class="conta-pagaem">· pago em '+c.pagoEm+'</span>':'';
+    ci.innerHTML='<div class="conta-check">'+(c.pago?'✓':'')+'</div><div class="conta-info"><div class="conta-nome">'+c.nome+'</div><div class="conta-venc">'+c.venc+pagoEmHtml+'</div></div><div class="conta-valor">R$ '+(c.valor||'—')+'</div>';
+    card.appendChild(ci);
+  });
+  main.appendChild(card);
+
+  // GÁS CONTROLE
+  main.appendChild(renderGasControle());
+
+  // MOTO — ÓLEO E FILTRO
+  main.appendChild(renderMotoControle());
+
+  var ecard=document.createElement('div'); ecard.className='card';
+  ecard.appendChild(el('div','card-title','✏️ Editar Valores'));
+  contas.forEach(function(c,i){
+    var wrap=document.createElement('div'); wrap.style.marginBottom='8px';
+    wrap.innerHTML='<div style="font-size:11px;color:#888;margin-bottom:2px">'+c.nome+'</div>';
+    var inp=document.createElement('input'); inp.className='edit-conta'; inp.type='text';
+    inp.placeholder='0,00'; inp.value=c.valor||''; inp.inputMode='decimal';
+    inp.onchange=(function(idx){ return function(){ var cs=getContas(contasMes,contasAno); cs[idx].valor=this.value; setContas(contasMes,contasAno,cs); }; })(i);
+    wrap.appendChild(inp);
+    var inpPago=document.createElement('input'); inpPago.className='edit-conta'; inpPago.type='text';
+    inpPago.placeholder='Paga em (ex: 09/07)'; inpPago.value=c.pagoEm||'';
+    inpPago.style.marginTop='4px';
+    inpPago.onchange=(function(idx){ return function(){ var cs=getContas(contasMes,contasAno); cs[idx].pagoEm=this.value; setContas(contasMes,contasAno,cs); }; })(i);
+    wrap.appendChild(inpPago);
+    ecard.appendChild(wrap);
+  });
+  main.appendChild(ecard);
+}
+
+function renderGasControle() {
+  var card = document.createElement('div'); card.className='card';
+  card.appendChild(el('div','card-title','🔥 GÁS CONTROLE'));
+
+  var gas = getGas();
+  var aberto = gas.find(function(g){ return !g.acabou; });
+
+  if (!aberto) {
+    // Form pra registrar um novo botijão
+    var hint = el('p','','Registre o botijão novo pra acompanhar quanto tempo ele dura.');
+    hint.style.cssText='font-size:12px;color:#555;margin-bottom:10px;';
+    card.appendChild(hint);
+
+    var fNum = document.createElement('div'); fNum.className='gas-field';
+    fNum.innerHTML='<label>Número do botijão</label>';
+    var iNum=document.createElement('input'); iNum.id='gasNumero'; iNum.type='text'; iNum.placeholder='Ex: 1234';
+    fNum.appendChild(iNum); card.appendChild(fNum);
+
+    var fCompra = document.createElement('div'); fCompra.className='gas-field';
+    fCompra.innerHTML='<label>Dia da compra</label>';
+    var iCompra=document.createElement('input'); iCompra.id='gasCompra'; iCompra.type='date';
+    iCompra.value=new Date().toISOString().split('T')[0];
+    fCompra.appendChild(iCompra); card.appendChild(fCompra);
+
+    var btn=document.createElement('button'); btn.className='gas-btn'; btn.textContent='＋ Registrar botijão';
+    btn.style.marginTop='4px';
+    btn.onclick=function(){
+      var numero=document.getElementById('gasNumero').value.trim();
+      var compra=document.getElementById('gasCompra').value;
+      if(!numero){ alert('Digite o número do botijão!'); return; }
+      if(!compra){ alert('Escolha o dia da compra!'); return; }
+      var g=getGas();
+      g.unshift({numero:numero, compra:compra, acabou:null});
+      setGas(g);
+      vibe([30]);
+      render();
+    };
+    card.appendChild(btn);
+  } else {
+    // Botijão ativo — mostra info e botão de marcar que acabou
+    var ativoBox = document.createElement('div'); ativoBox.className='gas-item ativo';
+    var diasUso = Math.floor((new Date() - new Date(aberto.compra+'T00:00:00')) / 86400000);
+    ativoBox.innerHTML = '<div class="gas-item-top"><div class="gas-numero">🔥 Botijão '+aberto.numero+'</div></div>'+
+      '<div class="gas-datas">Comprado em '+fmtData(aberto.compra)+'</div>'+
+      '<div class="gas-duracao aberto">Em uso há '+diasUso+' dia'+(diasUso!==1?'s':'')+'</div>';
+    card.appendChild(ativoBox);
+
+    var fAcabou = document.createElement('div'); fAcabou.className='gas-field'; fAcabou.style.marginTop='10px';
+    fAcabou.innerHTML='<label>Dia que acabou</label>';
+    var iAcabou=document.createElement('input'); iAcabou.id='gasAcabou'; iAcabou.type='date';
+    iAcabou.value=new Date().toISOString().split('T')[0];
+    fAcabou.appendChild(iAcabou); card.appendChild(fAcabou);
+
+    var btnRow = document.createElement('div'); btnRow.className='gas-btn-row';
+    var btnFim=document.createElement('button'); btnFim.className='gas-btn'; btnFim.textContent='✅ Marcar que acabou';
+    btnFim.onclick=function(){
+      var acabou=document.getElementById('gasAcabou').value;
+      if(!acabou){ alert('Escolha o dia que acabou!'); return; }
+      var g=getGas();
+      var idx=g.findIndex(function(x){return x===aberto || (x.numero===aberto.numero && x.compra===aberto.compra && !x.acabou);});
+      if(idx<0) idx=0;
+      g[idx].acabou=acabou;
+      setGas(g);
+      vibe([30]);
+      render();
+    };
+    var btnDel=document.createElement('button'); btnDel.className='gas-btn secondary'; btnDel.textContent='🗑️ Cancelar';
+    btnDel.onclick=function(){
+      if(!confirm('Remover o registro do botijão '+aberto.numero+'?')) return;
+      var g=getGas().filter(function(x){return !(x.numero===aberto.numero && x.compra===aberto.compra && !x.acabou);});
+      setGas(g); render();
+    };
+    btnRow.appendChild(btnFim); btnRow.appendChild(btnDel);
+    card.appendChild(btnRow);
+  }
+
+  // Histórico de botijões já finalizados
+  var historico = gas.filter(function(g){ return g.acabou; });
+  if (historico.length > 0) {
+    var hTitle=el('div','card-title','📋 Histórico de botijões');
+    hTitle.style.marginTop='16px';
+    card.appendChild(hTitle);
+    historico.forEach(function(g){
+      var duracao = Math.floor((new Date(g.acabou+'T00:00:00') - new Date(g.compra+'T00:00:00')) / 86400000);
+      var item=document.createElement('div'); item.className='gas-item';
+      item.innerHTML = '<div class="gas-item-top"><div class="gas-numero">Botijão '+g.numero+'</div><div class="gas-del" onclick="delGas(\''+g.numero+'\',\''+g.compra+'\')">🗑️</div></div>'+
+        '<div class="gas-datas">Comprou: '+fmtData(g.compra)+' — Acabou: '+fmtData(g.acabou)+'</div>'+
+        '<div class="gas-duracao">Durou '+duracao+' dia'+(duracao!==1?'s':'')+'</div>';
+      card.appendChild(item);
+    });
+  }
+
+  return card;
+}
+
+function delGas(numero, compra) {
+  if(!confirm('Remover o registro do botijão '+numero+'?')) return;
+  var g=getGas().filter(function(x){ return !(x.numero===numero && x.compra===compra); });
+  setGas(g); render();
+}
+
+// ══════════════════════════════════════════════════════
+// MOTO — ÓLEO E FILTRO
+// ══════════════════════════════════════════════════════
+function renderMotoControle() {
+  var card = document.createElement('div'); card.className='card';
+  card.appendChild(el('div','card-title','🏍️ MOTO — FILTRO E ÓLEO'));
+
+  var hint = el('p','','Registre a quilometragem da troca. A próxima troca é calculada automaticamente (+'+KM_INTERVALO+' km).');
+  hint.style.cssText='font-size:12px;color:#555;margin-bottom:10px;';
+  card.appendChild(hint);
+
+  var fKm = document.createElement('div'); fKm.className='gas-field';
+  fKm.innerHTML='<label>Quilometragem inicial (da troca)</label>';
+  var iKm=document.createElement('input'); iKm.id='motoKm'; iKm.type='number'; iKm.placeholder='Ex: 15000';
+  fKm.appendChild(iKm); card.appendChild(fKm);
+
+  var fData = document.createElement('div'); fData.className='gas-field';
+  fData.innerHTML='<label>Dia da troca</label>';
+  var iData=document.createElement('input'); iData.id='motoData'; iData.type='date';
+  iData.value=new Date().toISOString().split('T')[0];
+  fData.appendChild(iData); card.appendChild(fData);
+
+  var btnAdd=document.createElement('button'); btnAdd.className='gas-btn'; btnAdd.textContent='＋ Registrar troca';
+  btnAdd.style.marginTop='4px';
+  btnAdd.onclick=function(){
+    var km=parseFloat(document.getElementById('motoKm').value);
+    var data=document.getElementById('motoData').value;
+    if(!km&&km!==0){ alert('Digite a quilometragem!'); return; }
+    if(!data){ alert('Escolha o dia da troca!'); return; }
+    var m=getMoto();
+    m.unshift({km:km, proxima:km+KM_INTERVALO, data:data});
+    setMoto(m);
+    vibe([30]);
+    document.getElementById('motoKm').value='';
+    render();
+  };
+  card.appendChild(btnAdd);
+
+  // Histórico (até 5 registros)
+  var moto = getMoto();
+  if (moto.length > 0) {
+    var hTitle=el('div','card-title','📋 Histórico de trocas');
+    hTitle.style.marginTop='16px';
+    card.appendChild(hTitle);
+    moto.forEach(function(item,i){
+      var box=document.createElement('div'); box.className='moto-item';
+      var top=document.createElement('div'); top.className='moto-item-top';
+      top.innerHTML='<div class="moto-numero">🔧 Troca #'+(moto.length-i)+'</div><div class="moto-del" onclick="delMotoItem('+i+')">🗑️</div>';
+      box.appendChild(top);
+
+      var row=document.createElement('div'); row.className='moto-row';
+      var f1=document.createElement('div'); f1.className='moto-field';
+      f1.innerHTML='<label>KM da troca</label>';
+      var i1=document.createElement('input'); i1.type='number'; i1.value=item.km;
+      i1.onchange=(function(idx){ return function(){ var mm=getMoto(); var novoKm=parseFloat(this.value)||0; mm[idx].km=novoKm; mm[idx].proxima=novoKm+KM_INTERVALO; setMoto(mm); render(); }; })(i);
+      f1.appendChild(i1); row.appendChild(f1);
+
+      var f2=document.createElement('div'); f2.className='moto-field';
+      f2.innerHTML='<label>Data</label>';
+      var i2=document.createElement('input'); i2.type='date'; i2.value=item.data;
+      i2.onchange=(function(idx){ return function(){ var mm=getMoto(); mm[idx].data=this.value; setMoto(mm); }; })(i);
+      f2.appendChild(i2); row.appendChild(f2);
+      box.appendChild(row);
+
+      var prox=el('div','moto-proxima','🔜 Próxima troca: '+item.proxima.toLocaleString('pt-BR')+' km');
+      box.appendChild(prox);
+
+      card.appendChild(box);
+    });
+  } else {
+    var empty=el('div','','Nenhuma troca registrada ainda.');
+    empty.style.cssText='text-align:center;color:#555;font-size:13px;padding:10px 0;';
+    card.appendChild(empty);
+  }
+
+  return card;
+}
+
+function delMotoItem(idx) {
+  if(!confirm('Remover este registro de troca?')) return;
+  var m=getMoto(); m.splice(idx,1); setMoto(m); render();
+}
+
+// ══════════════════════════════════════════════════════
+// OBJETIVOS
+// ══════════════════════════════════════════════════════
+function renderObj(main) {
+  var objs=getObj(), done=objs.filter(function(o){return o.done;}).length;
+  var card=document.createElement('div'); card.className='card';
+  card.appendChild(el('div','card-title','🎯 Objetivos '+new Date().getFullYear()+' — '+done+'/'+objs.length));
+  if(objs.length===0) card.appendChild(el('p','','\nNenhum objetivo ainda. Adicione abaixo! 💪'));
+  objs.forEach(function(o,i){
+    var oi=document.createElement('div'); oi.className='obj-item'+(o.done?' done':'');
+    var ck=document.createElement('div'); ck.className='obj-check'; ck.textContent=o.done?'✓':'';
+    ck.onclick=function(){var os=getObj();os[i].done=!os[i].done;setObj(os);render();};
+    var tx=el('div','obj-text',o.text);
+    var dl=el('div','obj-del','×'); dl.onclick=function(){var os=getObj();os.splice(i,1);setObj(os);render();};
+    oi.appendChild(ck); oi.appendChild(tx); oi.appendChild(dl); card.appendChild(oi);
+  });
+  var ar=document.createElement('div'); ar.className='add-row';
+  var ai=document.createElement('input'); ai.className='add-input'; ai.id='objIn'; ai.placeholder='Novo objetivo...';
+  ai.addEventListener('keydown',function(e){if(e.key==='Enter')addObj2();});
+  var ab=document.createElement('button'); ab.className='add-btn'; ab.textContent='+'; ab.onclick=addObj2;
+  ar.appendChild(ai); ar.appendChild(ab); card.appendChild(ar);
+  main.appendChild(card);
+}
+function addObj2(){var i=document.getElementById('objIn');if(!i||!i.value.trim())return;var os=getObj();os.push({text:i.value.trim(),done:false});setObj(os);render();}
+
+// INIT
+document.getElementById('srv-eu').className='srv-btn active-eu';
+render();
+</script>
+
+
+
+<!-- 🔄 SINCRONIZAÇÃO EM NUVEM (Firebase) + LOGIN -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBNKjp7hLNK6mzAX2GK49WEZq-NKgQ9o5Y",
+  authDomain: "williamapp-31dff.firebaseapp.com",
+  projectId: "williamapp-31dff",
+  storageBucket: "williamapp-31dff.firebasestorage.app",
+  messagingSenderId: "171912065024",
+  appId: "1:171912065024:web:9c47f66f4b8e7fc727a8e5"
+};
+
+const ALLOWED_EMAIL = "marcelodossantosfc@gmail.com";
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
+const docRef = doc(db, "william", "state");
+
+var overlay = document.getElementById('loginOverlay');
+var emailIn = document.getElementById('loginEmail');
+var senhaIn = document.getElementById('loginSenha');
+var loginBtn = document.getElementById('loginBtn');
+var errEl = document.getElementById('loginError');
+
+function showError(msg){ errEl.textContent = msg; }
+
+function tryLogin(){
+  var email = emailIn.value.trim();
+  var senha = senhaIn.value;
+  if(!email || !senha){ showError('Preencha e-mail e senha.'); return; }
+  loginBtn.disabled = true; loginBtn.textContent = 'Entrando...';
+  showError('');
+  signInWithEmailAndPassword(auth, email, senha)
+    .catch(function(e){
+      loginBtn.disabled = false; loginBtn.textContent = 'Entrar';
+      showError('E-mail ou senha incorretos.');
+    });
+}
+loginBtn.onclick = tryLogin;
+senhaIn.addEventListener('keydown', function(e){ if(e.key==='Enter') tryLogin(); });
+emailIn.addEventListener('keydown', function(e){ if(e.key==='Enter') senhaIn.focus(); });
+
+window._applyingRemote = false;
+var _pendingRemote = null;
+var _saveTimeout = null;
+
+function isTypingNow(){
+  var ae = document.activeElement;
+  return ae && (ae.tagName==='INPUT' || ae.tagName==='TEXTAREA' || ae.tagName==='SELECT');
+}
+
+function applyRemote(remoteStr){
+  if (isTypingNow()) { _pendingRemote = remoteStr; return; }
+  window._applyingRemote = true;
+  localStorage.setItem(window.KEY || 'william_superapp_v1', remoteStr);
+  window._applyingRemote = false;
+  if (typeof window.render === 'function') window.render();
+}
+
+// Se o usuário estava digitando quando chegou uma atualização, aplica assim que ele sair do campo
+document.addEventListener('focusout', function(){
+  if (_pendingRemote) {
+    var p = _pendingRemote; _pendingRemote = null;
+    setTimeout(function(){ applyRemote(p); }, 200);
+  }
+});
+
+var _origSaveState = window.saveState;
+window.saveState = function(s) {
+  _origSaveState(s);
+  if (!window._applyingRemote && auth.currentUser && auth.currentUser.email === ALLOWED_EMAIL) {
+    clearTimeout(_saveTimeout);
+    _saveTimeout = setTimeout(function(){
+      setDoc(docRef, s).catch(function(e){ console.error('Erro ao sincronizar:', e); });
+    }, 600);
+  }
+};
+
+var unsubscribe = null;
+
+onAuthStateChanged(auth, function(user){
+  if (user && user.email === ALLOWED_EMAIL) {
+    overlay.style.display = 'none';
+    loginBtn.disabled = false; loginBtn.textContent = 'Entrar';
+
+    if (!unsubscribe) {
+      unsubscribe = onSnapshot(docRef, function(snap){
+        if (!snap.exists()) { setDoc(docRef, window.loadState()); return; }
+        var remoteStr = JSON.stringify(snap.data());
+        var localStr = JSON.stringify(window.loadState());
+        if (localStr === remoteStr) return;
+        applyRemote(remoteStr);
+      }, function(err){ console.error('Erro de sincronização:', err); });
+    }
+  } else if (user && user.email !== ALLOWED_EMAIL) {
+    signOut(auth);
+    overlay.style.display = 'flex';
+    showError('Conta não autorizada.');
+  } else {
+    overlay.style.display = 'flex';
+  }
+});
+</script>
+
+</body>
+</html>
