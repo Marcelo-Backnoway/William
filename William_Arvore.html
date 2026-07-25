@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>William Árvore</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<style>
+  :root{
+    --bg:#0f0e0c;
+    --bg2:#17140f;
+    --panel:#1c1912;
+    --gold:#c9a24b;
+    --gold-dim:#8a6f31;
+    --text:#e9e2d3;
+    --text-dim:#a89e8a;
+    --danger:#a4443a;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    min-height:100vh;
+  }
+  .container{max-width:720px;margin:0 auto;padding:20px 16px 80px;}
+  h1{font-size:1.3rem;color:var(--gold);letter-spacing:.02em;margin:0 0 4px;}
+  .sub{color:var(--text-dim);font-size:.85rem;margin-bottom:20px;}
+
+  /* LOGIN */
+  #tela-login{display:flex;flex-direction:column;justify-content:center;min-height:80vh;}
+  .login-box{background:var(--panel);border:1px solid #2c2718;border-radius:var(--radius);padding:28px 22px;max-width:380px;margin:0 auto;width:100%;}
+  .login-box h1{text-align:center;font-size:1.5rem;}
+  .login-box .sub{text-align:center;}
+  input,textarea{
+    width:100%;
+    background:var(--bg2);
+    border:1px solid #33301f;
+    color:var(--text);
+    border-radius:8px;
+    padding:12px 14px;
+    font-size:1rem;
+    margin-bottom:12px;
+  }
+  input:focus,textarea:focus{outline:none;border-color:var(--gold-dim);}
+  button{
+    background:var(--gold-dim);
+    color:#0f0e0c;
+    border:none;
+    border-radius:8px;
+    padding:12px 16px;
+    font-size:.95rem;
+    font-weight:600;
+    cursor:pointer;
+  }
+  button:hover{background:var(--gold);}
+  button.secondary{background:transparent;color:var(--gold);border:1px solid var(--gold-dim);}
+  button.danger{background:var(--danger);color:#f3e9e6;}
+  button.link{background:none;border:none;color:var(--text-dim);text-decoration:underline;padding:6px 0;font-size:.85rem;}
+  .full{width:100%;}
+  .erro{color:#d98a80;font-size:.85rem;margin:-4px 0 12px;min-height:1em;}
+
+  /* TOPO */
+  .topo{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;}
+  .caminho{color:var(--text-dim);font-size:.85rem;display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
+  .caminho span.crumb{cursor:pointer;color:var(--gold);}
+  .caminho span.crumb:hover{text-decoration:underline;}
+  .acoes-topo{display:flex;gap:8px;}
+
+  /* LISTA DE ITENS DA ARVORE */
+  .item{
+    background:var(--panel);
+    border:1px solid #2c2718;
+    border-radius:var(--radius);
+    padding:14px 16px;
+    margin-bottom:10px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    cursor:pointer;
+  }
+  .item:hover{border-color:var(--gold-dim);}
+  .item .nome{display:flex;align-items:center;gap:10px;font-size:1rem;}
+  .item .icone{font-size:1.2rem;}
+  .item .del{color:var(--text-dim);background:none;border:none;font-size:1.1rem;padding:4px 8px;}
+  .item .del:hover{color:var(--danger);}
+  .vazio{color:var(--text-dim);text-align:center;padding:40px 10px;font-size:.9rem;}
+
+  /* MODAL NOVO ITEM */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;}
+  .modal{background:var(--panel);border:1px solid #33301f;border-radius:var(--radius);padding:22px;max-width:380px;width:100%;}
+  .modal h2{margin-top:0;font-size:1.05rem;color:var(--gold);}
+  .tipo-escolha{display:flex;gap:10px;margin-bottom:14px;}
+  .tipo-escolha button{flex:1;background:var(--bg2);color:var(--text);border:1px solid #33301f;}
+  .tipo-escolha button.ativo{background:var(--gold-dim);color:#0f0e0c;border-color:var(--gold-dim);}
+  .modal-acoes{display:flex;gap:10px;justify-content:flex-end;margin-top:10px;}
+
+  /* PAGINA (BLOCOS) */
+  .blocos{margin-bottom:16px;}
+  .bloco{margin-bottom:14px;position:relative;}
+  .bloco-texto textarea{min-height:90px;resize:vertical;}
+  .bloco-foto img{width:100%;border-radius:8px;display:block;}
+  .bloco-foto{background:var(--bg2);border:1px solid #2c2718;border-radius:8px;padding:8px;}
+  .bloco-remove{position:absolute;top:-8px;right:-8px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:26px;height:26px;font-size:.85rem;cursor:pointer;line-height:1;}
+  .add-bloco-barra{display:flex;gap:8px;margin:6px 0 22px;}
+  .add-bloco-barra button{flex:1;background:var(--bg2);color:var(--gold);border:1px dashed var(--gold-dim);}
+  .barra-salvar{position:sticky;bottom:0;background:var(--bg);padding:12px 0;display:flex;gap:10px;}
+  .visualizacao .bloco-texto{white-space:pre-wrap;line-height:1.5;color:var(--text);}
+  .loading{text-align:center;color:var(--text-dim);padding:40px;}
+  .oculto{display:none !important;}
+  .msg-status{font-size:.8rem;color:var(--text-dim);text-align:center;margin-top:6px;}
+</style>
+</head>
+<body>
+
+<!-- TELA DE LOGIN -->
+<div id="tela-login" class="container">
+  <div class="login-box">
+    <h1>William Árvore</h1>
+    <div class="sub">Suas anotações, organizadas do seu jeito.</div>
+
+    <div id="bloco-senha">
+      <input type="password" id="input-senha-mestra" placeholder="Senha mestra" autocomplete="off">
+      <div class="erro" id="erro-login"></div>
+      <button class="full" onclick="entrar()">Entrar</button>
+      <button class="link" onclick="mostrarRecuperacao()">Esqueci minha senha mestra</button>
+    </div>
+
+    <div id="bloco-recuperacao" class="oculto">
+      <div class="sub" style="text-align:left;margin-bottom:14px;">Respostas: sem acentos. Aceita maiúsculas ou minúsculas.</div>
+    <div id="perguntas-recuperacao"></div>
+      <div class="erro" id="erro-recuperacao"></div>
+      <button class="full" onclick="tentarRecuperar()">Recuperar acesso</button>
+      <button class="link" onclick="voltarLogin()">Voltar</button>
+    </div>
+
+    <div id="bloco-primeiro-acesso" class="oculto">
+      <div class="sub" style="text-align:left;margin-bottom:14px;">Primeiro acesso: defina sua senha mestra e as 5 perguntas de recuperação.<br>Respostas: sem acentos. Aceita maiúsculas ou minúsculas.</div>
+      <input type="password" id="setup-senha1" placeholder="Nova senha mestra">
+      <input type="password" id="setup-senha2" placeholder="Confirme a senha mestra">
+      <div id="setup-perguntas"></div>
+      <div class="erro" id="erro-setup"></div>
+      <button class="full" onclick="salvarConfiguracaoInicial()">Salvar e entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP PRINCIPAL -->
+<div id="tela-app" class="container oculto">
+
+  <div class="topo">
+    <div class="caminho" id="caminho"></div>
+    <div class="acoes-topo">
+      <button class="secondary" onclick="abrirModalNovoItem()">+ novo</button>
+    </div>
+  </div>
+
+  <!-- LISTA DA ÁRVORE -->
+  <div id="tela-lista">
+    <div id="lista-itens"></div>
+  </div>
+
+  <!-- PÁGINA: VISUALIZAÇÃO -->
+  <div id="tela-visualizacao" class="oculto">
+    <div class="topo">
+      <h1 id="titulo-visualizacao"></h1>
+    </div>
+    <div class="blocos visualizacao" id="blocos-visualizacao"></div>
+    <button class="secondary" onclick="entrarModoEdicao()">Editar</button>
+  </div>
+
+  <!-- PÁGINA: EDIÇÃO -->
+  <div id="tela-edicao" class="oculto">
+    <div class="topo">
+      <h1 id="titulo-edicao"></h1>
+    </div>
+    <div class="blocos" id="blocos-edicao"></div>
+    <div class="add-bloco-barra">
+      <button onclick="adicionarBlocoTexto()">+ texto</button>
+      <button onclick="document.getElementById('input-foto').click()">+ foto</button>
+      <input type="file" id="input-foto" accept="image/*" class="oculto" onchange="adicionarBlocoFoto(event)">
+    </div>
+    <div class="msg-status" id="status-upload"></div>
+    <div class="barra-salvar">
+      <button class="full" onclick="salvarPagina()">Salvar</button>
+      <button class="secondary full" onclick="cancelarEdicao()">Cancelar</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL NOVO ITEM -->
+<div id="modal-novo-item" class="overlay oculto">
+  <div class="modal">
+    <h2>Novo item</h2>
+    <div class="tipo-escolha">
+      <button id="btn-tipo-pasta" class="ativo" onclick="escolherTipo('pasta')">Pasta</button>
+      <button id="btn-tipo-pagina" onclick="escolherTipo('pagina')">Página</button>
+    </div>
+    <input type="text" id="input-nome-item" placeholder="Nome">
+    <div class="modal-acoes">
+      <button class="secondary" onclick="fecharModalNovoItem()">Cancelar</button>
+      <button onclick="criarItem()">Criar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   CONFIGURAÇÃO DO FIREBASE
+   Substitua pelo mesmo firebaseConfig já usado nos outros
+   apps do projeto williamapp-31dff.
+   ========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyBNKjp7hLNK6mzAX2GK49WEZq-NKgQ9o5Y",
+  authDomain: "williamapp-31dff.firebaseapp.com",
+  projectId: "williamapp-31dff",
+  storageBucket: "williamapp-31dff.firebasestorage.app",
+  messagingSenderId: "171912065024",
+  appId: "1:171912065024:web:9c47f66f4b8e7fc727a8e5"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const storage = firebase.storage();
+const auth = firebase.auth();
+
+const DOC_CONFIG = db.collection("arvore_config").doc("principal");
+const COL_ITENS = db.collection("arvore_itens");
+
+let tipoNovoItem = "pasta";
+let pilhaAtual = []; // {id, nome} do caminho atual (raiz = [])
+let itemAbertoId = null; // item de página aberto
+let blocosEdicaoAtual = []; // array de blocos enquanto edita
+
+/* ---------- CRIPTO (PBKDF2 via Web Crypto) ---------- */
+async function gerarHash(texto, saltHex) {
+  const enc = new TextEncoder();
+  const salt = saltHex ? hexParaBytes(saltHex) : crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(texto), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt: salt, iterations: 150000, hash: "SHA-256" },
+    keyMaterial, 256
+  );
+  return { hash: bytesParaHex(new Uint8Array(bits)), salt: bytesParaHex(salt) };
+}
+function bytesParaHex(bytes){return Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("");}
+function hexParaBytes(hex){const b=new Uint8Array(hex.length/2);for(let i=0;i<b.length;i++)b[i]=parseInt(hex.substr(i*2,2),16);return b;}
+function normalizarResposta(texto) {
+  return texto
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+/* ---------- INICIALIZAÇÃO / LOGIN ---------- */
+window.addEventListener("load", async () => {
+  await auth.signInAnonymously().catch(e => console.error("Erro auth anônima:", e));
+  const snap = await DOC_CONFIG.get();
+  if (!snap.exists) {
+    montarTelaPrimeiroAcesso();
+  }
+});
+
+function montarTelaPrimeiroAcesso() {
+  document.getElementById("bloco-senha").classList.add("oculto");
+  const container = document.getElementById("setup-perguntas");
+  container.innerHTML = "";
+  for (let i = 1; i <= 5; i++) {
+    container.innerHTML += `
+      <input type="text" id="setup-pergunta${i}" placeholder="Pergunta ${i} de recuperação">
+      <input type="text" id="setup-resposta${i}" placeholder="Resposta ${i}">
+    `;
+  }
+  document.getElementById("bloco-primeiro-acesso").classList.remove("oculto");
+}
+
+async function salvarConfiguracaoInicial() {
+  const s1 = document.getElementById("setup-senha1").value;
+  const s2 = document.getElementById("setup-senha2").value;
+  const erro = document.getElementById("erro-setup");
+  if (!s1 || s1.length < 6) { erro.textContent = "A senha mestra precisa ter pelo menos 6 caracteres."; return; }
+  if (s1 !== s2) { erro.textContent = "As senhas não coincidem."; return; }
+
+  const perguntas = [];
+  for (let i = 1; i <= 5; i++) {
+    const p = document.getElementById(`setup-pergunta${i}`).value.trim();
+    const r = normalizarResposta(document.getElementById(`setup-resposta${i}`).value);
+    if (!p || !r) { erro.textContent = "Preencha todas as 5 perguntas e respostas."; return; }
+    const hr = await gerarHash(r);
+    perguntas.push({ pergunta: p, hash: hr.hash, salt: hr.salt });
+  }
+
+  const hs = await gerarHash(s1);
+  await DOC_CONFIG.set({ senhaHash: hs.hash, senhaSalt: hs.salt, perguntas });
+
+  erro.textContent = "";
+  entrarNoApp();
+}
+
+async function entrar() {
+  const senha = document.getElementById("input-senha-mestra").value;
+  const erro = document.getElementById("erro-login");
+  erro.textContent = "";
+  if (!senha) { erro.textContent = "Digite a senha mestra."; return; }
+
+  const snap = await DOC_CONFIG.get();
+  const cfg = snap.data();
+  const { hash } = await gerarHash(senha, cfg.senhaSalt);
+  if (hash === cfg.senhaHash) {
+    entrarNoApp();
+  } else {
+    erro.textContent = "Senha incorreta.";
+  }
+}
+
+function mostrarRecuperacao() {
+  document.getElementById("bloco-senha").classList.add("oculto");
+  const bloco = document.getElementById("bloco-recuperacao");
+  bloco.classList.remove("oculto");
+  DOC_CONFIG.get().then(snap => {
+    const cfg = snap.data();
+    const container = document.getElementById("perguntas-recuperacao");
+    container.innerHTML = "";
+    cfg.perguntas.forEach((p, i) => {
+      container.innerHTML += `
+        <div class="sub" style="text-align:left;">${p.pergunta}</div>
+        <input type="text" id="resp-recuperacao-${i}" placeholder="Sua resposta">
+      `;
+    });
+  });
+}
+
+async function tentarRecuperar() {
+  const erro = document.getElementById("erro-recuperacao");
+  const snap = await DOC_CONFIG.get();
+  const cfg = snap.data();
+  let acertos = 0;
+  for (let i = 0; i < cfg.perguntas.length; i++) {
+    const resp = normalizarResposta(document.getElementById(`resp-recuperacao-${i}`).value);
+    const p = cfg.perguntas[i];
+    const { hash } = await gerarHash(resp, p.salt);
+    if (hash === p.hash) acertos++;
+  }
+  if (acertos >= 3) {
+    const novaSenha = prompt("Identidade confirmada. Digite sua nova senha mestra:");
+    if (novaSenha && novaSenha.length >= 6) {
+      const hs = await gerarHash(novaSenha);
+      await DOC_CONFIG.update({ senhaHash: hs.hash, senhaSalt: hs.salt });
+      alert("Senha mestra atualizada. Faça login novamente.");
+      voltarLogin();
+    }
+  } else {
+    erro.textContent = "Respostas insuficientes para confirmar sua identidade.";
+  }
+}
+
+function voltarLogin() {
+  document.getElementById("bloco-recuperacao").classList.add("oculto");
+  document.getElementById("bloco-senha").classList.remove("oculto");
+}
+
+function entrarNoApp() {
+  document.getElementById("tela-login").classList.add("oculto");
+  document.getElementById("tela-app").classList.remove("oculto");
+  pilhaAtual = [];
+  renderizarCaminho();
+  carregarLista();
+}
+
+/* ---------- NAVEGAÇÃO / CAMINHO ---------- */
+function renderizarCaminho() {
+  const el = document.getElementById("caminho");
+  let html = `<span class="crumb" onclick="irParaRaiz()">Início</span>`;
+  pilhaAtual.forEach((p, i) => {
+    html += ` / <span class="crumb" onclick="irParaNivel(${i})">${escapeHtml(p.nome)}</span>`;
+  });
+  el.innerHTML = html;
+}
+function irParaRaiz() { pilhaAtual = []; renderizarCaminho(); carregarLista(); }
+function irParaNivel(i) { pilhaAtual = pilhaAtual.slice(0, i + 1); renderizarCaminho(); carregarLista(); }
+
+function paiIdAtual() {
+  return pilhaAtual.length ? pilhaAtual[pilhaAtual.length - 1].id : null;
+}
+
+/* ---------- LISTA DA ÁRVORE ---------- */
+async function carregarLista() {
+  mostrarTela("lista");
+  const lista = document.getElementById("lista-itens");
+  lista.innerHTML = `<div class="loading">Carregando...</div>`;
+  const paiId = paiIdAtual();
+  let snap;
+  try {
+    const query = paiId ? COL_ITENS.where("paiId", "==", paiId) : COL_ITENS.where("paiId", "==", null);
+    snap = await query.get();
+  } catch (e) {
+    console.error(e);
+    lista.innerHTML = `<div class="vazio">Erro ao carregar: ${e.message}</div>`;
+    return;
+  }
+  if (snap.empty) {
+    lista.innerHTML = `<div class="vazio">Nada por aqui ainda. Toque em "+ novo" para começar.</div>`;
+    return;
+  }
+  const docs = snap.docs.slice().sort((a, b) => {
+    const ta = a.data().criadoEm ? a.data().criadoEm.toMillis() : 0;
+    const tb = b.data().criadoEm ? b.data().criadoEm.toMillis() : 0;
+    return ta - tb;
+  });
+  lista.innerHTML = "";
+  docs.forEach(doc => {
+    const d = doc.data();
+    const icone = d.tipo === "pasta" ? "📁" : "📝";
+    const el = document.createElement("div");
+    el.className = "item";
+    el.innerHTML = `
+      <div class="nome"><span class="icone">${icone}</span> ${escapeHtml(d.nome)}</div>
+      <button class="del" onclick="excluirItem(event, '${doc.id}', '${d.tipo}')">✕</button>
+    `;
+    el.onclick = (ev) => {
+      if (ev.target.classList.contains("del")) return;
+      if (d.tipo === "pasta") {
+        pilhaAtual.push({ id: doc.id, nome: d.nome });
+        renderizarCaminho();
+        carregarLista();
+      } else {
+        abrirPagina(doc.id, d.nome);
+      }
+    };
+    lista.appendChild(el);
+  });
+}
+
+async function excluirItem(ev, id, tipo) {
+  ev.stopPropagation();
+  const confirmMsg = tipo === "pasta"
+    ? "Excluir esta pasta? Itens dentro dela também precisam ser removidos manualmente antes."
+    : "Excluir esta página e todo o conteúdo dela?";
+  if (!confirm(confirmMsg)) return;
+  await COL_ITENS.doc(id).delete();
+  carregarLista();
+}
+
+/* ---------- MODAL NOVO ITEM ---------- */
+function abrirModalNovoItem() {
+  tipoNovoItem = "pasta";
+  document.getElementById("btn-tipo-pasta").classList.add("ativo");
+  document.getElementById("btn-tipo-pagina").classList.remove("ativo");
+  document.getElementById("input-nome-item").value = "";
+  document.getElementById("modal-novo-item").classList.remove("oculto");
+}
+function fecharModalNovoItem() {
+  document.getElementById("modal-novo-item").classList.add("oculto");
+}
+function escolherTipo(tipo) {
+  tipoNovoItem = tipo;
+  document.getElementById("btn-tipo-pasta").classList.toggle("ativo", tipo === "pasta");
+  document.getElementById("btn-tipo-pagina").classList.toggle("ativo", tipo === "pagina");
+}
+async function criarItem() {
+  const nome = document.getElementById("input-nome-item").value.trim();
+  if (!nome) return;
+  await COL_ITENS.add({
+    nome,
+    tipo: tipoNovoItem,
+    paiId: paiIdAtual(),
+    conteudo: tipoNovoItem === "pagina" ? [] : null,
+    criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  fecharModalNovoItem();
+  carregarLista();
+}
+
+/* ---------- PÁGINA: VISUALIZAÇÃO ---------- */
+async function abrirPagina(id, nome) {
+  itemAbertoId = id;
+  const doc = await COL_ITENS.doc(id).get();
+  const d = doc.data();
+  document.getElementById("titulo-visualizacao").textContent = d.nome;
+  const cont = document.getElementById("blocos-visualizacao");
+  cont.innerHTML = "";
+  (d.conteudo || []).forEach(bloco => {
+    if (bloco.tipo === "texto") {
+      const div = document.createElement("div");
+      div.className = "bloco bloco-texto";
+      div.textContent = bloco.valor;
+      cont.appendChild(div);
+    } else if (bloco.tipo === "foto") {
+      const div = document.createElement("div");
+      div.className = "bloco bloco-foto";
+      div.innerHTML = `<img src="${bloco.valor}" alt="foto">`;
+      cont.appendChild(div);
+    }
+  });
+  if (!(d.conteudo || []).length) {
+    cont.innerHTML = `<div class="vazio">Página vazia. Toque em "Editar" para começar a escrever.</div>`;
+  }
+  mostrarTela("visualizacao");
+}
+
+/* ---------- PÁGINA: EDIÇÃO ---------- */
+async function entrarModoEdicao() {
+  const doc = await COL_ITENS.doc(itemAbertoId).get();
+  const d = doc.data();
+  document.getElementById("titulo-edicao").textContent = d.nome;
+  blocosEdicaoAtual = JSON.parse(JSON.stringify(d.conteudo || []));
+  renderizarBlocosEdicao();
+  mostrarTela("edicao");
+}
+function cancelarEdicao() {
+  abrirPagina(itemAbertoId, null);
+}
+function renderizarBlocosEdicao() {
+  const cont = document.getElementById("blocos-edicao");
+  cont.innerHTML = "";
+  blocosEdicaoAtual.forEach((bloco, i) => {
+    const div = document.createElement("div");
+    div.className = "bloco " + (bloco.tipo === "texto" ? "bloco-texto" : "bloco-foto");
+    if (bloco.tipo === "texto") {
+      div.innerHTML = `
+        <button class="bloco-remove" onclick="removerBloco(${i})">✕</button>
+        <textarea oninput="atualizarTextoBloco(${i}, this.value)">${escapeHtml(bloco.valor)}</textarea>
+      `;
+    } else {
+      div.innerHTML = `
+        <button class="bloco-remove" onclick="removerBloco(${i})">✕</button>
+        <img src="${bloco.valor}" alt="foto">
+      `;
+    }
+    cont.appendChild(div);
+  });
+}
+function atualizarTextoBloco(i, valor) {
+  blocosEdicaoAtual[i].valor = valor;
+}
+function removerBloco(i) {
+  blocosEdicaoAtual.splice(i, 1);
+  renderizarBlocosEdicao();
+}
+function adicionarBlocoTexto() {
+  blocosEdicaoAtual.push({ tipo: "texto", valor: "" });
+  renderizarBlocosEdicao();
+}
+async function adicionarBlocoFoto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const status = document.getElementById("status-upload");
+  status.textContent = "Enviando foto...";
+  try {
+    const dataUrlReduzida = await reduzirImagem(file, 1280);
+    const caminho = `arvore_fotos/${itemAbertoId}/${Date.now()}.jpg`;
+    const ref = storage.ref().child(caminho);
+    await ref.putString(dataUrlReduzida, "data_url");
+    const url = await ref.getDownloadURL();
+    blocosEdicaoAtual.push({ tipo: "foto", valor: url });
+    renderizarBlocosEdicao();
+    status.textContent = "Foto adicionada.";
+  } catch (e) {
+    console.error(e);
+    status.textContent = "Erro ao enviar a foto.";
+  }
+  event.target.value = "";
+}
+function reduzirImagem(file, larguraMax) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > larguraMax) { h = Math.round(h * (larguraMax / w)); w = larguraMax; }
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+async function salvarPagina() {
+  await COL_ITENS.doc(itemAbertoId).update({
+    conteudo: blocosEdicaoAtual,
+    atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  abrirPagina(itemAbertoId, null);
+}
+
+/* ---------- UTIL ---------- */
+function mostrarTela(nome) {
+  document.getElementById("tela-lista").classList.toggle("oculto", nome !== "lista");
+  document.getElementById("tela-visualizacao").classList.toggle("oculto", nome !== "visualizacao");
+  document.getElementById("tela-edicao").classList.toggle("oculto", nome !== "edicao");
+  document.querySelector(".topo").classList.toggle("oculto", nome !== "lista");
+}
+function escapeHtml(str) {
+  if (!str) return "";
+  return str.replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
+}
+</script>
+</body>
+</html>
