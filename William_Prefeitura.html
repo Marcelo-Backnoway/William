@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>William · Prefeitura</title>
+<style>
+  :root{
+    --bg:#0c0c0d; --panel:#17171a; --panel2:#1d1d21; --border:#2a2a30;
+    --gold:#c9a24b; --gold-dim:#8a7538; --text:#ece7dc; --text-dim:#8a8578;
+    --green:#3fae5c; --red:#c94f4f; --blue:#4a7fc9;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    min-height:100vh; padding-bottom:40px;
+  }
+  .topbar{
+    background:#111114; border-bottom:1px solid var(--border); padding:14px 16px;
+    display:flex; align-items:center; justify-content:center; position:sticky; top:0; z-index:50;
+  }
+  .topbar h1{ margin:0; font-size:17px; letter-spacing:0.5px; }
+  .tabs{
+    display:flex; background:#111114; border-bottom:1px solid var(--border);
+    position:sticky; top:49px; z-index:49;
+  }
+  .tab-btn{
+    flex:1; background:none; border:none; color:var(--text-dim); padding:13px 0;
+    font-size:14px; font-weight:600; cursor:pointer; border-bottom:2px solid transparent;
+  }
+  .tab-btn.active{ color:var(--gold); border-bottom-color:var(--gold); }
+  .container{ max-width:460px; margin:0 auto; padding:18px 16px; }
+
+  /* ---- Botão inteligente de ponto ---- */
+  .punch-btn{
+    width:100%; border:none; border-radius:18px; padding:26px 0; text-align:center;
+    font-size:20px; font-weight:800; cursor:pointer; color:#fff; margin-bottom:22px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.35);
+  }
+  .punch-btn.entrada{ background:linear-gradient(135deg,#3fae5c,#2c8046); }
+  .punch-btn.saida{ background:linear-gradient(135deg,#c94f4f,#992e2e); }
+  .punch-btn .sub{ display:block; font-size:12px; font-weight:400; opacity:0.85; margin-top:4px; }
+
+  /* ---- Modal de confirmação ---- */
+  .modal-bg{
+    position:fixed; inset:0; background:rgba(0,0,0,0.75); display:none;
+    align-items:center; justify-content:center; z-index:200; padding:20px;
+  }
+  .modal-bg.show{ display:flex; }
+  .modal-box{
+    background:var(--panel); border:1px solid var(--border); border-radius:18px;
+    padding:26px 22px; width:100%; max-width:360px; text-align:center;
+  }
+  .modal-box h3{ margin:0 0 4px; font-size:15px; color:var(--text-dim); font-weight:600; }
+  .modal-box .modal-date{ font-size:13px; color:var(--text-dim); margin-bottom:16px; }
+  .time-display{
+    font-size:52px; font-weight:800; color:var(--gold); font-variant-numeric:tabular-nums;
+    letter-spacing:1px; margin:10px 0 18px;
+  }
+  .time-adjust{ display:flex; gap:12px; justify-content:center; margin-bottom:22px; }
+  .time-adjust button{
+    background:var(--panel2); border:1px solid var(--border); color:var(--text);
+    font-size:16px; font-weight:700; border-radius:12px; padding:12px 20px; cursor:pointer;
+  }
+  .time-adjust button:active{ background:#26262c; }
+  .modal-actions{ display:flex; gap:10px; }
+  .modal-actions button{
+    flex:1; border:none; border-radius:12px; padding:14px 0; font-size:15px;
+    font-weight:700; cursor:pointer;
+  }
+  .btn-cancel{ background:var(--panel2); color:var(--text-dim); }
+  .btn-confirm{ background:var(--gold); color:#111; }
+
+  /* ---- Tela de sucesso ---- */
+  .success-box{
+    background:#0f1f13; border:1px solid #2c8046; border-radius:16px; padding:20px;
+    text-align:center; margin-bottom:20px; display:none;
+  }
+  .success-box.show{ display:block; }
+  .success-box .check{ font-size:34px; margin-bottom:6px; }
+  .success-box .msg{ font-size:15px; font-weight:700; color:#7fd99a; }
+  .success-box .sub{ font-size:12px; color:var(--text-dim); margin-top:4px; }
+
+  /* ---- Histórico ---- */
+  .section-title{
+    font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-dim);
+    margin:22px 0 10px; font-weight:700;
+  }
+  .plantao-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    padding:14px 16px; margin-bottom:10px; position:relative;
+  }
+  .plantao-row{ display:flex; align-items:center; gap:10px; font-size:14px; }
+  .plantao-row .dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .plantao-row .dot.in{ background:var(--green); }
+  .plantao-row .dot.out{ background:var(--red); }
+  .plantao-row .lbl{ color:var(--text-dim); font-size:12px; width:56px; flex-shrink:0; }
+  .plantao-row .val{ font-weight:700; }
+  .plantao-arrow{ color:var(--text-dim); margin:2px 0 2px 18px; font-size:13px; }
+  .pending-tag{
+    display:inline-block; background:#2a2010; color:var(--gold); font-size:10px;
+    padding:2px 8px; border-radius:20px; margin-left:8px; letter-spacing:0.5px;
+  }
+  .edit-icon{
+    position:absolute; top:12px; right:12px; background:none; border:none;
+    color:var(--text-dim); font-size:14px; cursor:pointer; padding:4px;
+  }
+
+  /* ---- Documentos ---- */
+  .doc-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:16px;
+    padding:16px; margin-bottom:14px;
+  }
+  .doc-title{ font-size:15px; font-weight:700; margin-bottom:2px; }
+  .doc-year{ font-size:12px; color:var(--gold-dim); margin-bottom:12px; }
+  .doc-select{
+    width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--text);
+    font-size:14px; padding:11px 12px; border-radius:10px; margin-bottom:10px; font-family:inherit;
+  }
+  .doc-badge-row{ margin-bottom:10px; min-height:20px; }
+  .drive-tag{
+    display:inline-block; background:#0f1f13; color:#7fd99a; font-size:11px;
+    padding:4px 10px; border-radius:20px; font-weight:700;
+  }
+  .doc-link-row{ display:flex; gap:8px; }
+  .doc-link-row input{
+    flex:1; background:var(--panel2); border:1px solid var(--border); color:var(--text);
+    font-size:13px; padding:10px 12px; border-radius:10px; font-family:inherit;
+  }
+  .doc-link-row input::placeholder{ color:var(--text-dim); }
+  .doc-link-row button{
+    background:var(--panel2); border:1px solid var(--gold-dim); color:var(--gold);
+    border-radius:10px; padding:0 16px; font-weight:700; cursor:pointer; font-size:13px;
+  }
+  .doc-status-badge{
+    display:inline-block; font-size:11px; padding:3px 10px; border-radius:20px; font-weight:700;
+  }
+  .badge-ok{ background:#0f1f13; color:#7fd99a; }
+  .badge-wait{ background:#241a0a; color:#e0b567; }
+  .badge-none{ background:#241010; color:#e08a8a; }
+
+  .empty-msg{ text-align:center; color:var(--text-dim); font-size:13px; padding:30px 0; }
+
+  /* ---- Tela de PIN local ---- */
+  .lock-screen{
+    position:fixed; inset:0; background:var(--bg); z-index:500;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .lock-box{
+    width:100%; max-width:340px; text-align:center;
+  }
+  .lock-box h2{ margin:0 0 4px; font-size:20px; }
+  .lock-box p{ font-size:13px; color:var(--text-dim); margin-bottom:20px; }
+  .lock-box input{
+    width:100%; text-align:center; letter-spacing:8px; font-size:22px;
+    background:var(--panel2); border:1px solid var(--border); color:var(--text);
+    border-radius:12px; padding:14px; margin-bottom:14px; font-family:inherit;
+  }
+  .lock-box button.lock-confirm{
+    width:100%; background:var(--gold); color:#111; border:none; border-radius:12px;
+    padding:14px; font-size:15px; font-weight:700; cursor:pointer; margin-bottom:10px;
+  }
+  .lock-error{ color:var(--red); font-size:12px; min-height:16px; margin-bottom:8px; }
+  .lock-forgot{ color:var(--text-dim); font-size:11px; text-decoration:underline; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div class="topbar" style="position:relative;">
+  <h1>🏛️ WILLIAM — PREFEITURA</h1>
+  <button id="lockBtn" title="Bloquear" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);font-size:16px;cursor:pointer;">🔒</button>
+</div>
+
+<div class="lock-screen" id="loginScreen">
+  <div class="lock-box">
+    <h2>🏛️ WILLIAM</h2>
+    <p>Acesso restrito — entre com sua senha (só uma vez neste aparelho)</p>
+    <input type="text" id="campoAcesso1" name="campoAcesso1" placeholder="Senha" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;">
+    <div class="lock-error" id="loginError"></div>
+    <button class="lock-confirm" id="loginConfirmBtn">Entrar</button>
+  </div>
+</div>
+
+<div class="lock-screen" id="lockScreen" style="display:none;">
+  <div class="lock-box">
+    <h2>🏛️ WILLIAM</h2>
+    <p id="lockLabel">Crie um PIN de acesso (4 a 6 dígitos)</p>
+    <input type="text" id="campoAcesso2" name="campoAcesso2" inputmode="numeric" maxlength="6" placeholder="••••" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;">
+    <div class="lock-error" id="lockError"></div>
+    <button class="lock-confirm" id="lockConfirmBtn">Confirmar</button>
+    <div class="lock-forgot" id="lockForgotLink" style="display:none;">Esqueci o PIN</div>
+  </div>
+</div>
+
+<div id="appWrap" style="display:none;">
+<div class="tabs">
+  <button class="tab-btn active" id="tabPontoBtn" onclick="switchTab('ponto')">🕐 Ponto</button>
+  <button class="tab-btn" id="tabDocsBtn" onclick="switchTab('docs')">📄 Documentos</button>
+</div>
+
+<div class="container">
+
+  <!-- ================= PONTO ================= -->
+  <div id="view-ponto">
+
+    <div class="success-box" id="successBox">
+      <div class="check">✅</div>
+      <div class="msg" id="successMsg"></div>
+      <div class="sub" id="successSub"></div>
+    </div>
+
+    <button class="punch-btn" id="punchBtn"></button>
+
+    <div id="historicoWrap"></div>
+  </div>
+
+  <!-- ================= DOCUMENTOS ================= -->
+  <div id="view-docs" style="display:none;">
+
+    <div class="doc-card">
+      <div class="doc-title">📋 Informe de Rendimentos</div>
+      <div class="doc-year" id="informeAno"></div>
+      <select class="doc-select" id="informeStatus">
+        <option value="indisponivel">Ainda não disponibilizado</option>
+        <option value="aguardando">Disponível, aguardando declarar</option>
+        <option value="concluido">IR já concluído</option>
+      </select>
+      <div class="doc-badge-row" id="informeBadgeRow"></div>
+      <div class="doc-link-row">
+        <input type="url" id="informeLink" placeholder="Link da pasta no Drive">
+        <button onclick="openDriveLink('informeLink')">Abrir</button>
+      </div>
+    </div>
+
+    <div class="doc-card">
+      <div class="doc-title">🏦 Recadastramento Caixa Previdência</div>
+      <div class="doc-year" id="recadAno"></div>
+      <select class="doc-select" id="recadStatus">
+        <option value="indisponivel">Ainda não liberado</option>
+        <option value="disponivel_pendente">Liberado, ainda não recadastrado</option>
+        <option value="recadastrado">Recadastrado</option>
+      </select>
+      <div class="doc-badge-row" id="recadBadgeRow"></div>
+      <div class="doc-link-row">
+        <input type="url" id="recadLink" placeholder="Link da pasta no Drive">
+        <button onclick="openDriveLink('recadLink')">Abrir</button>
+      </div>
+    </div>
+
+    <div class="doc-card">
+      <div class="doc-title">📑 Declaração de Bens</div>
+      <div class="doc-year" id="declAno"></div>
+      <select class="doc-select" id="declStatus">
+        <option value="indisponivel">Não disponível</option>
+        <option value="disponivel_pendente">Disponível, ainda não declarado</option>
+        <option value="declarado">Já declarado</option>
+      </select>
+      <div class="doc-badge-row" id="declBadgeRow"></div>
+      <div class="doc-link-row">
+        <input type="url" id="declLink" placeholder="Link da pasta no Drive">
+        <button onclick="openDriveLink('declLink')">Abrir</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- Modal de confirmação de horário -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal-box">
+    <h3 id="modalTitle">Confirmar Entrada</h3>
+    <div class="modal-date" id="modalDate"></div>
+    <div class="time-display" id="modalTime">00:00</div>
+    <div class="time-adjust">
+      <button onclick="adjustTime(-1)">−1 min</button>
+      <button onclick="adjustTime(1)">+1 min</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-confirm" onclick="confirmPunch()">✅ Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'williamPrefeituraData';
+  const weekdays = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+
+  // ---------- PIN LOCAL (trava simples, sem Firebase, funciona 100% offline) ----------
+  const LS_PIN = 'pf_pinHash';
+  const SS_UNLOCKED = 'pf_unlocked';
+  let pinSetupStage = 0;
+  let firstPin = '';
+
+  async function sha256(str){
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  function hasPin(){ return !!localStorage.getItem(LS_PIN); }
+
+  function showAppContent(){
+    document.getElementById('lockScreen').style.display = 'none';
+    document.getElementById('appWrap').style.display = 'block';
+    sessionStorage.setItem(SS_UNLOCKED, '1');
+  }
+  function showLockScreen(){
+    document.getElementById('appWrap').style.display = 'none';
+    document.getElementById('lockScreen').style.display = 'flex';
+    pinSetupStage = 0; firstPin = '';
+    document.getElementById('lockLabel').textContent = hasPin() ? 'Digite seu PIN' : 'Crie um PIN de acesso (4 a 6 dígitos)';
+    document.getElementById('lockForgotLink').style.display = hasPin() ? 'block' : 'none';
+    document.getElementById('lockError').textContent = '';
+    document.getElementById('campoAcesso2').value = '';
+    document.getElementById('campoAcesso2').focus();
+  }
+
+  async function handleLockConfirm(){
+    const val = document.getElementById('campoAcesso2').value.trim();
+    const errEl = document.getElementById('lockError');
+    errEl.textContent = '';
+    if(val.length < 4){ errEl.textContent = 'PIN deve ter ao menos 4 dígitos.'; return; }
+
+    if(!hasPin()){
+      if(pinSetupStage === 0){
+        firstPin = val; pinSetupStage = 1;
+        document.getElementById('lockLabel').textContent = 'Confirme o PIN';
+        document.getElementById('campoAcesso2').value = '';
+        document.getElementById('campoAcesso2').focus();
+        return;
+      } else {
+        if(val !== firstPin){
+          errEl.textContent = 'PINs não coincidem. Tente novamente.';
+          pinSetupStage = 0; firstPin = '';
+          document.getElementById('lockLabel').textContent = 'Crie um PIN de acesso (4 a 6 dígitos)';
+          document.getElementById('campoAcesso2').value = '';
+          return;
+        }
+        const hash = await sha256(val);
+        localStorage.setItem(LS_PIN, hash);
+        showAppContent();
+        return;
+      }
+    } else {
+      const hash2 = await sha256(val);
+      if(hash2 === localStorage.getItem(LS_PIN)){ showAppContent(); }
+      else { errEl.textContent = 'PIN incorreto.'; document.getElementById('campoAcesso2').value = ''; }
+    }
+  }
+  document.getElementById('lockConfirmBtn').addEventListener('click', handleLockConfirm);
+  document.getElementById('campoAcesso2').addEventListener('keydown', function(e){ if(e.key==='Enter') handleLockConfirm(); });
+  document.getElementById('lockForgotLink').addEventListener('click', function(){
+    if(confirm('Isso apaga o PIN atual e permite criar um novo. Seus dados registrados (ponto e documentos) não são apagados. Continuar?')){
+      localStorage.removeItem(LS_PIN);
+      sessionStorage.removeItem(SS_UNLOCKED);
+      showLockScreen();
+    }
+  });
+  document.getElementById('lockBtn').addEventListener('click', function(){
+    sessionStorage.removeItem(SS_UNLOCKED);
+    showLockScreen();
+  });
+
+  // ---------- Firebase (sincronização + login por senha, só 1x por aparelho) ----------
+  const firebaseConfig = {
+    apiKey: "AIzaSyBNKjp7hLNK6mzAX2GK49WEZq-NKgQ9o5Y",
+    authDomain: "williamapp-31dff.firebaseapp.com",
+    projectId: "williamapp-31dff",
+    storageBucket: "williamapp-31dff.firebasestorage.app",
+    messagingSenderId: "171912065024",
+    appId: "1:171912065024:web:9c47f66f4b8e7fc727a8e5"
+  };
+  const ALLOWED_EMAIL = "marcelodossantosfc@gmail.com";
+  let auth = null, docRef = null, applyingRemote = false, unsubscribeSnapshot = null;
+
+  function showLoginScreen(){
+    document.getElementById('appWrap').style.display = 'none';
+    document.getElementById('lockScreen').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+  }
+
+  async function initFirebase(){
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js");
+    const { getFirestore, doc, setDoc, onSnapshot } = await import("https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js");
+    const authMod = await import("https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js");
+
+    const fbApp = initializeApp(firebaseConfig);
+    const db = getFirestore(fbApp);
+    auth = authMod.getAuth(fbApp);
+    docRef = doc(db, "william", "prefeitura");
+
+    async function tryLogin(){
+      const senha = document.getElementById('campoAcesso1').value;
+      const errEl = document.getElementById('loginError');
+      const btn = document.getElementById('loginConfirmBtn');
+      if(!senha){ errEl.textContent = 'Preencha a senha.'; return; }
+      errEl.textContent = '';
+      btn.disabled = true; btn.textContent = 'Entrando...';
+      try{
+        await authMod.setPersistence(auth, authMod.browserLocalPersistence);
+        await authMod.signInWithEmailAndPassword(auth, ALLOWED_EMAIL, senha);
+      }catch(e){
+        errEl.textContent = 'Senha incorreta.';
+      }
+      btn.disabled = false; btn.textContent = 'Entrar';
+    }
+    document.getElementById('loginConfirmBtn').addEventListener('click', tryLogin);
+    document.getElementById('campoAcesso1').addEventListener('keydown', function(e){ if(e.key==='Enter') tryLogin(); });
+
+    authMod.onAuthStateChanged(auth, function(user){
+      if(user && user.email === ALLOWED_EMAIL){
+        document.getElementById('loginScreen').style.display = 'none';
+
+        if(!unsubscribeSnapshot){
+          unsubscribeSnapshot = onSnapshot(docRef, function(snap){
+            if(!snap.exists()){ setDoc(docRef, data); return; }
+            const remoteStr = JSON.stringify(snap.data());
+            const localStr = JSON.stringify(data);
+            if(remoteStr === localStr) return;
+            applyingRemote = true;
+            data = snap.data();
+            if(!data.plantoes) data.plantoes = [];
+            if(!data.docs) data.docs = {};
+            saveLocalOnly(data);
+            renderPunchButton();
+            renderHistorico();
+            loadDocs();
+            applyingRemote = false;
+          }, function(err){ console.error('Erro de sincronização (Prefeitura):', err); });
+        }
+
+        if(sessionStorage.getItem(SS_UNLOCKED) === '1' && hasPin()){
+          showAppContent();
+        } else {
+          showLockScreen();
+        }
+      } else if(user && user.email !== ALLOWED_EMAIL){
+        authMod.signOut(auth);
+        showLoginScreen();
+        document.getElementById('loginError').textContent = 'Conta não autorizada.';
+      } else {
+        showLoginScreen();
+      }
+    });
+
+    window._pfSetDoc = setDoc;
+    window._pfDocRef = docRef;
+  }
+  initFirebase();
+
+  function loadData(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : { plantoes: [], docs: {} };
+    }catch(e){ return { plantoes: [], docs: {} }; }
+  }
+  function saveLocalOnly(d){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
+    catch(e){ console.error('Erro ao salvar', e); }
+  }
+  function saveData(d){
+    saveLocalOnly(d);
+    if(window._pfSetDoc && window._pfDocRef && !applyingRemote){
+      window._pfSetDoc(window._pfDocRef, d).catch(function(e){ console.error('Erro ao sincronizar (Prefeitura):', e); });
+    }
+  }
+
+  let data = loadData();
+  let pendingTime = null; // {h, m} sendo ajustado no modal
+  let pendingAction = null; // 'entrada' ou 'saida'
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function fmtDateLong(d){
+    return d.getDate()+' de '+['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][d.getMonth()]+' de '+d.getFullYear();
+  }
+  function fmtDateShort(d){ return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear(); }
+  function weekday(d){ return weekdays[d.getDay()]; }
+
+  function getUltimoPlantao(){
+    if(data.plantoes.length===0) return null;
+    return data.plantoes[data.plantoes.length-1];
+  }
+
+  function renderPunchButton(){
+    const ultimo = getUltimoPlantao();
+    const btn = document.getElementById('punchBtn');
+    if(ultimo && !ultimo.saida){
+      btn.className = 'punch-btn saida';
+      btn.innerHTML = '🔴 Bater Saída<span class="sub">Entrada às '+ultimo.entrada.time+' — '+ultimo.entrada.dateShort+'</span>';
+      pendingAction = 'saida';
+    } else {
+      btn.className = 'punch-btn entrada';
+      btn.innerHTML = '🟢 Bater Entrada';
+      pendingAction = 'entrada';
+    }
+  }
+
+  document.getElementById('punchBtn').addEventListener('click', function(){
+    const now = new Date();
+    pendingTime = { date: now, h: now.getHours(), m: now.getMinutes() };
+    openModal();
+  });
+
+  function openModal(){
+    document.getElementById('modalTitle').textContent = pendingAction === 'entrada' ? 'Confirmar Entrada' : 'Confirmar Saída';
+    updateModalDisplay();
+    document.getElementById('modalBg').classList.add('show');
+  }
+  function closeModal(){
+    document.getElementById('modalBg').classList.remove('show');
+  }
+  function updateModalDisplay(){
+    const d = pendingTime.date;
+    document.getElementById('modalTime').textContent = pad(pendingTime.h)+':'+pad(pendingTime.m);
+    document.getElementById('modalDate').textContent = weekday(d)+', '+fmtDateShort(d);
+  }
+  function adjustTime(delta){
+    const d = new Date(pendingTime.date);
+    d.setHours(pendingTime.h, pendingTime.m + delta, 0, 0);
+    pendingTime.date = d;
+    pendingTime.h = d.getHours();
+    pendingTime.m = d.getMinutes();
+    updateModalDisplay();
+  }
+  window.adjustTime = adjustTime;
+  window.closeModal = closeModal;
+
+  function confirmPunch(){
+    const timeStr = pad(pendingTime.h)+':'+pad(pendingTime.m);
+    const dateShort = fmtDateShort(pendingTime.date);
+    const dateLong = fmtDateLong(pendingTime.date);
+    const wd = weekday(pendingTime.date);
+
+    if(pendingAction === 'entrada'){
+      data.plantoes.push({
+        entrada: { time: timeStr, dateShort: dateShort, iso: pendingTime.date.toISOString() },
+        saida: null
+      });
+      showSuccess('Entrada registrada às '+timeStr, wd+', '+dateLong);
+    } else {
+      const ultimo = getUltimoPlantao();
+      ultimo.saida = { time: timeStr, dateShort: dateShort, iso: pendingTime.date.toISOString() };
+      showSuccess('Saída registrada às '+timeStr, wd+', '+dateLong);
+    }
+    saveData(data);
+    closeModal();
+    renderPunchButton();
+    renderHistorico();
+  }
+  window.confirmPunch = confirmPunch;
+
+  function showSuccess(msg, sub){
+    document.getElementById('successMsg').textContent = '✅ '+msg;
+    document.getElementById('successSub').textContent = sub;
+    const box = document.getElementById('successBox');
+    box.classList.add('show');
+    setTimeout(function(){ box.classList.remove('show'); }, 4000);
+  }
+
+  function dayLabel(d, hoje){
+    const diffDias = Math.round((hoje - d) / 86400000);
+    if(diffDias === 0) return 'Hoje';
+    if(diffDias === 1) return 'Ontem';
+    return 'Mais antigos';
+  }
+
+  function renderHistorico(){
+    const wrap = document.getElementById('historicoWrap');
+    wrap.innerHTML = '';
+    if(data.plantoes.length === 0){
+      wrap.innerHTML = '<div class="empty-msg">Nenhum plantão registrado ainda.</div>';
+      return;
+    }
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const ordenados = data.plantoes.slice().reverse();
+    let currentGroup = null;
+
+    ordenados.forEach(function(p, idx){
+      const realIdx = data.plantoes.length - 1 - idx;
+      const entradaDate = new Date(p.entrada.iso);
+      const entradaDay = new Date(entradaDate); entradaDay.setHours(0,0,0,0);
+      const grupo = dayLabel(entradaDay, hoje);
+
+      if(grupo !== currentGroup){
+        currentGroup = grupo;
+        const h = document.createElement('div');
+        h.className = 'section-title';
+        h.textContent = grupo;
+        wrap.appendChild(h);
+      }
+
+      const card = document.createElement('div');
+      card.className = 'plantao-card';
+
+      let html = '<div class="plantao-row"><span class="dot in"></span><span class="lbl">Entrada</span><span class="val">'+p.entrada.time+'</span><span style="color:var(--text-dim);font-size:12px;margin-left:4px;">'+p.entrada.dateShort+'</span></div>';
+
+      if(p.saida){
+        html += '<div class="plantao-arrow">↓</div>';
+        html += '<div class="plantao-row"><span class="dot out"></span><span class="lbl">Saída</span><span class="val">'+p.saida.time+'</span><span style="color:var(--text-dim);font-size:12px;margin-left:4px;">'+p.saida.dateShort+'</span></div>';
+      } else {
+        html += '<div class="plantao-arrow">↓ <span class="pending-tag">AGUARDANDO SAÍDA</span></div>';
+      }
+
+      card.innerHTML = html;
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'edit-icon';
+      editBtn.textContent = '🗑️';
+      editBtn.title = 'Excluir este plantão';
+      editBtn.onclick = function(){
+        if(confirm('Excluir este registro de plantão?')){
+          data.plantoes.splice(realIdx, 1);
+          saveData(data);
+          renderPunchButton();
+          renderHistorico();
+        }
+      };
+      card.appendChild(editBtn);
+
+      wrap.appendChild(card);
+    });
+  }
+
+  // ---------- Documentos ----------
+  // valor de status que representa "já concluído" pra cada documento, junto do rótulo da etiqueta
+  const doneStates = {
+    informe: 'concluido',
+    recad: 'recadastrado',
+    decl: 'declarado'
+  };
+
+  function updateBadge(key, selectId, badgeRowId){
+    const val = document.getElementById(selectId).value;
+    const row = document.getElementById(badgeRowId);
+    if(val === doneStates[key]){
+      row.innerHTML = '<span class="drive-tag">📁 Comprovante no Drive</span>';
+    } else {
+      row.innerHTML = '';
+    }
+  }
+
+  function loadDocs(){
+    if(!data.docs) data.docs = {};
+
+    // Migração de valores antigos (versão anterior do app) pros novos rótulos
+    const migracao = {
+      recad: { drive: 'recadastrado', nao_recadastrado: 'disponivel_pendente' },
+      decl: { drive: 'declarado', liberada: 'disponivel_pendente' }
+    };
+    Object.keys(migracao).forEach(function(key){
+      if(data.docs[key] && migracao[key][data.docs[key].status]){
+        data.docs[key].status = migracao[key][data.docs[key].status];
+      }
+    });
+
+    const anoAtual = new Date().getFullYear();
+    document.getElementById('informeAno').textContent = 'Informe de Rendimentos ' + (anoAtual - 1);
+    document.getElementById('recadAno').textContent = 'Recadastramento ' + anoAtual;
+    document.getElementById('declAno').textContent = 'Referente a ' + anoAtual;
+
+    const fields = [
+      ['informeStatus','informeLink','informe','informeBadgeRow'],
+      ['recadStatus','recadLink','recad','recadBadgeRow'],
+      ['declStatus','declLink','decl','declBadgeRow']
+    ];
+    fields.forEach(function(f){
+      const key = f[2];
+      if(!data.docs[key]) data.docs[key] = { status:'', link:'' };
+      document.getElementById(f[0]).value = data.docs[key].status || document.getElementById(f[0]).options[0].value;
+      document.getElementById(f[1]).value = data.docs[key].link || '';
+      updateBadge(key, f[0], f[3]);
+
+      document.getElementById(f[0]).addEventListener('change', function(){
+        data.docs[key].status = this.value;
+        saveData(data);
+        updateBadge(key, f[0], f[3]);
+      });
+      document.getElementById(f[1]).addEventListener('input', function(){
+        data.docs[key].link = this.value;
+        saveData(data);
+      });
+    });
+  }
+
+  window.openDriveLink = function(inputId){
+    const url = document.getElementById(inputId).value.trim();
+    if(!url){ alert('Cole o link da pasta no Drive primeiro.'); return; }
+    window.open(url, '_blank');
+  };
+
+  window.switchTab = function(tab){
+    document.getElementById('view-ponto').style.display = tab === 'ponto' ? 'block' : 'none';
+    document.getElementById('view-docs').style.display = tab === 'docs' ? 'block' : 'none';
+    document.getElementById('tabPontoBtn').className = 'tab-btn' + (tab === 'ponto' ? ' active' : '');
+    document.getElementById('tabDocsBtn').className = 'tab-btn' + (tab === 'docs' ? ' active' : '');
+  };
+
+  renderPunchButton();
+  renderHistorico();
+  loadDocs();
+})();
+</script>
+
+</body>
+</html>
