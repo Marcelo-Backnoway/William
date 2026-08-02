@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>William Cofre Offline</title>
+<style>
+  :root{
+    --bg:#0d0f14; --panel:#161a22; --panel2:#1e2430;
+    --gold:#d4af37; --gold-dim:#8a7328; --text:#e8e6df; --muted:#8b93a3;
+    --danger:#c0453a; --ok:#3aa16a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:'Segoe UI', Roboto, Arial, sans-serif;
+    background:radial-gradient(circle at 50% 0%, #1a1f2b 0%, var(--bg) 60%);
+    color:var(--text); min-height:100vh;
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:18px 16px 60px;}
+  h1{font-size:1.3rem; text-align:center; letter-spacing:1px; color:var(--gold); margin:14px 0 4px; text-shadow:0 0 12px rgba(212,175,55,.25);}
+  .subtitle{text-align:center;color:var(--muted);font-size:.78rem;margin-bottom:20px;}
+
+  #screen-start{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;gap:14px;}
+  .lockIcon{font-size:2.8rem;}
+  .fileBox{
+    width:260px; padding:14px; border:1px dashed var(--gold-dim); border-radius:12px;
+    text-align:center; font-size:.78rem; color:var(--muted); cursor:pointer;
+  }
+  .fileBox input{display:none;}
+  #masterPass, #masterPass2{
+    width:240px; padding:12px 14px; border-radius:10px; border:1px solid #2a3040;
+    background:var(--panel); color:var(--text); font-size:.95rem; outline:none; text-align:center;
+  }
+  #masterPass:focus, #masterPass2:focus{border-color:var(--gold-dim);}
+
+  button{cursor:pointer; border:none; border-radius:10px; font-weight:600; font-size:.9rem; padding:11px 16px; transition:.15s;}
+  .btnGold{background:linear-gradient(135deg,var(--gold),#a3872b);color:#1a1408;}
+  .btnGold:active{transform:scale(.97);}
+  .btnGhost{background:var(--panel2);color:var(--text);}
+  .btnDanger{background:var(--danger);color:#fff;}
+  .btnRow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+
+  #startErr{color:var(--danger);font-size:.8rem;min-height:1.1rem;text-align:center;}
+
+  #app{display:none;}
+  .statusBar{display:flex;align-items:center;justify-content:center;gap:6px;font-size:.72rem;margin-bottom:12px;}
+  .statusDot{width:8px;height:8px;border-radius:50%;}
+  .statusDot.saved{background:var(--ok); box-shadow:0 0 6px var(--ok);}
+  .statusDot.dirty{background:#e0a83a; box-shadow:0 0 6px #e0a83a;}
+
+  .topBar{display:flex;gap:8px;margin-bottom:14px;}
+  .topBar input[type=text]{flex:1; padding:11px 12px; border-radius:10px; border:1px solid #2a3040; background:var(--panel); color:var(--text); font-size:.9rem; outline:none;}
+  .topBar input:focus{border-color:var(--gold-dim);}
+  .iconBtn{background:var(--panel2); color:var(--gold); font-size:1.1rem; width:44px; border-radius:10px;}
+
+  .card{background:var(--panel); border:1px solid #232a38; border-radius:12px; padding:12px 14px; margin-bottom:10px; display:flex; align-items:center; gap:10px;}
+  .card .info{flex:1; min-width:0;}
+  .card .titulo{font-size:.95rem; font-weight:600; word-break:break-word;}
+  .card .senha{font-size:.92rem; font-family:'Courier New', monospace; color:var(--muted); margin-top:3px; letter-spacing:1px; word-break:break-all;}
+  .card .actions{display:flex; gap:6px;}
+  .card .actions button{padding:7px 9px; font-size:.9rem;}
+
+  .empty{text-align:center; color:var(--muted); margin-top:40px; font-size:.85rem; line-height:1.6;}
+
+  .fab{position:fixed; bottom:22px; right:22px; width:58px; height:58px; border-radius:50%; background:linear-gradient(135deg,var(--gold),#a3872b); color:#1a1408; font-size:1.8rem; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 18px rgba(0,0,0,.4); z-index:20;}
+
+  .modalBg{display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); align-items:flex-end; justify-content:center; z-index:30;}
+  .modal{background:var(--panel); width:100%; max-width:520px; border-radius:16px 16px 0 0; padding:20px 18px 26px; animation:slideUp .2s ease-out;}
+  @keyframes slideUp{from{transform:translateY(30px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .modal h3{margin:0 0 14px; color:var(--gold); font-size:1.05rem;}
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:.75rem; color:var(--muted); margin-bottom:5px;}
+  .field input{width:100%; padding:11px 12px; border-radius:10px; border:1px solid #2a3040; background:var(--panel2); color:var(--text); font-size:.95rem; outline:none;}
+  .field input:focus{border-color:var(--gold-dim);}
+  .modalActions{display:flex; gap:8px; margin-top:16px;}
+  .modalActions button{flex:1;}
+
+  .footerBar{display:flex; justify-content:center; gap:10px; margin-top:24px; flex-wrap:wrap;}
+  .footerBar button{background:var(--panel2); color:var(--muted); font-size:.78rem; padding:9px 12px;}
+  .footerBar button.destaque{background:var(--gold); color:#1a1408; font-weight:700;}
+
+  #toast{position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:var(--panel2); color:var(--text); padding:10px 18px; border-radius:20px; font-size:.82rem; opacity:0; pointer-events:none; transition:.25s; z-index:50; border:1px solid var(--gold-dim); max-width:85%; text-align:center;}
+  #toast.show{opacity:1; bottom:110px;}
+
+  #quickLockOverlay{
+    display:none; position:fixed; inset:0; z-index:100;
+    background:rgba(13,15,20,.92); backdrop-filter:blur(6px);
+    flex-direction:column; align-items:center; justify-content:center; gap:14px;
+  }
+  #quickLockOverlay .lockIcon{font-size:2.6rem;}
+  #quickLockPass{
+    width:200px; text-align:center; font-size:1rem;
+    padding:12px 14px; border-radius:10px; border:1px solid var(--gold-dim);
+    background:var(--panel); color:var(--text); outline:none;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <h1>🗄️ WILLIAM · COFRE OFFLINE</h1>
+  <div class="subtitle">100% local — sem internet, sem nuvem</div>
+
+  <!-- TELA INICIAL: abrir cofre existente ou criar novo -->
+  <div id="screen-start">
+    <div class="lockIcon">🗄️</div>
+    <label class="fileBox" id="fileBoxLabel">
+      📂 Toque para selecionar o arquivo do cofre (.json)<br><span id="fileNameSpan" style="color:var(--gold)">nenhum arquivo selecionado</span>
+      <input type="file" id="vaultFile" accept=".json,.vault">
+    </label>
+    <div style="color:var(--muted); font-size:.75rem;">selecione o arquivo do cofre acima pra abrir</div>
+    <input type="text" id="masterPass" placeholder="Senha mestra" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;">
+    <div id="startErr"></div>
+    <div class="btnRow">
+      <button class="btnGold" id="unlockBtn">🔓 Abrir cofre selecionado</button>
+    </div>
+    <button class="btnGhost" id="createNewBtn" style="font-size:.78rem; margin-top:6px;">➕ Criar cofre novo do zero</button>
+    <div id="forgotLink" style="color:var(--muted); font-size:.78rem; margin-top:14px; cursor:pointer; text-decoration:underline;">Esqueci a senha mestra</div>
+  </div>
+
+  <!-- APP -->
+  <div id="app">
+    <div class="statusBar"><span class="statusDot saved" id="statusDot"></span><span id="statusLabel">salvo no arquivo</span></div>
+    <div class="topBar">
+      <input type="text" id="searchBox" placeholder="Buscar título...">
+      <button class="iconBtn" id="lockBtn" title="Bloquear">🔒</button>
+    </div>
+
+    <div id="list"></div>
+    <div id="emptyMsg" class="empty" style="display:none;">Nenhuma senha cadastrada ainda.<br>Toque no + pra adicionar a primeira.</div>
+
+    <div class="footerBar">
+      <button class="destaque" id="downloadBtn">💾 Baixar cofre atualizado</button>
+      <button id="viewAllBtn">📋 Ver todos os títulos</button>
+      <button id="changeViewPassBtn">🔑 Trocar senha de listagem</button>
+      <button id="changePassBtn">🔑 Trocar senha mestra</button>
+    </div>
+  </div>
+
+  <div class="fab" id="fabAdd" style="display:none;">+</div>
+</div>
+
+<div class="modalBg" id="modalBg">
+  <div class="modal">
+    <h3 id="modalTitle">Nova senha</h3>
+    <div class="field">
+      <label>Título</label>
+      <input type="text" id="fTitulo" placeholder="Ex: Gmail, Banco, Netflix...">
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="text" id="fSenha" placeholder="Senha completa">
+    </div>
+    <div class="modalActions">
+      <button class="btnGhost" id="cancelBtn">Cancelar</button>
+      <button class="btnDanger" id="deleteBtn" style="display:none;">Excluir</button>
+      <button class="btnGold" id="saveBtn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modalBg" id="modalPass">
+  <div class="modal">
+    <h3>Trocar senha mestra</h3>
+    <div class="field">
+      <label>Senha atual</label>
+      <input type="text" id="currentPass" placeholder="Digite a senha atual" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;">
+    </div>
+    <div class="field">
+      <label>Nova senha mestra</label>
+      <input type="text" id="newPass1" placeholder="Nova senha" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;">
+    </div>
+    <div class="field">
+      <label>Confirmar nova senha</label>
+      <input type="text" id="newPass2" placeholder="Repita a nova senha" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;">
+    </div>
+    <div id="passErr" style="color:var(--danger);font-size:.8rem;min-height:1rem;"></div>
+    <div class="modalActions">
+      <button class="btnGhost" id="cancelPassBtn">Cancelar</button>
+      <button class="btnGold" id="confirmPassBtn">Trocar e baixar cofre</button>
+    </div>
+  </div>
+</div>
+
+<div class="modalBg" id="modalViewPassChange">
+  <div class="modal">
+    <h3>Trocar senha de listagem</h3>
+    <div class="field">
+      <label>Senha de listagem atual</label>
+      <input type="text" id="curViewPass" placeholder="Senha atual" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;">
+    </div>
+    <div class="field">
+      <label>Nova senha de listagem</label>
+      <input type="text" id="newViewPass1" placeholder="Nova senha" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;">
+    </div>
+    <div class="field">
+      <label>Confirmar nova senha</label>
+      <input type="text" id="newViewPass2" placeholder="Repita a nova senha" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;">
+    </div>
+    <div id="viewPassErr" style="color:var(--danger);font-size:.8rem;min-height:1rem;"></div>
+    <div class="modalActions">
+      <button class="btnGhost" id="cancelViewPassBtn">Cancelar</button>
+      <button class="btnGold" id="confirmViewPassBtn">Trocar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modalBg" id="modalListaSetup">
+  <div class="modal">
+    <h3>Criar senha de listagem</h3>
+    <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px;">Essa senha é diferente da senha mestra — só serve pra ver a lista de todos os títulos.</div>
+    <div class="field">
+      <label>Nova senha de listagem</label>
+      <input type="text" id="setupPass1" placeholder="Crie uma senha" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;">
+    </div>
+    <div class="field">
+      <label>Confirmar</label>
+      <input type="text" id="setupPass2" placeholder="Repita a senha" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;">
+    </div>
+    <div id="setupErr" style="color:var(--danger);font-size:.8rem;min-height:1rem;"></div>
+    <div class="modalActions">
+      <button class="btnGhost" id="cancelSetupBtn">Cancelar</button>
+      <button class="btnGold" id="confirmSetupBtn">Criar e ver lista</button>
+    </div>
+  </div>
+</div>
+
+<div class="modalBg" id="modalListaConfirm">
+  <div class="modal">
+    <h3>Ver todos os títulos</h3>
+    <div class="field">
+      <label>Senha de listagem</label>
+      <input type="text" id="confirmListaPass" placeholder="Senha de listagem" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;">
+    </div>
+    <div id="listaConfirmErr" style="color:var(--danger);font-size:.8rem;min-height:1rem;"></div>
+    <div class="modalActions">
+      <button class="btnGhost" id="cancelListaConfirmBtn">Cancelar</button>
+      <button class="btnGold" id="okListaConfirmBtn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modalBg" id="modalListaTitulos">
+  <div class="modal">
+    <h3>📋 Todos os títulos (<span id="listaTotalCount">0</span>)</h3>
+    <div id="listaTitulosBody" style="max-height:55vh; overflow-y:auto; margin-bottom:14px;"></div>
+    <div class="modalActions">
+      <button class="btnGold" id="fecharListaBtn" style="flex:1;">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="quickLockOverlay">
+  <div class="lockIcon">🛡️</div>
+  <div style="color:var(--muted); font-size:.85rem;">Bloqueado por inatividade</div>
+  <input type="text" id="quickLockPass" placeholder="Senha mestra" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc;">
+  <div id="quickLockErr" style="color:var(--danger);font-size:.8rem;min-height:1rem;"></div>
+  <button class="btnGold" id="quickUnlockBtn">🔓 Continuar</button>
+</div>
+
+<script>
+let entries = [];
+let viewHash = null;
+let editingId = null;
+let revealedId = null;
+let masterPassword = '';
+let isDirty = false;
+
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ---------- AUTO-BLOQUEIO POR INATIVIDADE (30s) ---------- */
+const INACTIVITY_MS = 30000;
+let lastActivity = Date.now();
+let quickLocked = false;
+
+['mousemove','keydown','click','touchstart','scroll','input'].forEach(function(ev){
+  document.addEventListener(ev, function(){ lastActivity = Date.now(); }, {passive:true});
+});
+
+setInterval(function(){
+  const appOpen = document.getElementById('app').style.display === 'block';
+  if(appOpen && !quickLocked && (Date.now() - lastActivity) > INACTIVITY_MS){
+    showQuickLock();
+  }
+}, 2000);
+
+function showQuickLock(){
+  quickLocked = true;
+  document.getElementById('quickLockPass').value='';
+  document.getElementById('quickLockErr').textContent='';
+  document.getElementById('quickLockOverlay').style.display='flex';
+  setTimeout(()=> document.getElementById('quickLockPass').focus(), 50);
+}
+function hideQuickLock(){
+  quickLocked = false;
+  lastActivity = Date.now();
+  document.getElementById('quickLockOverlay').style.display='none';
+}
+document.getElementById('quickUnlockBtn').addEventListener('click', function(){
+  const pass = document.getElementById('quickLockPass').value;
+  const errBox = document.getElementById('quickLockErr');
+  if(pass !== masterPassword){ errBox.textContent='Senha incorreta.'; return; }
+  hideQuickLock();
+});
+document.getElementById('quickLockPass').addEventListener('keydown', function(e){
+  if(e.key==='Enter') document.getElementById('quickUnlockBtn').click();
+});
+
+function bindEnter(inputId, btnId){
+  const inp = document.getElementById(inputId);
+  if(inp) inp.addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById(btnId).click(); });
+}
+bindEnter('masterPass','unlockBtn');
+bindEnter('currentPass','confirmPassBtn');
+bindEnter('newPass1','confirmPassBtn');
+bindEnter('newPass2','confirmPassBtn');
+bindEnter('setupPass1','confirmSetupBtn');
+bindEnter('setupPass2','confirmSetupBtn');
+bindEnter('curViewPass','confirmViewPassBtn');
+bindEnter('newViewPass1','confirmViewPassBtn');
+bindEnter('newViewPass2','confirmViewPassBtn');
+bindEnter('fTitulo','saveBtn');
+bindEnter('fSenha','saveBtn');
+
+/* ---------- CRIPTOGRAFIA (Web Crypto API — nativa, sem dependência externa) ---------- */
+function b64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+function unb64(str){ const bin=atob(str); const arr=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i); return arr.buffer; }
+
+async function deriveKey(password, salt, iterations){
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), {name:'PBKDF2'}, false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    {name:'PBKDF2', salt: salt, iterations: iterations, hash:'SHA-256'},
+    keyMaterial, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']
+  );
+}
+
+async function encryptVault(password, dataObj){
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const iterations = 250000;
+  const key = await deriveKey(password, salt, iterations);
+  const plaintext = new TextEncoder().encode(JSON.stringify(dataObj));
+  const ciphertext = await crypto.subtle.encrypt({name:'AES-GCM', iv:iv}, key, plaintext);
+  return { v:2, app:'william_cofre', iterations, salt: b64(salt.buffer), iv: b64(iv.buffer), data: b64(ciphertext) };
+}
+
+async function decryptVault(password, payload){
+  const salt = new Uint8Array(unb64(payload.salt));
+  const iv = new Uint8Array(unb64(payload.iv));
+  const key = await deriveKey(password, salt, payload.iterations || 250000);
+  const ciphertext = unb64(payload.data);
+  const plaintext = await crypto.subtle.decrypt({name:'AES-GCM', iv:iv}, key, ciphertext);
+  return JSON.parse(new TextDecoder().decode(plaintext));
+}
+
+/* ---------- TELA INICIAL ---------- */
+let selectedFile = null;
+document.getElementById('vaultFile').addEventListener('change', (e)=>{
+  selectedFile = e.target.files[0] || null;
+  document.getElementById('fileNameSpan').textContent = selectedFile ? selectedFile.name : 'nenhum arquivo selecionado';
+});
+
+document.getElementById('forgotLink').addEventListener('click', ()=>{
+  alert('Pra recuperar a senha mestra, abra o app "William_Recuperacao.html" (separado deste), e responda as 5 perguntas pessoais que você cadastrou lá.');
+});
+
+document.getElementById('unlockBtn').addEventListener('click', async ()=>{
+  const pass = document.getElementById('masterPass').value;
+  const errBox = document.getElementById('startErr');
+  errBox.textContent = '';
+  if(!pass || pass.length < 4){ errBox.textContent = 'Digite a senha mestra (mínimo 4 caracteres).'; return; }
+  if(!selectedFile){ errBox.textContent = 'Selecione o arquivo do cofre primeiro (toque na área acima).'; return; }
+
+  try{
+    const text = await selectedFile.text();
+    const payload = JSON.parse(text);
+    const result = await decryptVault(pass, payload);
+    if(Array.isArray(result)){ entries = result; viewHash = null; }
+    else { entries = result.entries || []; viewHash = result.viewHash || null; }
+    masterPassword = pass;
+    isDirty = false;
+    openApp();
+    toast('Cofre aberto com sucesso');
+  }catch(err){
+    console.error(err);
+    errBox.textContent = 'Senha incorreta ou arquivo inválido.';
+  }
+});
+
+document.getElementById('createNewBtn').addEventListener('click', ()=>{
+  const pass = document.getElementById('masterPass').value;
+  const errBox = document.getElementById('startErr');
+  errBox.textContent = '';
+  if(!pass || pass.length < 4){ errBox.textContent = 'Digite a senha mestra que o cofre novo vai usar (mínimo 4 caracteres).'; return; }
+  if(!confirm('Isso cria um cofre NOVO e vazio — não abre nenhum arquivo existente. Continuar?')) return;
+  entries = [];
+  viewHash = null;
+  masterPassword = pass;
+  isDirty = false;
+  openApp();
+  toast('Cofre novo criado — lembre de baixar depois de adicionar as senhas');
+});
+
+function openApp(){
+  document.getElementById('screen-start').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('fabAdd').style.display='flex';
+  lastActivity = Date.now();
+  quickLocked = false;
+  updateStatus();
+  render();
+}
+
+function lockVault(){
+  entries = [];
+  masterPassword = '';
+  editingId = null; revealedId = null;
+  document.getElementById('masterPass').value='';
+  document.getElementById('fileNameSpan').textContent='nenhum arquivo selecionado';
+  document.getElementById('vaultFile').value='';
+  selectedFile = null;
+  document.getElementById('app').style.display='none';
+  document.getElementById('fabAdd').style.display='none';
+  document.getElementById('screen-start').style.display='flex';
+}
+document.getElementById('lockBtn').addEventListener('click', ()=>{
+  if(isDirty && !confirm('Você tem alterações que ainda não foram baixadas. Bloquear mesmo assim e perder essas mudanças?')) return;
+  lockVault();
+});
+window.addEventListener('beforeunload', (e)=>{
+  if(isDirty){ e.preventDefault(); e.returnValue=''; }
+});
+
+/* ---------- STATUS ---------- */
+function updateStatus(){
+  const dot = document.getElementById('statusDot');
+  const label = document.getElementById('statusLabel');
+  if(isDirty){ dot.className='statusDot dirty'; label.textContent='alterações não salvas — baixe o cofre'; }
+  else { dot.className='statusDot saved'; label.textContent='salvo no arquivo'; }
+}
+function markDirty(){ isDirty = true; updateStatus(); }
+
+/* ---------- RENDER ---------- */
+function render(filter=''){
+  const list = document.getElementById('list');
+  const empty = document.getElementById('emptyMsg');
+  list.innerHTML='';
+
+  if(filter.trim()===''){
+    empty.style.display='block';
+    empty.innerHTML = entries.length===0
+      ? 'Nenhuma senha cadastrada ainda.<br>Toque no + pra adicionar a primeira.'
+      : 'Digite o título pra buscar.<br><span style="opacity:.7">'+entries.length+' senha'+(entries.length!==1?'s':'')+' cadastrada'+(entries.length!==1?'s':'')+'</span>';
+    return;
+  }
+
+  const filtered = entries.filter(e=> (e.titulo||'').toLowerCase().trim().startsWith(filter.toLowerCase().trim()))
+                           .sort((a,b)=> (a.titulo||'').localeCompare(b.titulo||''));
+  if(filtered.length===0){ empty.style.display='block'; empty.innerHTML='Nenhum título encontrado.'; return; }
+  empty.style.display='none';
+
+  filtered.forEach(item=>{
+    const isRevealed = revealedId === item.id;
+    const card = document.createElement('div');
+    card.className='card';
+    card.innerHTML = `
+      <div class="info">
+        <div class="titulo">${escapeHtml(item.titulo||'')}</div>
+        <div class="senha">${isRevealed ? escapeHtml(item.senha||'') : '•'.repeat(Math.min((item.senha||'').length,14) || 8)}</div>
+      </div>
+      <div class="actions">
+        <button class="btnGhost revealBtn">${isRevealed ? '🙈' : '👁️'}</button>
+        <button class="btnGhost editBtn">✏️</button>
+      </div>
+    `;
+    card.querySelector('.revealBtn').addEventListener('click', ()=>{
+      revealedId = isRevealed ? null : item.id;
+      render(document.getElementById('searchBox').value);
+    });
+    card.querySelector('.editBtn').addEventListener('click', ()=> openModal(item.id));
+    list.appendChild(card);
+  });
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+document.getElementById('searchBox').addEventListener('input', e=> render(e.target.value));
+
+/* ---------- MODAL ADD/EDIT ---------- */
+const modalBg = document.getElementById('modalBg');
+function openModal(id=null){
+  editingId = id;
+  const fTitulo = document.getElementById('fTitulo');
+  const fSenha = document.getElementById('fSenha');
+  const deleteBtn = document.getElementById('deleteBtn');
+  if(id){
+    const item = entries.find(e=>e.id===id);
+    document.getElementById('modalTitle').textContent='Editar senha';
+    fTitulo.value=item.titulo||''; fSenha.value=item.senha||'';
+    deleteBtn.style.display='inline-block';
+  } else {
+    document.getElementById('modalTitle').textContent='Nova senha';
+    fTitulo.value=''; fSenha.value='';
+    deleteBtn.style.display='none';
+  }
+  modalBg.style.display='flex';
+}
+function closeModal(){ modalBg.style.display='none'; editingId=null; }
+document.getElementById('fabAdd').addEventListener('click', ()=> openModal());
+document.getElementById('cancelBtn').addEventListener('click', closeModal);
+modalBg.addEventListener('click', e=>{ if(e.target===modalBg) closeModal(); });
+
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  const titulo = document.getElementById('fTitulo').value.trim();
+  const senha = document.getElementById('fSenha').value;
+  if(!titulo || !senha){ toast('Preencha título e senha'); return; }
+  if(editingId){
+    const item = entries.find(e=>e.id===editingId);
+    item.titulo=titulo; item.senha=senha;
+  } else {
+    entries.push({id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), titulo, senha});
+  }
+  markDirty();
+  closeModal();
+  render(document.getElementById('searchBox').value);
+  toast('Salvo (lembre de baixar o cofre)');
+});
+
+document.getElementById('deleteBtn').addEventListener('click', ()=>{
+  if(!editingId) return;
+  if(confirm('Excluir esta senha?')){
+    entries = entries.filter(e=>e.id!==editingId);
+    markDirty();
+    closeModal();
+    render(document.getElementById('searchBox').value);
+    toast('Excluído (lembre de baixar o cofre)');
+  }
+});
+
+/* ---------- BAIXAR COFRE (persistência real, criptografada) ---------- */
+document.getElementById('downloadBtn').addEventListener('click', async ()=>{
+  try{
+    const payload = await encryptVault(masterPassword, {entries, viewHash});
+    const blob = new Blob([JSON.stringify(payload)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download='william_cofre.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    isDirty = false;
+    updateStatus();
+    toast('Cofre baixado — salve no pendrive substituindo o arquivo antigo');
+  }catch(err){
+    console.error(err);
+    toast('Erro ao gerar o arquivo');
+  }
+});
+
+/* -- trocar senha de listagem já existente -- */
+const modalViewPassChange = document.getElementById('modalViewPassChange');
+document.getElementById('changeViewPassBtn').addEventListener('click', ()=>{
+  if(!viewHash){ toast('Ainda não existe senha de listagem — toque em "Ver todos os títulos" pra criar uma'); return; }
+  document.getElementById('curViewPass').value='';
+  document.getElementById('newViewPass1').value='';
+  document.getElementById('newViewPass2').value='';
+  document.getElementById('viewPassErr').textContent='';
+  modalViewPassChange.style.display='flex';
+});
+document.getElementById('cancelViewPassBtn').addEventListener('click', ()=> modalViewPassChange.style.display='none');
+modalViewPassChange.addEventListener('click', e=>{ if(e.target===modalViewPassChange) modalViewPassChange.style.display='none'; });
+
+document.getElementById('confirmViewPassBtn').addEventListener('click', async ()=>{
+  const cur = document.getElementById('curViewPass').value;
+  const p1 = document.getElementById('newViewPass1').value;
+  const p2 = document.getElementById('newViewPass2').value;
+  const errBox = document.getElementById('viewPassErr');
+  const curHash = await sha256(cur);
+  if(curHash !== viewHash){ errBox.textContent='Senha de listagem atual incorreta.'; return; }
+  if(!p1 || p1.length<4){ errBox.textContent='Nova senha muito curta.'; return; }
+  if(p1!==p2){ errBox.textContent='As senhas novas não coincidem.'; return; }
+  if(p1===cur){ errBox.textContent='A nova senha precisa ser diferente da atual.'; return; }
+  if(p1===masterPassword){ errBox.textContent='Escolha uma senha diferente da senha mestra.'; return; }
+  viewHash = await sha256(p1);
+  markDirty();
+  modalViewPassChange.style.display='none';
+  toast('Senha de listagem trocada — baixe o cofre pra guardar isso');
+});
+
+/* ---------- VER TODOS OS TÍTULOS (com senha própria, separada da mestra) ---------- */
+const modalListaConfirm = document.getElementById('modalListaConfirm');
+const modalListaTitulos = document.getElementById('modalListaTitulos');
+const modalListaSetup = document.getElementById('modalListaSetup');
+
+document.getElementById('viewAllBtn').addEventListener('click', ()=>{
+  if(!viewHash){
+    document.getElementById('setupPass1').value='';
+    document.getElementById('setupPass2').value='';
+    document.getElementById('setupErr').textContent='';
+    modalListaSetup.style.display='flex';
+  } else {
+    document.getElementById('confirmListaPass').value='';
+    document.getElementById('listaConfirmErr').textContent='';
+    modalListaConfirm.style.display='flex';
+    setTimeout(()=> document.getElementById('confirmListaPass').focus(), 50);
+  }
+});
+
+/* -- criação da senha de listagem (primeira vez) -- */
+document.getElementById('cancelSetupBtn').addEventListener('click', ()=> modalListaSetup.style.display='none');
+modalListaSetup.addEventListener('click', e=>{ if(e.target===modalListaSetup) modalListaSetup.style.display='none'; });
+document.getElementById('confirmSetupBtn').addEventListener('click', async ()=>{
+  const p1 = document.getElementById('setupPass1').value;
+  const p2 = document.getElementById('setupPass2').value;
+  const errBox = document.getElementById('setupErr');
+  if(!p1 || p1.length<4){ errBox.textContent='Mínimo 4 caracteres.'; return; }
+  if(p1!==p2){ errBox.textContent='As senhas não coincidem.'; return; }
+  if(p1===masterPassword){ errBox.textContent='Escolha uma senha diferente da senha mestra.'; return; }
+  viewHash = await sha256(p1);
+  markDirty();
+  modalListaSetup.style.display='none';
+  toast('Senha de listagem criada — baixe o cofre pra guardar isso');
+  mostrarListaTitulos();
+});
+
+/* -- confirmação da senha de listagem (uso normal) -- */
+document.getElementById('cancelListaConfirmBtn').addEventListener('click', ()=> modalListaConfirm.style.display='none');
+modalListaConfirm.addEventListener('click', e=>{ if(e.target===modalListaConfirm) modalListaConfirm.style.display='none'; });
+
+async function confirmarListaSenha(){
+  const pass = document.getElementById('confirmListaPass').value;
+  const errBox = document.getElementById('listaConfirmErr');
+  const hash = await sha256(pass);
+  if(hash !== viewHash){ errBox.textContent='Senha incorreta.'; return; }
+  modalListaConfirm.style.display='none';
+  mostrarListaTitulos();
+}
+document.getElementById('okListaConfirmBtn').addEventListener('click', confirmarListaSenha);
+document.getElementById('confirmListaPass').addEventListener('keydown', e=>{ if(e.key==='Enter') confirmarListaSenha(); });
+
+function mostrarListaTitulos(){
+  const ordenado = entries.slice().sort((a,b)=> (a.titulo||'').localeCompare(b.titulo||''));
+  document.getElementById('listaTotalCount').textContent = ordenado.length;
+  const body = document.getElementById('listaTitulosBody');
+  if(ordenado.length===0){
+    body.innerHTML = '<div class="empty" style="margin-top:10px;">Nenhuma senha cadastrada ainda.</div>';
+  } else {
+    body.innerHTML = ordenado.map(e=>
+      '<div style="padding:9px 4px;border-bottom:1px solid #232a38;font-size:.9rem;">'+escapeHtml(e.titulo||'')+'</div>'
+    ).join('');
+  }
+  modalListaTitulos.style.display='flex';
+}
+document.getElementById('fecharListaBtn').addEventListener('click', ()=> modalListaTitulos.style.display='none');
+modalListaTitulos.addEventListener('click', e=>{ if(e.target===modalListaTitulos) modalListaTitulos.style.display='none'; });
+const modalPass = document.getElementById('modalPass');
+document.getElementById('changePassBtn').addEventListener('click', ()=>{
+  document.getElementById('currentPass').value='';
+  document.getElementById('newPass1').value='';
+  document.getElementById('newPass2').value='';
+  document.getElementById('passErr').textContent='';
+  modalPass.style.display='flex';
+});
+document.getElementById('cancelPassBtn').addEventListener('click', ()=> modalPass.style.display='none');
+modalPass.addEventListener('click', e=>{ if(e.target===modalPass) modalPass.style.display='none'; });
+
+document.getElementById('confirmPassBtn').addEventListener('click', async ()=>{
+  const current = document.getElementById('currentPass').value;
+  const p1 = document.getElementById('newPass1').value;
+  const p2 = document.getElementById('newPass2').value;
+  const errBox = document.getElementById('passErr');
+  if(current !== masterPassword){ errBox.textContent='Senha atual incorreta.'; return; }
+  if(!p1 || p1.length<4){ errBox.textContent='Nova senha muito curta.'; return; }
+  if(p1!==p2){ errBox.textContent='As senhas novas não coincidem.'; return; }
+  if(p1===current){ errBox.textContent='A nova senha precisa ser diferente da atual.'; return; }
+  masterPassword = p1;
+  modalPass.style.display='none';
+  const payload = await encryptVault(masterPassword, {entries, viewHash});
+  const blob = new Blob([JSON.stringify(payload)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download='william_cofre.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  isDirty = false;
+  updateStatus();
+  toast('Senha mestra trocada — novo arquivo baixado, substitua no pendrive');
+});
+</script>
+</body>
+</html>
