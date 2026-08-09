@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>William · Prefeitura</title>
+<style>
+  :root{
+    --bg:#0c0c0d; --panel:#17171a; --panel2:#1d1d21; --border:#2a2a30;
+    --gold:#c9a24b; --gold-dim:#8a7538; --text:#ece7dc; --text-dim:#8a8578;
+    --green:#3fae5c; --red:#c94f4f; --blue:#4a7fc9;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    min-height:100vh; padding-bottom:40px;
+  }
+  .topbar{
+    background:#111114; border-bottom:1px solid var(--border); padding:14px 16px;
+    display:flex; align-items:center; justify-content:center; position:sticky; top:0; z-index:50;
+  }
+  .topbar h1{ margin:0; font-size:17px; letter-spacing:0.5px; }
+  .tabs{
+    display:flex; background:#111114; border-bottom:1px solid var(--border);
+    position:sticky; top:49px; z-index:49;
+  }
+  .tab-btn{
+    flex:1; background:none; border:none; color:var(--text-dim); padding:13px 0;
+    font-size:14px; font-weight:600; cursor:pointer; border-bottom:2px solid transparent;
+  }
+  .tab-btn.active{ color:var(--gold); border-bottom-color:var(--gold); }
+  .container{ max-width:460px; margin:0 auto; padding:18px 16px; }
+
+  /* ---- Botão inteligente de ponto ---- */
+  .punch-btn{
+    width:100%; border:none; border-radius:18px; padding:26px 0; text-align:center;
+    font-size:20px; font-weight:800; cursor:pointer; color:#fff; margin-bottom:22px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.35);
+  }
+  .punch-btn.entrada{ background:linear-gradient(135deg,#3fae5c,#2c8046); }
+  .punch-btn.saida{ background:linear-gradient(135deg,#c94f4f,#992e2e); }
+  .punch-btn .sub{ display:block; font-size:12px; font-weight:400; opacity:0.85; margin-top:4px; }
+
+  /* ---- Modal de confirmação ---- */
+  .modal-bg{
+    position:fixed; inset:0; background:rgba(0,0,0,0.75); display:none;
+    align-items:center; justify-content:center; z-index:200; padding:20px;
+  }
+  .modal-bg.show{ display:flex; }
+  .modal-box{
+    background:var(--panel); border:1px solid var(--border); border-radius:18px;
+    padding:26px 22px; width:100%; max-width:360px; text-align:center;
+  }
+  .modal-box h3{ margin:0 0 4px; font-size:15px; color:var(--text-dim); font-weight:600; }
+  .modal-box .modal-date{ font-size:13px; color:var(--text-dim); margin-bottom:16px; }
+  .time-display{
+    font-size:52px; font-weight:800; color:var(--gold); font-variant-numeric:tabular-nums;
+    letter-spacing:1px; margin:10px 0 18px;
+  }
+  .time-adjust{ display:flex; gap:12px; justify-content:center; margin-bottom:22px; }
+  .time-adjust button{
+    background:var(--panel2); border:1px solid var(--border); color:var(--text);
+    font-size:16px; font-weight:700; border-radius:12px; padding:12px 20px; cursor:pointer;
+  }
+  .time-adjust button:active{ background:#26262c; }
+  .modal-actions{ display:flex; gap:10px; }
+  .modal-actions button{
+    flex:1; border:none; border-radius:12px; padding:14px 0; font-size:15px;
+    font-weight:700; cursor:pointer;
+  }
+  .btn-cancel{ background:var(--panel2); color:var(--text-dim); }
+  .btn-confirm{ background:var(--gold); color:#111; }
+
+  /* ---- Tela de sucesso ---- */
+  .success-box{
+    background:#0f1f13; border:1px solid #2c8046; border-radius:16px; padding:20px;
+    text-align:center; margin-bottom:20px; display:none;
+  }
+  .success-box.show{ display:block; }
+  .success-box .check{ font-size:34px; margin-bottom:6px; }
+  .success-box .msg{ font-size:15px; font-weight:700; color:#7fd99a; }
+  .success-box .sub{ font-size:12px; color:var(--text-dim); margin-top:4px; }
+
+  /* ---- Histórico ---- */
+  .section-title{
+    font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-dim);
+    margin:22px 0 10px; font-weight:700;
+  }
+  .plantao-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    padding:14px 16px; margin-bottom:10px; position:relative;
+  }
+  .plantao-row{ display:flex; align-items:center; gap:10px; font-size:14px; }
+  .plantao-row .dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .plantao-row .dot.in{ background:var(--green); }
+  .plantao-row .dot.out{ background:var(--red); }
+  .plantao-row .lbl{ color:var(--text-dim); font-size:12px; width:56px; flex-shrink:0; }
+  .plantao-row .val{ font-weight:700; }
+  .plantao-arrow{ color:var(--text-dim); margin:2px 0 2px 18px; font-size:13px; }
+  .pending-tag{
+    display:inline-block; background:#2a2010; color:var(--gold); font-size:10px;
+    padding:2px 8px; border-radius:20px; margin-left:8px; letter-spacing:0.5px;
+  }
+  .edit-icon{
+    position:absolute; top:12px; right:12px; background:none; border:none;
+    color:var(--text-dim); font-size:14px; cursor:pointer; padding:4px;
+  }
+
+  /* ---- Documentos ---- */
+  .doc-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:16px;
+    padding:16px; margin-bottom:14px;
+  }
+  .doc-title{ font-size:15px; font-weight:700; margin-bottom:2px; }
+  .doc-year{ font-size:12px; color:var(--gold-dim); margin-bottom:12px; }
+  .doc-select{
+    width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--text);
+    font-size:14px; padding:11px 12px; border-radius:10px; margin-bottom:10px; font-family:inherit;
+  }
+  .doc-badge-row{ margin-bottom:10px; min-height:20px; }
+  .drive-tag{
+    display:inline-block; background:#0f1f13; color:#7fd99a; font-size:11px;
+    padding:4px 10px; border-radius:20px; font-weight:700;
+  }
+  .doc-link-row{ display:flex; gap:8px; }
+  .doc-link-row input{
+    flex:1; background:var(--panel2); border:1px solid var(--border); color:var(--text);
+    font-size:13px; padding:10px 12px; border-radius:10px; font-family:inherit;
+  }
+  .doc-link-row input::placeholder{ color:var(--text-dim); }
+  .doc-link-row button{
+    background:var(--panel2); border:1px solid var(--gold-dim); color:var(--gold);
+    border-radius:10px; padding:0 16px; font-weight:700; cursor:pointer; font-size:13px;
+  }
+  .doc-status-badge{
+    display:inline-block; font-size:11px; padding:3px 10px; border-radius:20px; font-weight:700;
+  }
+  .badge-ok{ background:#0f1f13; color:#7fd99a; }
+  .badge-wait{ background:#241a0a; color:#e0b567; }
+  .badge-none{ background:#241010; color:#e08a8a; }
+
+  .empty-msg{ text-align:center; color:var(--text-dim); font-size:13px; padding:30px 0; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🏛️ WILLIAM — PREFEITURA</h1>
+</div>
+
+<div class="container">
+
+  <!-- ================= DOCUMENTOS ================= -->
+  <div id="view-docs">
+
+    <div class="doc-card">
+      <div class="doc-title">📋 Informe de Rendimentos</div>
+      <div class="doc-year" id="informeAno"></div>
+      <select class="doc-select" id="informeStatus">
+        <option value="indisponivel">Ainda não disponibilizado</option>
+        <option value="aguardando">Disponível, aguardando declarar</option>
+        <option value="concluido">IR já concluído</option>
+      </select>
+      <div class="doc-badge-row" id="informeBadgeRow"></div>
+      <div class="doc-link-row">
+        <input type="url" id="informeLink" placeholder="Link da pasta no Drive">
+        <button onclick="openDriveLink('informeLink')">Abrir</button>
+      </div>
+    </div>
+
+    <div class="doc-card">
+      <div class="doc-title">🏦 Recadastramento Caixa Previdência</div>
+      <div class="doc-year" id="recadAno"></div>
+      <select class="doc-select" id="recadStatus">
+        <option value="indisponivel">Ainda não liberado</option>
+        <option value="disponivel_pendente">Liberado, ainda não recadastrado</option>
+        <option value="recadastrado">Recadastrado</option>
+      </select>
+      <div class="doc-badge-row" id="recadBadgeRow"></div>
+      <div class="doc-link-row">
+        <input type="url" id="recadLink" placeholder="Link da pasta no Drive">
+        <button onclick="openDriveLink('recadLink')">Abrir</button>
+      </div>
+    </div>
+
+    <div class="doc-card">
+      <div class="doc-title">📑 Declaração de Bens</div>
+      <div class="doc-year" id="declAno"></div>
+      <select class="doc-select" id="declStatus">
+        <option value="indisponivel">Não disponível</option>
+        <option value="disponivel_pendente">Disponível, ainda não declarado</option>
+        <option value="declarado">Já declarado</option>
+      </select>
+      <div class="doc-badge-row" id="declBadgeRow"></div>
+      <div class="doc-link-row">
+        <input type="url" id="declLink" placeholder="Link da pasta no Drive">
+        <button onclick="openDriveLink('declLink')">Abrir</button>
+      </div>
+    </div>
+
+    <div class="doc-card">
+      <div class="doc-title">💾 Backup</div>
+      <div class="doc-year" id="backupInfo">—</div>
+      <div class="doc-link-row" style="margin-bottom:0;">
+        <button style="flex:1;padding:11px 0;background:var(--panel2);border:1px solid var(--gold-dim);color:var(--gold);border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;" onclick="exportBackup()">📤 Exportar</button>
+        <button style="flex:1;padding:11px 0;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;" onclick="document.getElementById('importFileInput').click()">📥 Importar</button>
+      </div>
+      <input type="file" id="importFileInput" accept="application/json" style="display:none;">
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'williamPrefeituraData';
+  const weekdays = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+
+  // ---------- Armazenamento local (sem login, sem PIN, 100% offline) ----------
+  function loadData(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const d = raw ? JSON.parse(raw) : { plantoes: [], docs: {} };
+      if(!d.plantoes) d.plantoes = [];
+      if(!d.docs) d.docs = {};
+      return d;
+    }catch(e){ return { plantoes: [], docs: {} }; }
+  }
+  function saveData(d){
+    d.savedAt = new Date().toISOString();
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
+    catch(e){ console.error('Erro ao salvar', e); }
+    updateBackupInfo();
+    if(window.__prefeituraAoSalvar) window.__prefeituraAoSalvar();
+  }
+
+  let data = loadData();
+
+  // ---------- Backup: Exportar / Importar com proteção de timestamp ----------
+  function formatDateHora(iso){
+    if(!iso) return null;
+    const d = new Date(iso);
+    return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+  }
+  function updateBackupInfo(){
+    const el = document.getElementById('backupInfo');
+    if(!el) return;
+    el.textContent = data.savedAt ? ('Última alteração: ' + formatDateHora(data.savedAt)) : 'Ainda sem registro de data';
+  }
+
+  window.exportBackup = function(){
+    if(!data.savedAt) data.savedAt = new Date().toISOString();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = 'william-prefeitura-backup-' + stamp + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  document.getElementById('importFileInput').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      let incoming;
+      try{ incoming = JSON.parse(ev.target.result); }
+      catch(err){ alert('Arquivo inválido. Escolha um backup exportado por este app.'); e.target.value = ''; return; }
+
+      if(!incoming || typeof incoming !== 'object' || !('docs' in incoming)){
+        alert('Esse arquivo não parece ser um backup do Prefeitura.');
+        e.target.value = '';
+        return;
+      }
+
+      // ---- Proteção de timestamp: evita sobrescrever dados mais novos com um backup mais antigo ----
+      const localTime = data.savedAt ? new Date(data.savedAt).getTime() : 0;
+      const incomingTime = incoming.savedAt ? new Date(incoming.savedAt).getTime() : 0;
+
+      if(localTime && incomingTime && incomingTime < localTime){
+        const msg = 'Esse backup é de ' + formatDateHora(incoming.savedAt) + ', mas os dados atuais no aparelho são mais recentes (' + formatDateHora(data.savedAt) + ').\n\nImportar mesmo assim vai substituir os dados atuais pelos mais antigos. Continuar?';
+        if(!confirm(msg)){ e.target.value = ''; return; }
+      }
+
+      if(!incoming.plantoes) incoming.plantoes = [];
+      if(!incoming.docs) incoming.docs = {};
+      data = incoming;
+      saveData(data);
+      loadDocs();
+      e.target.value = '';
+      alert('✅ Backup importado com sucesso.');
+    };
+    reader.readAsText(file);
+  });
+  // ---------- Documentos ----------
+  // valor de status que representa "já concluído" pra cada documento, junto do rótulo da etiqueta
+  const doneStates = {
+    informe: 'concluido',
+    recad: 'recadastrado',
+    decl: 'declarado'
+  };
+
+  function updateBadge(key, selectId, badgeRowId){
+    const val = document.getElementById(selectId).value;
+    const row = document.getElementById(badgeRowId);
+    if(val === doneStates[key]){
+      row.innerHTML = '<span class="drive-tag">📁 Comprovante no Drive</span>';
+    } else {
+      row.innerHTML = '';
+    }
+  }
+
+  function loadDocs(){
+    if(!data.docs) data.docs = {};
+
+    // Migração de valores antigos (versão anterior do app) pros novos rótulos
+    const migracao = {
+      recad: { drive: 'recadastrado', nao_recadastrado: 'disponivel_pendente' },
+      decl: { drive: 'declarado', liberada: 'disponivel_pendente' }
+    };
+    Object.keys(migracao).forEach(function(key){
+      if(data.docs[key] && migracao[key][data.docs[key].status]){
+        data.docs[key].status = migracao[key][data.docs[key].status];
+      }
+    });
+
+    const anoAtual = new Date().getFullYear();
+    document.getElementById('informeAno').textContent = 'Informe de Rendimentos ' + (anoAtual - 1);
+    document.getElementById('recadAno').textContent = 'Recadastramento ' + anoAtual;
+    document.getElementById('declAno').textContent = 'Referente a ' + anoAtual;
+
+    const fields = [
+      ['informeStatus','informeLink','informe','informeBadgeRow'],
+      ['recadStatus','recadLink','recad','recadBadgeRow'],
+      ['declStatus','declLink','decl','declBadgeRow']
+    ];
+    fields.forEach(function(f){
+      const key = f[2];
+      if(!data.docs[key]) data.docs[key] = { status:'', link:'' };
+      document.getElementById(f[0]).value = data.docs[key].status || document.getElementById(f[0]).options[0].value;
+      document.getElementById(f[1]).value = data.docs[key].link || '';
+      updateBadge(key, f[0], f[3]);
+
+      document.getElementById(f[0]).addEventListener('change', function(){
+        data.docs[key].status = this.value;
+        saveData(data);
+        updateBadge(key, f[0], f[3]);
+      });
+      document.getElementById(f[1]).addEventListener('input', function(){
+        data.docs[key].link = this.value;
+        saveData(data);
+      });
+    });
+  }
+
+  window.openDriveLink = function(inputId){
+    const url = document.getElementById(inputId).value.trim();
+    if(!url){ alert('Cole o link da pasta no Drive primeiro.'); return; }
+    window.open(url, '_blank');
+  };
+
+  loadDocs();
+  updateBackupInfo();
+
+  // Pontes pro módulo de sincronização (fora da IIFE) conseguir ler e aplicar dados
+  window.__prefeituraGetData = function(){ return data; };
+  window.__prefeituraSetDataRemoto = function(novo){
+    data = novo;
+    loadDocs();
+    updateBackupInfo();
+  };
+})();
+</script>
+
+<div id="loginOverlay" style="display:none;position:fixed;inset:0;background:#0a0a14;z-index:999;align-items:center;justify-content:center;padding:20px;">
+  <div style="width:100%;max-width:320px;text-align:center;">
+    <h2 style="font-size:16px;color:#c8a96e;letter-spacing:1px;margin-bottom:6px;">🏛️ WILLIAM</h2>
+    <p style="font-size:12px;color:#666;margin-bottom:18px;">Entrar neste aparelho (só uma vez)</p>
+    <input type="password" id="loginPass" placeholder="Senha" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+      style="width:100%;background:#1d1d21;border:1px solid #2a2a30;border-radius:10px;padding:12px;font-size:14px;color:#ece7dc;outline:none;font-family:inherit;margin-bottom:10px;">
+    <button id="loginBtn" style="width:100%;background:#c9a24b;color:#111;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Entrar</button>
+    <div id="loginErr" style="font-size:11px;color:#ff6666;margin-top:10px;min-height:14px;"></div>
+  </div>
+</div>
+
+<div id="syncDot" title="Sincronizado" style="position:fixed;bottom:14px;right:14px;width:10px;height:10px;border-radius:50%;background:#555;z-index:998;transition:background 0.3s;"></div>
+
+<script type="module">
+// ══════════════════════════════════════════════════════
+// SINCRONIZAÇÃO — Firebase, documento próprio da Prefeitura.
+// Nunca teve nuvem antes — a primeira sincronização usa o
+// que já está salvo neste aparelho como ponto de partida.
+// ══════════════════════════════════════════════════════
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBNKjp7hLNK6mzAX2GK49WEZq-NKgQ9o5Y",
+  authDomain: "williamapp-31dff.firebaseapp.com",
+  projectId: "williamapp-31dff",
+  storageBucket: "williamapp-31dff.firebasestorage.app",
+  messagingSenderId: "171912065024",
+  appId: "1:171912065024:web:9c47f66f4b8e7fc727a8e5"
+};
+const ALLOWED_EMAIL = "marcelodossantosfc@gmail.com";
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
+
+const docNovo = doc(db, "william", "prefeitura_data");
+
+let aplicandoRemoto = false;
+let pushTimer = null;
+let jaMigrou = false;
+
+function setDot(cor){ var d=document.getElementById('syncDot'); if(d) d.style.background=cor; }
+
+function abrirRetratoDB(){
+  return new Promise(function(resolve, reject){
+    var req = indexedDB.open('william_retratos', 1);
+    req.onupgradeneeded = function(){ req.result.createObjectStore('retratos'); };
+    req.onsuccess = function(){ resolve(req.result); };
+    req.onerror = function(){ reject(req.error); };
+  });
+}
+async function salvarRetratoLocal(conteudo){
+  try{
+    var db2 = await abrirRetratoDB();
+    var hoje = new Date().toISOString().slice(0,10);
+    var chave = 'prefeitura_' + hoje;
+    var tx = db2.transaction('retratos','readwrite');
+    tx.objectStore('retratos').put({ data: hoje, savedAt: new Date().toISOString(), conteudo: conteudo }, chave);
+    var getAllReq = tx.objectStore('retratos').getAllKeys();
+    getAllReq.onsuccess = function(){
+      var limite = new Date(); limite.setDate(limite.getDate()-30);
+      getAllReq.result.forEach(function(k){
+        if(typeof k==='string' && k.indexOf('prefeitura_')===0){
+          var dataK = new Date(k.replace('prefeitura_',''));
+          if(dataK < limite) tx.objectStore('retratos').delete(k);
+        }
+      });
+    };
+  }catch(e){ console.warn('Retrato local falhou (não crítico):', e); }
+}
+
+function agendarPush(){
+  if(aplicandoRemoto) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(async function(){
+    try{
+      setDot('#d6a24a');
+      var conteudo = window.__prefeituraGetData ? window.__prefeituraGetData() : null;
+      if(!conteudo) return;
+      conteudo.savedAt = new Date().toISOString();
+      await setDoc(docNovo, conteudo);
+      await salvarRetratoLocal(conteudo);
+      setDot('#3fae5c');
+    }catch(e){
+      console.error('Erro ao sincronizar Prefeitura:', e);
+      setDot('#c94f4f');
+    }
+  }, 800);
+}
+window.__prefeituraAoSalvar = agendarPush;
+
+function iniciarEscuta(){
+  onSnapshot(docNovo, function(snap){
+    if(!snap.exists()) return;
+    var remoto = snap.data();
+    var local = window.__prefeituraGetData ? window.__prefeituraGetData() : null;
+    if(!local) return;
+    if(JSON.stringify(local) === JSON.stringify(remoto)) return;
+    aplicandoRemoto = true;
+    if(window.__prefeituraSetDataRemoto) window.__prefeituraSetDataRemoto(remoto);
+    salvarRetratoLocal(remoto);
+    aplicandoRemoto = false;
+    setDot('#3fae5c');
+  }, function(err){
+    console.error('Erro de sincronização (Prefeitura):', err);
+    setDot('#c94f4f');
+  });
+}
+
+async function migrarSeNecessario(){
+  var snapNovo = await getDoc(docNovo);
+  if(snapNovo.exists()) return;
+  try{
+    var conteudo = window.__prefeituraGetData ? window.__prefeituraGetData() : { plantoes: [], docs: {} };
+    conteudo.savedAt = new Date().toISOString();
+    await setDoc(docNovo, conteudo);
+  }catch(e){ console.error('Erro na configuração inicial da Prefeitura:', e); }
+}
+
+function mostrarLogin(){ document.getElementById('loginOverlay').style.display = 'flex'; }
+function esconderLogin(){ document.getElementById('loginOverlay').style.display = 'none'; }
+
+async function tentarLogin(){
+  var senha = document.getElementById('loginPass').value;
+  var errEl = document.getElementById('loginErr');
+  var btn = document.getElementById('loginBtn');
+  errEl.textContent = '';
+  if(!senha){ errEl.textContent = 'Digite a senha.'; return; }
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  try{
+    await setPersistence(auth, browserLocalPersistence);
+    await signInWithEmailAndPassword(auth, ALLOWED_EMAIL, senha);
+  }catch(e){
+    errEl.textContent = 'Senha incorreta.';
+  }
+  btn.disabled = false; btn.textContent = 'Entrar';
+}
+document.getElementById('loginBtn').addEventListener('click', tentarLogin);
+document.getElementById('loginPass').addEventListener('keydown', function(e){ if(e.key==='Enter') tentarLogin(); });
+
+onAuthStateChanged(auth, async function(user){
+  if(user && user.email === ALLOWED_EMAIL){
+    esconderLogin();
+    if(!jaMigrou){
+      jaMigrou = true;
+      await migrarSeNecessario();
+      iniciarEscuta();
+    }
+  } else {
+    mostrarLogin();
+  }
+});
+</script>
+
+</body>
+</html>
