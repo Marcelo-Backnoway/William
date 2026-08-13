@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#14161C">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<title>Reflexo</title>
+<style>
+  :root{
+    --bg:#14161C;
+    --panel:#1C1F27;
+    --panel-2:#242833;
+    --text:#EDEEF2;
+    --muted:#8B90A0;
+    --line:#2C303C;
+    --safe-top:env(safe-area-inset-top,0px);
+    --safe-bottom:env(safe-area-inset-bottom,0px);
+    --safe-left:env(safe-area-inset-left,0px);
+    --safe-right:env(safe-area-inset-right,0px);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    overflow:hidden; overscroll-behavior:none; touch-action:manipulation;
+  }
+  #app{
+    position:fixed; inset:0;
+    height:100dvh; width:100dvw;
+    padding-top:var(--safe-top); padding-bottom:var(--safe-bottom);
+    padding-left:var(--safe-left); padding-right:var(--safe-right);
+    display:flex; flex-direction:column;
+  }
+  .screen{ display:none; flex-direction:column; height:100%; width:100%; }
+  .screen.active{ display:flex; }
+
+  /* topbar */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px; border-bottom:1px solid var(--line); flex:0 0 auto;
+  }
+  .topbar h1{ font-size:19px; font-weight:700; margin:0; letter-spacing:0.3px; }
+  .topbar .sub{ font-size:12px; color:var(--muted); margin-top:2px; }
+  .iconbtn{
+    background:var(--panel); border:1px solid var(--line); color:var(--text);
+    width:38px; height:38px; border-radius:10px; font-size:18px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .iconbtn:active{ transform:scale(0.94); }
+  .row{ display:flex; align-items:center; gap:8px; }
+
+  /* index de temas */
+  #scr-index .lista{ flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:10px; }
+  .tema-card{
+    display:flex; align-items:center; gap:12px;
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:14px; min-height:64px;
+  }
+  .tema-card:active{ transform:scale(0.98); }
+  .chip{ width:14px; height:38px; border-radius:6px; flex:0 0 auto; }
+  .tema-card .info{ flex:1; min-width:0; }
+  .tema-card .nome{ font-size:16px; font-weight:600; }
+  .tema-card .qtd{ font-size:12px; color:var(--muted); margin-top:2px; }
+  .empty{ color:var(--muted); text-align:center; padding:40px 20px; font-size:14px; line-height:1.6; }
+
+  /* grade */
+  #scr-grade .grade-wrap{ flex:1; overflow-y:auto; padding:12px; }
+  .grade{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:8px;
+  }
+  @media (orientation:landscape){ .grade{ grid-template-columns:repeat(5,1fr); } }
+  .botao{
+    position:relative; aspect-ratio:1; border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    padding:8px 6px; text-align:center; font-size:12.5px; font-weight:600;
+    line-height:1.25; color:#0A0B0E;
+  }
+  .botao:active{ transform:scale(0.95); }
+  .botao .num{
+    position:absolute; top:4px; left:6px; font-size:10px; font-weight:800;
+    font-variant-numeric:tabular-nums; opacity:0.55;
+  }
+
+  /* detalhe */
+  #scr-detalhe{ padding:0; }
+  #scr-detalhe .det-top{ padding:14px 16px 8px; flex:0 0 auto; }
+  #scr-detalhe .det-tema{ font-size:12px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; }
+  #scr-detalhe .det-num{ font-size:12px; color:var(--muted); margin-top:2px; }
+  #scr-detalhe .det-texto{
+    flex:1; overflow-y:auto; padding:12px 20px;
+    display:flex; align-items:center;
+    font-size:clamp(20px,5vw,30px); line-height:1.5; font-weight:500;
+  }
+  #scr-detalhe .det-acoes{
+    flex:0 0 auto; display:flex; gap:10px; padding:14px 16px;
+    border-top:1px solid var(--line);
+  }
+  .btn{
+    flex:1; display:flex; align-items:center; justify-content:center; gap:8px;
+    background:var(--panel); border:1px solid var(--line); color:var(--text);
+    border-radius:12px; padding:14px; font-size:15px; font-weight:600;
+  }
+  .btn:active{ transform:scale(0.97); }
+  .btn.primary{ background:#EDEEF2; color:#14161C; border-color:#EDEEF2; }
+  .toast{
+    position:absolute; left:50%; bottom:90px; transform:translateX(-50%);
+    background:#EDEEF2; color:#14161C; padding:10px 18px; border-radius:20px;
+    font-size:13px; font-weight:600; opacity:0; pointer-events:none; transition:opacity .2s;
+  }
+  .toast.show{ opacity:1; }
+
+  /* referencia */
+  #scr-ref .ref-list{ flex:1; overflow-y:auto; padding:8px 16px; }
+  .ref-grupo{ margin-top:14px; }
+  .ref-grupo h3{ font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin:0 0 6px; }
+  .ref-item{ display:flex; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-size:14px; }
+  .ref-item .n{ font-weight:800; font-variant-numeric:tabular-nums; opacity:0.6; min-width:26px; }
+
+  /* edicao */
+  #scr-edit .edit-wrap{ flex:1; overflow-y:auto; padding:14px 16px; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+  .field input, .field textarea{
+    width:100%; background:var(--panel); border:1px solid var(--line); color:var(--text);
+    border-radius:10px; padding:12px; font-size:15px; font-family:inherit;
+  }
+  .field textarea{ min-height:90px; resize:vertical; }
+  .paleta{ display:flex; flex-wrap:wrap; gap:8px; }
+  .swatch{ width:34px; height:34px; border-radius:9px; border:2px solid transparent; }
+  .swatch.sel{ border-color:#fff; }
+  .sectiontitle{ font-size:13px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin:22px 0 10px; }
+  .edit-item{ display:flex; align-items:center; gap:10px; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px; }
+  .edit-item .et{ flex:1; font-size:14px; }
+  .edit-item .del{ color:#FF6B5B; font-size:13px; font-weight:700; padding:4px 8px; }
+</style>
+</head>
+<body>
+<div id="loginOverlay" style="display:none;position:fixed;inset:0;background:#0a0a14;z-index:999;align-items:center;justify-content:center;padding:20px;">
+  <div style="width:100%;max-width:320px;text-align:center;">
+    <h2 style="font-size:16px;color:#c8a96e;letter-spacing:1px;margin-bottom:6px;">⚔ WILLIAM</h2>
+    <p style="font-size:12px;color:#666;margin-bottom:18px;">Entrar neste aparelho (só uma vez)</p>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <input type="text" id="codigoAcesso" name="entrada_codigo" placeholder="Código de acesso" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+        style="flex:1;background:#141424;border:1px solid #333;border-radius:10px;padding:12px;font-size:14px;color:#e8e8e8;outline:none;font-family:inherit;-webkit-text-security:disc;text-security:disc;">
+    </div>
+    <button id="loginBtn" style="width:100%;background:#c8a96e;color:#111;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Entrar</button>
+    <div id="loginErr" style="font-size:11px;color:#ff6666;margin-top:10px;min-height:14px;"></div>
+  </div>
+</div>
+<div id="syncDot" title="Sincronizado" style="position:fixed;bottom:14px;right:14px;width:10px;height:10px;border-radius:50%;background:#555;z-index:998;transition:background 0.3s;"></div>
+
+<div id="app">
+
+  <!-- TELA: INDICE DE TEMAS -->
+  <div class="screen active" id="scr-index">
+    <div class="topbar">
+      <div>
+        <h1>Reflexo</h1>
+        <div class="sub" id="idx-sub">carregando...</div>
+      </div>
+      <div class="row">
+        <button class="iconbtn" onclick="abrirTela('scr-ref')" title="Índice geral">≡</button>
+        <button class="iconbtn" onclick="abrirTela('scr-edit'); renderEdicao();" title="Editar">✎</button>
+      </div>
+    </div>
+    <div class="lista" id="idx-lista"></div>
+  </div>
+
+  <!-- TELA: GRADE DO TEMA -->
+  <div class="screen" id="scr-grade">
+    <div class="topbar">
+      <div class="row">
+        <button class="iconbtn" onclick="abrirTela('scr-index')">‹</button>
+        <div>
+          <h1 id="grade-titulo">Tema</h1>
+          <div class="sub" id="grade-sub"></div>
+        </div>
+      </div>
+    </div>
+    <div class="grade-wrap"><div class="grade" id="grade-grid"></div></div>
+  </div>
+
+  <!-- TELA: DETALHE -->
+  <div class="screen" id="scr-detalhe">
+    <div class="det-top">
+      <div class="det-tema" id="det-tema"></div>
+      <div class="det-num" id="det-num"></div>
+    </div>
+    <div class="det-texto" id="det-texto"></div>
+    <div class="det-acoes">
+      <button class="btn" onclick="copiarAtual()">Copiar</button>
+      <button class="btn primary" onclick="abrirTela('scr-grade')">Voltar</button>
+    </div>
+    <div class="toast" id="toast">Copiado</div>
+  </div>
+
+  <!-- TELA: REFERENCIA GERAL -->
+  <div class="screen" id="scr-ref">
+    <div class="topbar">
+      <div class="row">
+        <button class="iconbtn" onclick="abrirTela('scr-index')">‹</button>
+        <h1>Índice geral</h1>
+      </div>
+    </div>
+    <div class="ref-list" id="ref-list"></div>
+  </div>
+
+  <!-- TELA: EDICAO -->
+  <div class="screen" id="scr-edit">
+    <div class="topbar">
+      <div class="row">
+        <button class="iconbtn" onclick="abrirTela('scr-index')">‹</button>
+        <h1>Editar</h1>
+      </div>
+    </div>
+    <div class="edit-wrap">
+
+      <div class="sectiontitle">Novo tema</div>
+      <div class="field"><label>Nome do tema</label><div class="field-row" style="display:flex;gap:8px;"><input id="nt-nome" placeholder="Ex: Trânsito" style="flex:1;"></div></div>
+      <div class="field"><label>Cor</label><div class="paleta" id="nt-paleta"></div></div>
+      <button class="btn primary" onclick="criarTema()">Criar tema</button>
+
+      <div class="sectiontitle">Temas existentes</div>
+      <div id="lista-temas-edit"></div>
+
+      <div class="sectiontitle">Novo botão</div>
+      <div class="field"><label>Tema</label><select id="nb-tema" style="width:100%;padding:12px;border-radius:10px;background:var(--panel);color:var(--text);border:1px solid var(--line);font-size:15px;"></select></div>
+      <div class="field"><label>Rótulo curto (aparece no quadrado)</label><div class="field-row" style="display:flex;gap:8px;"><input id="nb-rotulo" placeholder="Ex: Vou tankar" maxlength="28" style="flex:1;"></div></div>
+      <div class="field"><label>Texto completo</label><div class="field-row" style="display:flex;gap:8px;align-items:flex-start;"><textarea id="nb-texto" placeholder="Texto que aparece na tela de detalhe" style="flex:1;"></textarea></div></div>
+      <button class="btn primary" onclick="criarBotao()">Adicionar botão</button>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ---------- PALETA DE CORES POR TEMA ---------- */
+const PALETA = [
+  {id:'coral', hex:'#FF6B5B'}, {id:'amber', hex:'#FFB627'}, {id:'lime', hex:'#B4E23C'},
+  {id:'teal', hex:'#2FD9C4'}, {id:'sky', hex:'#4FC3F7'}, {id:'violet', hex:'#9B7EDE'},
+  {id:'pink', hex:'#FF6FA5'}, {id:'rose', hex:'#F2555A'}, {id:'gold', hex:'#E8C15A'},
+  {id:'mint', hex:'#57D9A3'}
+];
+function corHex(id){ const c = PALETA.find(p=>p.id===id); return c ? c.hex : '#8B90A0'; }
+
+/* ---------- ESTADO / PERSISTENCIA ----------
+   Guardado em localStorage por enquanto.
+   Estrutura pronta para depois virar o documento Firestore do app,
+   seguindo o mesmo padrão dos outros apps (doc por app + snapshot IndexedDB). */
+const STORAGE_KEY = 'reflexo_v1';
+let estado = carregarEstado();
+
+function carregarEstado(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return { nextNumero:1, temas:[], botoes:[] };
+}
+function salvarEstado(){
+  estado.lastModified = new Date().toISOString();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(estado));
+  if(window.__reflexoAoSalvar) window.__reflexoAoSalvar();
+}
+
+// Pontes pro módulo de sincronização (fora deste script) conseguir ler e aplicar dados
+window.__reflexoGetData = function(){ return estado; };
+window.__reflexoSetDataRemoto = function(novo){
+  estado = novo;
+  const telaAtiva = document.querySelector('.screen.active');
+  if(telaAtiva && telaAtiva.id === 'scr-index') renderIndice();
+  if(telaAtiva && telaAtiva.id === 'scr-grade' && temaAtualId) abrirGrade(temaAtualId);
+  if(telaAtiva && telaAtiva.id === 'scr-ref') renderReferencia();
+};
+
+/* ---------- NAVEGACAO ---------- */
+let temaAtualId = null;
+let botaoAtualId = null;
+
+function abrirTela(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(id==='scr-index') renderIndice();
+  if(id==='scr-ref') renderReferencia();
+}
+
+/* ---------- TELA INDICE ---------- */
+function renderIndice(){
+  const lista = document.getElementById('idx-lista');
+  const sub = document.getElementById('idx-sub');
+  sub.textContent = estado.temas.length + ' tema(s) · ' + estado.botoes.length + ' resposta(s)';
+  if(estado.temas.length===0){
+    lista.innerHTML = '<div class="empty">Nenhum tema ainda.<br>Toque no ✎ para criar o primeiro.</div>';
+    return;
+  }
+  lista.innerHTML = estado.temas.map(t=>{
+    const qtd = estado.botoes.filter(b=>b.temaId===t.id).length;
+    return `<div class="tema-card" onclick="abrirGrade('${t.id}')">
+      <div class="chip" style="background:${corHex(t.cor)}"></div>
+      <div class="info"><div class="nome">${escapeHtml(t.nome)}</div><div class="qtd">${qtd} resposta(s)</div></div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- TELA GRADE ---------- */
+function abrirGrade(temaId){
+  temaAtualId = temaId;
+  const tema = estado.temas.find(t=>t.id===temaId);
+  document.getElementById('grade-titulo').textContent = tema.nome;
+  const botoes = estado.botoes.filter(b=>b.temaId===temaId).sort((a,b)=>a.numero-b.numero);
+  document.getElementById('grade-sub').textContent = botoes.length + ' resposta(s)';
+  const grid = document.getElementById('grade-grid');
+  if(botoes.length===0){
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1;">Sem respostas neste tema ainda.</div>';
+  } else {
+    grid.innerHTML = botoes.map(b=>`
+      <div class="botao" style="background:${corHex(tema.cor)}" onclick="abrirDetalhe('${b.id}')">
+        <span class="num">${b.numero}</span>
+        <span>${escapeHtml(b.rotulo)}</span>
+      </div>`).join('');
+  }
+  abrirTela('scr-grade');
+}
+
+/* ---------- TELA DETALHE ---------- */
+function abrirDetalhe(botaoId){
+  botaoAtualId = botaoId;
+  const b = estado.botoes.find(x=>x.id===botaoId);
+  const tema = estado.temas.find(t=>t.id===b.temaId);
+  document.getElementById('det-tema').textContent = tema.nome;
+  document.getElementById('det-tema').style.color = corHex(tema.cor);
+  document.getElementById('det-num').textContent = '#' + b.numero;
+  document.getElementById('det-texto').textContent = b.texto;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('scr-detalhe').classList.add('active');
+}
+function copiarAtual(){
+  const texto = document.getElementById('det-texto').textContent;
+  const ok = () => {
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), 1200);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(texto).then(ok).catch(()=>fallbackCopy(texto, ok));
+  } else {
+    fallbackCopy(texto, ok);
+  }
+}
+function fallbackCopy(texto, cb){
+  const ta = document.createElement('textarea');
+  ta.value = texto; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); cb(); }catch(e){}
+  document.body.removeChild(ta);
+}
+
+/* ---------- TELA REFERENCIA GERAL ---------- */
+function renderReferencia(){
+  const box = document.getElementById('ref-list');
+  if(estado.temas.length===0){ box.innerHTML = '<div class="empty">Nada cadastrado ainda.</div>'; return; }
+  box.innerHTML = estado.temas.map(t=>{
+    const botoes = estado.botoes.filter(b=>b.temaId===t.id).sort((a,b)=>a.numero-b.numero);
+    if(botoes.length===0) return '';
+    return `<div class="ref-grupo">
+      <h3 style="color:${corHex(t.cor)}">${escapeHtml(t.nome)}</h3>
+      ${botoes.map(b=>`<div class="ref-item"><span class="n">${b.numero}</span><span>${escapeHtml(b.rotulo)}</span></div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+/* ---------- EDICAO: TEMAS ---------- */
+let corSelecionada = PALETA[0].id;
+function renderPaletaSeletor(){
+  document.getElementById('nt-paleta').innerHTML = PALETA.map(c=>
+    `<div class="swatch ${c.id===corSelecionada?'sel':''}" style="background:${c.hex}" onclick="selecionarCor('${c.id}')"></div>`
+  ).join('');
+}
+function selecionarCor(id){ corSelecionada = id; renderPaletaSeletor(); }
+
+function criarTema(){
+  const nome = document.getElementById('nt-nome').value.trim();
+  if(!nome){ alert('Digite um nome para o tema.'); return; }
+  estado.temas.push({ id: uid(), nome, cor: corSelecionada });
+  document.getElementById('nt-nome').value = '';
+  salvarEstado();
+  renderEdicao();
+}
+
+function renderEdicao(){
+  renderPaletaSeletor();
+  // lista de temas existentes
+  const box = document.getElementById('lista-temas-edit');
+  box.innerHTML = estado.temas.length===0 ? '<div class="empty">Nenhum tema ainda.</div>' :
+    estado.temas.map(t=>`
+      <div class="edit-item">
+        <div class="chip" style="width:10px;height:26px;background:${corHex(t.cor)}"></div>
+        <div class="et">${escapeHtml(t.nome)}</div>
+        <div class="del" onclick="excluirTema('${t.id}')">excluir</div>
+      </div>`).join('');
+  // select de temas pro novo botao
+  const sel = document.getElementById('nb-tema');
+  sel.innerHTML = estado.temas.map(t=>`<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('');
+}
+
+function excluirTema(id){
+  if(!confirm('Excluir este tema e todas as respostas dele?')) return;
+  estado.temas = estado.temas.filter(t=>t.id!==id);
+  estado.botoes = estado.botoes.filter(b=>b.temaId!==id);
+  salvarEstado();
+  renderEdicao();
+}
+
+/* ---------- EDICAO: BOTOES ---------- */
+function criarBotao(){
+  const temaId = document.getElementById('nb-tema').value;
+  const rotulo = document.getElementById('nb-rotulo').value.trim();
+  const texto = document.getElementById('nb-texto').value.trim();
+  if(!temaId){ alert('Crie um tema primeiro.'); return; }
+  if(!rotulo || !texto){ alert('Preencha rótulo e texto.'); return; }
+  const numero = estado.nextNumero;
+  estado.nextNumero++;
+  estado.botoes.push({ id: uid(), numero, temaId, rotulo, texto });
+  document.getElementById('nb-rotulo').value = '';
+  document.getElementById('nb-texto').value = '';
+  salvarEstado();
+  renderEdicao();
+}
+
+/* ---------- UTIL ---------- */
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- MICROFONE REUTILIZÁVEL ---------- */
+function anexarMicrofone(inputEl, opts){
+  opts = opts || {};
+  var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = '🎤';
+  btn.title = 'Falar';
+  btn.style.cssText = 'flex:0 0 44px;width:44px;height:44px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:18px;cursor:pointer;';
+  inputEl.parentNode.appendChild(btn);
+  if(!Rec){ btn.style.display='none'; return btn; }
+  var rec = new Rec();
+  rec.lang = 'pt-BR';
+  rec.continuous = !!opts.longo;
+  rec.interimResults = !!opts.longo;
+  var gravando = false, pararManual = false, textoBase = '';
+
+  btn.addEventListener('click', function(){
+    if(opts.longo && gravando){ pararManual = true; rec.stop(); return; }
+    pararManual = false;
+    textoBase = inputEl.value || '';
+    gravando = true;
+    btn.style.background = '#EDEEF2'; btn.style.color = '#14161C'; btn.textContent = opts.longo ? '⏹' : '●';
+    try{ rec.start(); }catch(e){}
+  });
+  rec.onresult = function(e){
+    if(opts.longo){
+      var texto = '';
+      for(var i=0;i<e.results.length;i++){ texto += e.results[i][0].transcript; }
+      inputEl.value = (textoBase ? textoBase + ' ' : '') + texto;
+    } else {
+      inputEl.value = e.results[0][0].transcript;
+    }
+    inputEl.dispatchEvent(new Event('input', {bubbles:true}));
+  };
+  rec.onend = function(){
+    if(opts.longo && gravando && !pararManual){
+      try{ rec.start(); return; }catch(e){}
+    }
+    gravando = false;
+    btn.style.background='var(--panel)'; btn.style.color='var(--text)'; btn.textContent='🎤';
+    if(opts.onDone) opts.onDone();
+  };
+  rec.onerror = function(e){
+    if(opts.longo && e.error === 'no-speech'){ return; } // ignora silêncio momentâneo, continua escutando
+    gravando = false; pararManual = true;
+    btn.style.background='var(--panel)'; btn.style.color='var(--text)'; btn.textContent='🎤';
+  };
+  return btn;
+}
+anexarMicrofone(document.getElementById('codigoAcesso'));
+anexarMicrofone(document.getElementById('nt-nome'));
+anexarMicrofone(document.getElementById('nb-rotulo'));
+anexarMicrofone(document.getElementById('nb-texto'), {longo: true});
+
+/* ---------- INICIALIZACAO ---------- */
+renderIndice();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(e){
+      console.warn('Service worker não registrou (não crítico):', e);
+    });
+  });
+}
+</script>
+
+<script type="module">
+// ══════════════════════════════════════════════════════
+// SINCRONIZAÇÃO — Firebase, documento próprio do Reflexo.
+// Mesmo padrão usado no Ponto: doc por app, push com debounce,
+// escuta em tempo real, snapshot diário no IndexedDB e bolinha de status.
+// ══════════════════════════════════════════════════════
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBNKjp7hLNK6mzAX2GK49WEZq-NKgQ9o5Y",
+  authDomain: "williamapp-31dff.firebaseapp.com",
+  projectId: "williamapp-31dff",
+  storageBucket: "williamapp-31dff.firebasestorage.app",
+  messagingSenderId: "171912065024",
+  appId: "1:171912065024:web:9c47f66f4b8e7fc727a8e5"
+};
+const ALLOWED_EMAIL = "marcelodossantosfc@gmail.com";
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
+
+const docReflexo = doc(db, "william", "reflexo_data");
+
+let aplicandoRemoto = false;
+let pushTimer = null;
+let jaMigrou = false;
+
+function setDot(cor){ var d=document.getElementById('syncDot'); if(d) d.style.background=cor; }
+
+function abrirRetratoDB(){
+  return new Promise(function(resolve, reject){
+    var req = indexedDB.open('william_retratos', 1);
+    req.onupgradeneeded = function(){ req.result.createObjectStore('retratos'); };
+    req.onsuccess = function(){ resolve(req.result); };
+    req.onerror = function(){ reject(req.error); };
+  });
+}
+async function salvarRetratoLocal(conteudo){
+  try{
+    var db2 = await abrirRetratoDB();
+    var hoje = new Date().toISOString().slice(0,10);
+    var chave = 'reflexo_' + hoje;
+    var tx = db2.transaction('retratos','readwrite');
+    tx.objectStore('retratos').put({ data: hoje, savedAt: new Date().toISOString(), conteudo: conteudo }, chave);
+    var getAllReq = tx.objectStore('retratos').getAllKeys();
+    getAllReq.onsuccess = function(){
+      var limite = new Date(); limite.setDate(limite.getDate()-30);
+      getAllReq.result.forEach(function(k){
+        if(typeof k==='string' && k.indexOf('reflexo_')===0){
+          var dataK = new Date(k.replace('reflexo_',''));
+          if(dataK < limite) tx.objectStore('retratos').delete(k);
+        }
+      });
+    };
+  }catch(e){ console.warn('Retrato local falhou (não crítico):', e); }
+}
+
+function agendarPush(){
+  if(aplicandoRemoto) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(async function(){
+    try{
+      setDot('#d6a24a');
+      var conteudo = window.__reflexoGetData ? window.__reflexoGetData() : null;
+      if(!conteudo) return;
+      conteudo.lastModified = new Date().toISOString();
+      await setDoc(docReflexo, conteudo);
+      await salvarRetratoLocal(conteudo);
+      setDot('#3fae5c');
+    }catch(e){
+      console.error('Erro ao sincronizar Reflexo:', e);
+      setDot('#c94f4f');
+    }
+  }, 800);
+}
+window.__reflexoAoSalvar = agendarPush;
+
+function iniciarEscuta(){
+  onSnapshot(docReflexo, function(snap){
+    if(!snap.exists()) return;
+    var remoto = snap.data();
+    var local = window.__reflexoGetData ? window.__reflexoGetData() : null;
+    if(!local) return;
+    if(JSON.stringify(local) === JSON.stringify(remoto)) return; // nada mudou
+    aplicandoRemoto = true;
+    if(window.__reflexoSetDataRemoto) window.__reflexoSetDataRemoto(remoto);
+    salvarRetratoLocal(remoto);
+    aplicandoRemoto = false;
+    setDot('#3fae5c');
+  }, function(err){
+    console.error('Erro de sincronização (Reflexo):', err);
+    setDot('#c94f4f');
+  });
+}
+
+async function migrarSeNecessario(){
+  var snapNovo = await getDoc(docReflexo);
+  if(snapNovo.exists()) return; // já existe na nuvem, não precisa semear
+  try{
+    // primeira sincronização — usa o que já está salvo neste aparelho como ponto de partida
+    var conteudo = window.__reflexoGetData ? window.__reflexoGetData() : { nextNumero:1, temas:[], botoes:[] };
+    conteudo.lastModified = new Date().toISOString();
+    await setDoc(docReflexo, conteudo);
+  }catch(e){ console.error('Erro na configuração inicial do Reflexo:', e); }
+}
+
+function mostrarLogin(){ document.getElementById('loginOverlay').style.display = 'flex'; }
+function esconderLogin(){ document.getElementById('loginOverlay').style.display = 'none'; }
+
+async function tentarLogin(){
+  var senha = document.getElementById('codigoAcesso').value;
+  var errEl = document.getElementById('loginErr');
+  var btn = document.getElementById('loginBtn');
+  errEl.textContent = '';
+  if(!senha){ errEl.textContent = 'Digite a senha.'; return; }
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  try{
+    await setPersistence(auth, browserLocalPersistence);
+    await signInWithEmailAndPassword(auth, ALLOWED_EMAIL, senha);
+  }catch(e){
+    errEl.textContent = 'Senha incorreta.';
+  }
+  btn.disabled = false; btn.textContent = 'Entrar';
+}
+document.getElementById('loginBtn').addEventListener('click', tentarLogin);
+document.getElementById('codigoAcesso').addEventListener('keydown', function(e){ if(e.key==='Enter') tentarLogin(); });
+
+onAuthStateChanged(auth, async function(user){
+  if(user && user.email === ALLOWED_EMAIL){
+    esconderLogin();
+    if(!jaMigrou){
+      jaMigrou = true;
+      await migrarSeNecessario();
+      iniciarEscuta();
+    }
+  } else {
+    mostrarLogin();
+  }
+});
+</script>
+
+</body>
+</html>
