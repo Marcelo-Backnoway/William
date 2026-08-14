@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>William Recuperação</title>
+<style>
+  :root{
+    --bg:#0d0f14; --panel:#161a22; --panel2:#1e2430;
+    --gold:#d4af37; --gold-dim:#8a7328; --text:#e8e6df; --muted:#8b93a3;
+    --danger:#c0453a; --ok:#3aa16a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:'Segoe UI', Roboto, Arial, sans-serif;
+    background:radial-gradient(circle at 50% 0%, #1a1f2b 0%, var(--bg) 60%);
+    color:var(--text); min-height:100vh;
+  }
+  .wrap{max-width:480px;margin:0 auto;padding:24px 18px 70px; min-height:100vh; display:flex; flex-direction:column; justify-content:center;}
+  h1{font-size:1.15rem; text-align:center; letter-spacing:1px; color:var(--gold); margin:0 0 4px; text-shadow:0 0 12px rgba(212,175,55,.25);}
+  .subtitle{text-align:center;color:var(--muted);font-size:.76rem;margin-bottom:28px; line-height:1.5;}
+
+  .lockIcon{font-size:2.4rem; text-align:center; margin-bottom:16px;}
+
+  .card{background:var(--panel); border:1px solid #232a38; border-radius:16px; padding:24px 20px;}
+
+  .fileBox{
+    width:100%; padding:14px; border:1px dashed var(--gold-dim); border-radius:12px;
+    text-align:center; font-size:.78rem; color:var(--muted); cursor:pointer; display:block; margin-bottom:16px;
+  }
+  .fileBox input{display:none;}
+
+  .escolha{display:flex; flex-direction:column; gap:10px; margin-top:6px;}
+  .escolha button{
+    width:100%; padding:16px; border-radius:12px; border:1px solid #2a3040; background:var(--panel2);
+    color:var(--text); font-size:.95rem; font-weight:600; cursor:pointer; text-align:left;
+  }
+  .escolha button .desc{display:block; font-size:.74rem; color:var(--muted); font-weight:400; margin-top:3px;}
+  .escolha button:active{transform:scale(0.98);}
+  .escolha button:disabled{opacity:.4; cursor:not-allowed;}
+
+  input[type=text]{
+    width:100%; background:var(--panel2); border:1px solid #2a3040; border-radius:10px;
+    color:var(--text); padding:13px 14px; font-size:1rem; outline:none; text-align:center; margin-bottom:14px;
+  }
+  input[type=text]:focus{border-color:var(--gold-dim);}
+
+  button.btnGold{
+    width:100%; padding:14px; border-radius:10px; border:none; cursor:pointer;
+    background:linear-gradient(135deg,var(--gold),#a3872b); color:#1a1408; font-weight:700; font-size:.95rem;
+  }
+  button.btnGold:active{transform:scale(.98);}
+  button.btnGhost{
+    width:100%; padding:12px; border-radius:10px; border:1px solid #2a3040; background:transparent;
+    color:var(--muted); font-size:.85rem; cursor:pointer; margin-top:10px;
+  }
+
+  .errBox{color:var(--danger); font-size:.8rem; min-height:1rem; text-align:center; margin-bottom:6px;}
+
+  .lights{display:flex; justify-content:center; gap:20px; margin-bottom:26px;}
+  .light{
+    width:16px; height:16px; border-radius:50%;
+    background:#232a38; border:2px solid #2a3040;
+    transition: all 0.6s cubic-bezier(.34,1.56,.64,1);
+  }
+  .light.on{
+    background:var(--gold); border-color:var(--gold);
+    box-shadow: 0 0 18px 3px rgba(212,175,55,.55), 0 0 36px 8px rgba(212,175,55,.2);
+    animation: acender 0.7s ease-out;
+  }
+  @keyframes acender{
+    0%{ transform:scale(0.6); }
+    60%{ transform:scale(1.3); }
+    100%{ transform:scale(1); }
+  }
+
+  .qnum{font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); text-align:center; margin-bottom:8px;}
+  .question{font-size:1.05rem; text-align:center; margin-bottom:20px; line-height:1.4; min-height:44px;}
+
+  .verifying{text-align:center; padding:20px; color:var(--muted); font-size:.9rem;}
+  .dots span{animation: pulse 1.4s infinite; opacity:.3;}
+  .dots span:nth-child(2){animation-delay:.2s;}
+  .dots span:nth-child(3){animation-delay:.4s;}
+  @keyframes pulse{ 0%,100%{opacity:.3;} 50%{opacity:1;} }
+
+  .result{text-align:center; padding:10px;}
+  .result .icon{font-size:2.6rem; margin-bottom:12px;}
+  .result .msg{font-size:.95rem; line-height:1.6;}
+  .result .msg.fail{color:var(--text);}
+  .result .msg.success{color:var(--ok);}
+
+  .revealBox{
+    background:var(--panel2); border:1px solid #2a3040; border-radius:10px;
+    padding:12px 14px; margin-bottom:10px; text-align:left;
+  }
+  .revealBox .titulo{font-weight:700; font-size:.9rem;}
+  .revealBox .senha{font-family:'Courier New',monospace; color:var(--gold); font-size:.92rem; margin-top:4px; word-break:break-all;}
+  .masterBox{
+    background:rgba(212,175,55,.1); border:1px solid var(--gold-dim); border-radius:10px;
+    padding:14px; margin-top:16px; text-align:center;
+  }
+  .masterBox .label{font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;}
+  .masterBox .value{font-family:'Courier New',monospace; color:var(--gold); font-size:1.1rem; letter-spacing:1px;}
+
+  .voltar{display:block; text-align:center; margin-top:20px; font-size:.82rem; color:var(--gold-dim); cursor:pointer; text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="lockIcon">🆘</div>
+  <h1>WILLIAM · RECUPERAÇÃO</h1>
+  <div class="subtitle">Pra abrir o cofre sem a senha mestra — usando uma pergunta pessoal ou as três perguntas de legado.</div>
+
+  <div class="card" id="card"></div>
+</div>
+
+<script>
+function b64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+function unb64(str){ const bin=atob(str); const arr=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i); return arr.buffer; }
+
+function normalizaResposta(s){
+  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+}
+function combinarRespostas(arr){
+  return arr.map(normalizaResposta).join('|');
+}
+
+async function deriveKey(password, salt, iterations){
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), {name:'PBKDF2'}, false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    {name:'PBKDF2', salt: salt, iterations: iterations, hash:'SHA-256'},
+    keyMaterial, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']
+  );
+}
+
+async function decryptEnvelope(chaveTexto, envelope){
+  const salt = new Uint8Array(unb64(envelope.salt));
+  const iv = new Uint8Array(unb64(envelope.iv));
+  const key = await deriveKey(chaveTexto, salt, envelope.iterations || 250000);
+  const ciphertext = unb64(envelope.data);
+  const plaintext = await crypto.subtle.decrypt({name:'AES-GCM', iv:iv}, key, ciphertext);
+  return JSON.parse(new TextDecoder().decode(plaintext));
+}
+
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// A recuperação guarda só a senha mestra. Depois de destrancar o envelope de
+// recuperação, usamos essa senha mestra pra abrir o cofre PRINCIPAL de verdade
+// (a parte de cima do mesmo arquivo .json) — que está sempre atualizada, porque
+// é recriptografada do zero todo download. Assim nunca mais existe foto velha.
+async function abrirCofrePrincipalComSenha(masterPasswordAtual){
+  const cofre = await decryptEnvelope(masterPasswordAtual, vaultPayload);
+  const entries = Array.isArray(cofre) ? cofre : (cofre.entries || []);
+  return { entries, masterPasswordAtual };
+}
+
+let vaultPayload = null;
+let selectedFile = null;
+
+const card = document.getElementById('card');
+
+function telaEscolherArquivo(){
+  card.innerHTML = `
+    <label class="fileBox" id="fileBoxLabel">
+      📂 Toque para selecionar o arquivo do cofre (.json)<br>
+      <span id="fileNameSpan" style="color:var(--gold)">nenhum arquivo selecionado</span>
+      <input type="file" id="vaultFile" accept=".json,.vault">
+    </label>
+    <div class="errBox" id="fileErr"></div>
+    <button class="btnGold" id="continuarBtn">Continuar</button>
+  `;
+  document.getElementById('vaultFile').addEventListener('change', (e)=>{
+    selectedFile = e.target.files[0] || null;
+    document.getElementById('fileNameSpan').textContent = selectedFile ? selectedFile.name : 'nenhum arquivo selecionado';
+  });
+  document.getElementById('continuarBtn').addEventListener('click', async ()=>{
+    const errBox = document.getElementById('fileErr');
+    errBox.textContent = '';
+    if(!selectedFile){ errBox.textContent = 'Selecione o arquivo do cofre primeiro.'; return; }
+    try{
+      const text = await selectedFile.text();
+      vaultPayload = JSON.parse(text);
+      if(!vaultPayload.recovery || (!vaultPayload.recovery.pessoal && !vaultPayload.recovery.legado)){
+        errBox.textContent = 'Esse arquivo não tem nenhuma recuperação configurada ainda.';
+        return;
+      }
+      telaEscolha();
+    }catch(err){
+      console.error(err);
+      errBox.textContent = 'Arquivo inválido ou corrompido.';
+    }
+  });
+}
+
+function telaEscolha(){
+  const temPessoal = !!(vaultPayload.recovery && vaultPayload.recovery.pessoal);
+  const temLegado = !!(vaultPayload.recovery && vaultPayload.recovery.legado);
+  card.innerHTML = `
+    <div class="escolha">
+      <button id="btnPessoal" ${temPessoal ? '' : 'disabled'}>
+        🔑 Recuperação pessoal
+        <span class="desc">${temPessoal ? '1 pergunta rápida, pra você' : 'não configurada neste arquivo'}</span>
+      </button>
+      <button id="btnLegado" ${temLegado ? '' : 'disabled'}>
+        💛 Recuperação de legado
+        <span class="desc">${temLegado ? '3 perguntas em sequência' : 'não configurada neste arquivo'}</span>
+      </button>
+    </div>
+    <div class="voltar" id="voltarArquivo">escolher outro arquivo</div>
+  `;
+  document.getElementById('voltarArquivo').addEventListener('click', telaEscolherArquivo);
+  if(temPessoal) document.getElementById('btnPessoal').addEventListener('click', telaPessoal);
+  if(temLegado) document.getElementById('btnLegado').addEventListener('click', telaLegadoInicio);
+}
+
+/* ---------- RECUPERAÇÃO PESSOAL (1 pergunta) ---------- */
+function telaPessoal(){
+  const rec = vaultPayload.recovery.pessoal;
+  card.innerHTML = `
+    <div class="qnum">Recuperação pessoal</div>
+    <div class="question">${escapeHtml(rec.pergunta)}</div>
+    <input type="text" id="respPessoal" autocomplete="off" placeholder="Sua resposta">
+    <div class="errBox" id="pessoalErr"></div>
+    <button class="btnGold" id="confirmarPessoal">Confirmar</button>
+    <div class="voltar" id="voltarEscolha">voltar</div>
+  `;
+  document.getElementById('voltarEscolha').addEventListener('click', telaEscolha);
+  document.getElementById('respPessoal').focus();
+  const confirmar = async ()=>{
+    const resposta = document.getElementById('respPessoal').value;
+    if(!resposta.trim()) return;
+    mostrarVerificando();
+    try{
+      const chave = combinarRespostas([resposta]);
+      const dadosRecuperacao = await decryptEnvelope(chave, rec.envelope);
+      const resultado = await abrirCofrePrincipalComSenha(dadosRecuperacao.masterPasswordAtual);
+      mostrarSucesso(resultado, 'pessoal');
+    }catch(e){
+      mostrarFalha(telaPessoal);
+    }
+  };
+  document.getElementById('confirmarPessoal').addEventListener('click', confirmar);
+  document.getElementById('respPessoal').addEventListener('keydown', (e)=>{ if(e.key==='Enter') confirmar(); });
+}
+
+/* ---------- RECUPERAÇÃO DE LEGADO (3 perguntas, luzes) ---------- */
+let legadoEtapa = 0;
+let legadoRespostas = [];
+
+function telaLegadoInicio(){
+  legadoEtapa = 0;
+  legadoRespostas = [];
+  renderLegadoPergunta();
+}
+
+function renderLegadoPergunta(){
+  const perguntas = vaultPayload.recovery.legado.perguntas;
+  const lightsHtml = perguntas.map((_, i) => `<div class="light" id="l${i+1}"></div>`).join('');
+  card.innerHTML = `
+    <div class="lights">${lightsHtml}</div>
+    <div class="qnum">Pergunta ${legadoEtapa+1} de ${perguntas.length}</div>
+    <div class="question">${escapeHtml(perguntas[legadoEtapa])}</div>
+    <input type="text" id="respLegado" autocomplete="off" placeholder="Sua resposta">
+    <button class="btnGold" id="confirmarLegado">Confirmar</button>
+    ${legadoEtapa === 0 ? '<div class="voltar" id="voltarEscolha">voltar</div>' : ''}
+  `;
+  for(let i=0; i<legadoEtapa; i++){
+    document.getElementById('l'+(i+1)).classList.add('on');
+  }
+  const voltarBtn = document.getElementById('voltarEscolha');
+  if(voltarBtn) voltarBtn.addEventListener('click', telaEscolha);
+  document.getElementById('respLegado').focus();
+
+  const confirmar = ()=>{
+    const val = document.getElementById('respLegado').value;
+    if(!val.trim()) return;
+    legadoRespostas.push(val);
+    document.getElementById('l'+(legadoEtapa+1)).classList.add('on');
+    legadoEtapa++;
+    if(legadoEtapa < perguntas.length){
+      setTimeout(renderLegadoPergunta, 350); // dá tempo da luz acender antes de trocar
+    } else {
+      setTimeout(verificarLegado, 500);
+    }
+  };
+  document.getElementById('confirmarLegado').addEventListener('click', confirmar);
+  document.getElementById('respLegado').addEventListener('keydown', (e)=>{ if(e.key==='Enter') confirmar(); });
+}
+
+async function verificarLegado(){
+  mostrarVerificando();
+  const rec = vaultPayload.recovery.legado;
+  try{
+    const chave = combinarRespostas(legadoRespostas);
+    const dadosRecuperacao = await decryptEnvelope(chave, rec.envelope);
+    const resultado = await abrirCofrePrincipalComSenha(dadosRecuperacao.masterPasswordAtual);
+    mostrarSucesso(resultado, 'legado');
+  }catch(e){
+    mostrarFalha(telaLegadoInicio);
+  }
+}
+
+/* ---------- TELAS DE RESULTADO ---------- */
+function mostrarVerificando(){
+  card.innerHTML = `
+    <div class="verifying">Conferindo as respostas juntas<span class="dots"><span>.</span><span>.</span><span>.</span></span></div>
+  `;
+}
+
+function mostrarFalha(tentarDeNovoFn){
+  card.innerHTML = `
+    <div class="result">
+      <div class="icon">🔒</div>
+      <div class="msg fail">Não conferiu. Pode ter sido qualquer uma das respostas — tente novamente com calma, sem pressa.</div>
+    </div>
+    <button class="btnGold" id="tentarDeNovo" style="margin-top:16px;">Tentar de novo</button>
+    <div class="voltar" id="voltarEscolha2">escolher outro caminho</div>
+  `;
+  document.getElementById('tentarDeNovo').addEventListener('click', tentarDeNovoFn);
+  document.getElementById('voltarEscolha2').addEventListener('click', telaEscolha);
+}
+
+function mostrarSucesso(resultado, tipo){
+  // Recuperação pessoal (1 pergunta, só sua): revela SÓ a senha mestra.
+  // Você usa ela pra abrir o Cofre normalmente depois — não expõe a lista de senhas aqui.
+  // Recuperação de legado (3 perguntas, pra sua esposa): é o cenário de emergência,
+  // então mostra tudo de uma vez — senhas + senha mestra.
+  const ehLegado = tipo === 'legado';
+
+  let corpoHtml = '';
+  if(ehLegado){
+    const entries = resultado.entries || [];
+    const senhasHtml = entries.length
+      ? entries.slice().sort((a,b)=> (a.titulo||'').localeCompare(b.titulo||'')).map(e => `
+          <div class="revealBox">
+            <div class="titulo">${escapeHtml(e.titulo||'')}</div>
+            <div class="senha">${escapeHtml(e.senha||'')}</div>
+          </div>
+        `).join('')
+      : `<div style="color:var(--muted); font-size:.85rem; text-align:center;">Nenhuma senha estava cadastrada ainda.</div>`;
+    corpoHtml = `<div style="max-height:40vh; overflow-y:auto; margin-bottom:10px;">${senhasHtml}</div>`;
+  }
+
+  const mensagem = ehLegado ? 'Conferiu! Aqui está tudo:' : 'Conferiu! Aqui está sua senha mestra:';
+  const rodape = ehLegado
+    ? 'Com essa senha mestra, dá pra abrir o William_Cofre_Offline.html normalmente daqui pra frente.'
+    : 'Use essa senha mestra pra abrir o William_Cofre_Offline.html normalmente — lá dentro estão suas senhas.';
+
+  card.innerHTML = `
+    <div class="result" style="margin-bottom:14px;">
+      <div class="icon">🔓</div>
+      <div class="msg success">${mensagem}</div>
+    </div>
+    ${corpoHtml}
+    <div class="masterBox">
+      <div class="label">Senha mestra atual do Cofre</div>
+      <div class="value">${escapeHtml(resultado.masterPasswordAtual || '(não guardada)')}</div>
+    </div>
+    <div style="font-size:.72rem; color:var(--muted); text-align:center; margin-top:14px; line-height:1.5;">
+      ${rodape}
+    </div>
+  `;
+}
+
+telaEscolherArquivo();
+</script>
+</body>
+</html>
