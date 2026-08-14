@@ -285,8 +285,6 @@
         <button type="button" class="anexo-btn ui" id="btnAnexarFoto" style="flex:1; padding:10px; border-radius:10px; border:1px dashed var(--muted); background:transparent; color:var(--muted); font-size:13px;">📷 Anexar foto</button>
         <button type="button" class="anexo-btn ui" id="btnAnexarVideo" style="flex:1; padding:10px; border-radius:10px; border:1px dashed var(--muted); background:transparent; color:var(--muted); font-size:13px;">🎥 Anexar vídeo</button>
       </div>
-      <input type="file" accept="image/*" capture="environment" id="captureFotoInput" style="display:none;">
-      <input type="file" accept="video/*" capture="environment" id="captureVideoInput" style="display:none;">
       <div class="small" id="anexoHint" style="min-height:16px; margin-top:4px;"></div>
       <button class="primary" id="continueResposta">Continuar</button>
     </div>
@@ -970,38 +968,89 @@ function extensaoDe(file, tipoPadrao){
   return tipoPadrao === 'video' ? 'mp4' : 'jpg';
 }
 
-async function configurarAnexo(tipo, botaoEl, inputEl, emoji, label){
+// Libera o microfone antes de abrir a câmera — câmera e mic disputando o
+// mesmo recurso de hardware ao mesmo tempo é a causa mais provável do erro
+// "insuficiência de memória" que o Android dá em alguns aparelhos.
+function pararMicrofonesAtivos(){
+  if(recPergunta){ recPergunta.pararManualmente(); recPergunta = null; modalMicPergunta.classList.remove('recording'); document.getElementById('modalMicHintPergunta').textContent = ''; }
+  if(recResposta){ recResposta.pararManualmente(); recResposta = null; modalMicResposta.classList.remove('recording'); document.getElementById('modalMicHintResposta').textContent = ''; }
+}
+
+async function configurarAnexo(tipo, botaoEl, accept, emoji, label){
+  let ocupado = false; // trava contra duplo toque / captura em sequência sem respiro
+
+  function processarArquivo(file){
+    return (async () => {
+      const numero = await Storage.confirmarUsoNumero(tipo);
+      const ext = extensaoDe(file, tipo);
+      baixarArquivoRenomeado(file, `${numero}.${ext}`);
+
+      const referencia = `[${emoji} ${label} ${numero}]`;
+      inputResposta.value = inputResposta.value
+        ? `${inputResposta.value} ${referencia}`
+        : referencia;
+
+      document.getElementById('anexoHint').textContent = `${emoji} ${label === 'foto' ? 'Foto' : 'Vídeo'} nº ${numero} salvo(a) em Downloads. Mova pro SSD/Drive quando puder.`;
+      toast(`${emoji} ${label === 'foto' ? 'Foto' : 'Vídeo'} ${numero} anexado(a)`);
+    })();
+  }
+
   botaoEl.addEventListener('click', async () => {
-    if(!inputEl.files) inputEl.value = ''; // garante que reabrir dispara 'change' de novo
+    if(ocupado) return;
+    ocupado = true;
+    botaoEl.disabled = true;
+    botaoEl.style.opacity = '0.5';
+
+    pararMicrofonesAtivos();
+    // Pequena pausa depois de soltar o microfone, pra dar tempo do Android
+    // liberar o recurso de áudio antes de abrir a câmera.
+    await new Promise(r => setTimeout(r, 150));
+
     const proximo = await Storage.espiarProximoNumero(tipo);
     document.getElementById('anexoHint').textContent = `Essa vai ser ${label === 'foto' ? 'a foto' : 'o vídeo'} nº ${proximo} — abrindo a câmera...`;
-    inputEl.click();
-  });
 
-  inputEl.addEventListener('change', async () => {
-    const file = inputEl.files && inputEl.files[0];
-    inputEl.value = ''; // permite anexar de novo em seguida, se precisar
-    if(!file){
-      // Usuário cancelou a câmera — não gasta número, não faz nada.
-      document.getElementById('anexoHint').textContent = '';
-      return;
+    // Cria um <input type="file"> novinho a cada captura, em vez de reaproveitar
+    // sempre o mesmo — alguns Android/Chrome travam na segunda vez que o mesmo
+    // campo de captura é reaberto na mesma página.
+    const inputTemp = document.createElement('input');
+    inputTemp.type = 'file';
+    inputTemp.accept = accept;
+    inputTemp.setAttribute('capture', 'environment');
+    inputTemp.style.display = 'none';
+    document.body.appendChild(inputTemp);
+
+    let jaLiberou = false;
+    function liberarBotao(){
+      if(jaLiberou) return;
+      jaLiberou = true;
+      // Respiro de meio segundo antes de liberar o botão de novo — dá tempo do
+      // Android terminar de processar antes de aceitar outra captura.
+      setTimeout(() => { ocupado = false; botaoEl.disabled = false; botaoEl.style.opacity = '1'; }, 500);
+      setTimeout(() => { if(inputTemp.parentNode) inputTemp.parentNode.removeChild(inputTemp); }, 1000);
     }
-    const numero = await Storage.confirmarUsoNumero(tipo);
-    const ext = extensaoDe(file, tipo);
-    baixarArquivoRenomeado(file, `${numero}.${ext}`);
 
-    const referencia = `[${emoji} ${label} ${numero}]`;
-    inputResposta.value = inputResposta.value
-      ? `${inputResposta.value} ${referencia}`
-      : referencia;
+    inputTemp.addEventListener('change', async () => {
+      const file = inputTemp.files && inputTemp.files[0];
+      if(!file){
+        // Usuário cancelou a câmera — não gasta número, não faz nada.
+        document.getElementById('anexoHint').textContent = '';
+        liberarBotao();
+        return;
+      }
+      try{ await processarArquivo(file); }
+      finally{ liberarBotao(); }
+    });
 
-    document.getElementById('anexoHint').textContent = `${emoji} ${label === 'foto' ? 'Foto' : 'Vídeo'} nº ${numero} salvo(a) em Downloads. Mova pro SSD/Drive quando puder.`;
-    toast(`${emoji} ${label === 'foto' ? 'Foto' : 'Vídeo'} ${numero} anexado(a)`);
+    // Se o usuário cancelar a câmera, o 'change' pode nunca disparar — libera
+    // o botão de qualquer forma depois de um tempo razoável de espera.
+    setTimeout(liberarBotao, 60000);
+
+    inputTemp.click();
   });
 }
 
-configurarAnexo('foto', document.getElementById('btnAnexarFoto'), document.getElementById('captureFotoInput'), '📷', 'foto');
-configurarAnexo('video', document.getElementById('btnAnexarVideo'), document.getElementById('captureVideoInput'), '🎥', 'vídeo');
+configurarAnexo('foto', document.getElementById('btnAnexarFoto'), 'image/*', '📷', 'foto');
+configurarAnexo('video', document.getElementById('btnAnexarVideo'), 'video/*', '🎥', 'vídeo');
 
 document.getElementById('continueResposta').addEventListener('click', () => {
   const val = inputResposta.value.trim();
