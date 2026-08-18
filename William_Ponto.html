@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>William · Ponto</title>
+<style>
+  :root{
+    --bg:#0c0c0d; --panel:#17171a; --panel2:#1d1d21; --border:#2a2a30;
+    --gold:#c9a24b; --gold-dim:#8a7538; --text:#ece7dc; --text-dim:#8a8578;
+    --green:#3fae5c; --red:#c94f4f;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    padding-bottom:40px;
+  }
+  .topbar{
+    background:#111114; border-bottom:1px solid var(--border); padding:14px 16px;
+    text-align:center;
+  }
+  .topbar h1{ margin:0; font-size:17px; }
+  .container{ max-width:460px; margin:0 auto; padding:18px 16px; }
+
+  .punch-btn{
+    width:100%; border:none; border-radius:18px; padding:26px 0; text-align:center;
+    font-size:20px; font-weight:800; cursor:pointer; color:#fff; margin-bottom:22px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.35);
+  }
+  .punch-btn.entrada{ background:linear-gradient(135deg,#3fae5c,#2c8046); }
+  .punch-btn.saida{ background:linear-gradient(135deg,#c94f4f,#992e2e); }
+  .punch-btn .sub{ display:block; font-size:12px; font-weight:400; opacity:0.85; margin-top:4px; }
+
+  .modal-bg{
+    position:fixed; inset:0; background:rgba(0,0,0,0.75); display:none;
+    align-items:center; justify-content:center; z-index:200; padding:20px;
+  }
+  .modal-bg.show{ display:flex; }
+  .modal-box{
+    background:var(--panel); border:1px solid var(--border); border-radius:18px;
+    padding:26px 22px; width:100%; max-width:360px; text-align:center;
+  }
+  .modal-box h3{ margin:0 0 4px; font-size:15px; color:var(--text-dim); font-weight:600; }
+  .modal-box .modal-date{ font-size:13px; color:var(--text-dim); margin-bottom:16px; }
+  .time-display{
+    font-size:52px; font-weight:800; color:var(--gold); font-variant-numeric:tabular-nums;
+    letter-spacing:1px; margin:10px 0 18px;
+  }
+  .time-adjust{ display:flex; gap:8px; justify-content:center; margin-bottom:22px; flex-wrap:wrap; }
+  .time-adjust button{
+    background:var(--panel2); border:1px solid var(--border); color:var(--text);
+    font-size:14px; font-weight:700; border-radius:12px; padding:12px 14px; cursor:pointer;
+  }
+  .time-adjust button:active{ background:#26262c; }
+  .modal-actions{ display:flex; gap:10px; }
+  .modal-actions button{
+    flex:1; border:none; border-radius:12px; padding:14px 0; font-size:15px;
+    font-weight:700; cursor:pointer;
+  }
+  .btn-cancel{ background:var(--panel2); color:var(--text-dim); }
+  .btn-confirm{ background:var(--gold); color:#111; }
+
+  .success-box{
+    background:#0f1f13; border:1px solid #2c8046; border-radius:16px; padding:20px;
+    text-align:center; margin-bottom:20px; display:none;
+  }
+  .success-box.show{ display:block; }
+  .success-box .check{ font-size:34px; margin-bottom:6px; }
+  .success-box .msg{ font-size:15px; font-weight:700; color:#7fd99a; }
+  .success-box .sub{ font-size:12px; color:var(--text-dim); margin-top:4px; }
+
+  .section-title{
+    font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-dim);
+    margin:22px 0 10px; font-weight:700;
+  }
+  .plantao-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    padding:14px 16px; margin-bottom:10px; position:relative;
+  }
+  .plantao-row{ display:flex; align-items:center; gap:10px; font-size:14px; }
+  .plantao-row .dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .plantao-row .dot.in{ background:var(--green); }
+  .plantao-row .dot.out{ background:var(--red); }
+  .plantao-row .lbl{ color:var(--text-dim); font-size:12px; width:56px; flex-shrink:0; }
+  .plantao-row .val{ font-weight:700; }
+  .plantao-arrow{ color:var(--text-dim); margin:2px 0 2px 18px; font-size:13px; }
+  .pending-tag{
+    display:inline-block; background:#2a2010; color:var(--gold); font-size:10px;
+    padding:2px 8px; border-radius:20px; margin-left:8px; letter-spacing:0.5px;
+  }
+  .edit-icon{
+    position:absolute; top:12px; right:12px; background:none; border:none;
+    color:var(--text-dim); font-size:14px; cursor:pointer; padding:4px;
+  }
+  .empty-msg{ text-align:center; color:var(--text-dim); font-size:13px; padding:30px 0; }
+
+  .backup-row{ display:flex; gap:10px; margin-top:22px; }
+  .backup-btn{
+    flex:1; border:none; border-radius:12px; padding:13px 0; font-size:13px;
+    font-weight:700; cursor:pointer; background:var(--panel2); color:var(--text);
+    border:1px solid var(--border); display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .backup-btn:active{ background:#26262c; }
+  .backup-hint{ text-align:center; font-size:11px; color:var(--text-dim); margin-top:8px; }
+  input[type=file]{ display:none; }
+  #syncDot{
+    position: fixed; bottom: 14px; right: 14px; z-index: 998;
+    width: 10px; height: 10px; border-radius: 50%; background: #555;
+    transition: all 0.25s ease;
+  }
+  @keyframes pulsoCriticoGrande {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,34,34,0.85), 0 0 22px 6px rgba(255,34,34,0.9); transform: translate(-50%, -50%) scale(1); }
+    50% { box-shadow: 0 0 0 18px rgba(255,34,34,0), 0 0 32px 10px rgba(255,34,34,0.55); transform: translate(-50%, -50%) scale(1.035); }
+  }
+  #syncDot.dot-critico {
+    position: fixed; top: 50%; left: 50%; right: auto; bottom: auto;
+    transform: translate(-50%, -50%);
+    width: auto; height: auto; min-width: 260px; max-width: calc(100vw - 40px);
+    border-radius: 16px; background: #ff2222 !important;
+    padding: 18px 26px; z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; font-weight: 800; color: #fff; text-align: center;
+    line-height: 1.3; white-space: normal;
+    animation: pulsoCriticoGrande 1s ease-in-out infinite;
+  }
+  #syncDot.dot-perto-laranja {
+    box-shadow: 0 0 0 4px rgba(255,153,68,0.65);
+  }
+  #syncDot.dot-perto-amarelo {
+    box-shadow: 0 0 0 4px rgba(232,197,71,0.6);
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar"><h1>🕐 WILLIAM — PONTO</h1></div>
+
+<div class="container">
+
+  <div class="success-box" id="successBox">
+    <div class="check">✅</div>
+    <div class="msg" id="successMsg"></div>
+    <div class="sub" id="successSub"></div>
+  </div>
+
+  <button class="punch-btn" id="punchBtn"></button>
+
+  <div id="historicoWrap"></div>
+
+  <div class="backup-row">
+    <button class="backup-btn" id="btnExport">⬇️ Exportar</button>
+    <button class="backup-btn" id="btnImport">⬆️ Importar</button>
+    <input type="file" id="fileImport" accept="application/json">
+  </div>
+  <div class="backup-hint">Backup manual — salve o arquivo na sua pasta do Drive</div>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal-box">
+    <h3 id="modalTitle">Confirmar Entrada</h3>
+    <div class="modal-date" id="modalDate"></div>
+    <div class="time-display" id="modalTime">00:00</div>
+    <div class="time-adjust">
+      <button onclick="adjustTime(-60)">−1 h</button>
+      <button onclick="adjustTime(-1)">−1 min</button>
+      <button onclick="adjustTime(1)">+1 min</button>
+      <button onclick="adjustTime(60)">+1 h</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-confirm" onclick="confirmPunch()">✅ Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'williamPontoData';
+  const OLD_KEY = 'williamPrefeituraData'; // migração única do que já existia na Prefeitura
+  const weekdays = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+
+  function loadData(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){}
+
+    // migração única: se já existiam plantões guardados na Prefeitura, traz pra cá
+    try{
+      const old = localStorage.getItem(OLD_KEY);
+      if(old){
+        const oldData = JSON.parse(old);
+        if(oldData && Array.isArray(oldData.plantoes) && oldData.plantoes.length){
+          const migrado = { plantoes: oldData.plantoes };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(migrado));
+          return migrado;
+        }
+      }
+    }catch(e){}
+
+    return { plantoes: [] };
+  }
+  function saveData(data){
+    data.lastModified = new Date().toISOString();
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+    catch(e){ console.error('Erro ao salvar', e); }
+    if(window.__pontoAoSalvar) window.__pontoAoSalvar();
+  }
+
+  let data = loadData();
+  let pendingTime = null;
+  let pendingAction = null;
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function fmtDateLong(d){
+    return d.getDate()+' de '+['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][d.getMonth()]+' de '+d.getFullYear();
+  }
+  function fmtDateShort(d){ return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear(); }
+  function weekday(d){ return weekdays[d.getDay()]; }
+
+  function getUltimoPlantao(){
+    if(data.plantoes.length===0) return null;
+    return data.plantoes[data.plantoes.length-1];
+  }
+
+  function renderPunchButton(){
+    const ultimo = getUltimoPlantao();
+    const btn = document.getElementById('punchBtn');
+    if(ultimo && !ultimo.saida){
+      btn.className = 'punch-btn saida';
+      btn.innerHTML = '🔴 Bater Saída<span class="sub">Entrada às '+ultimo.entrada.time+' — '+ultimo.entrada.dateShort+'</span>';
+      pendingAction = 'saida';
+    } else {
+      btn.className = 'punch-btn entrada';
+      btn.innerHTML = '🟢 Bater Entrada';
+      pendingAction = 'entrada';
+    }
+  }
+
+  document.getElementById('punchBtn').addEventListener('click', function(){
+    const now = new Date();
+    pendingTime = { date: now, h: now.getHours(), m: now.getMinutes() };
+    openModal();
+  });
+
+  function openModal(){
+    document.getElementById('modalTitle').textContent = pendingAction === 'entrada' ? 'Confirmar Entrada' : 'Confirmar Saída';
+    updateModalDisplay();
+    document.getElementById('modalBg').classList.add('show');
+  }
+  function closeModal(){
+    document.getElementById('modalBg').classList.remove('show');
+  }
+  function updateModalDisplay(){
+    const d = pendingTime.date;
+    document.getElementById('modalTime').textContent = pad(pendingTime.h)+':'+pad(pendingTime.m);
+    document.getElementById('modalDate').textContent = weekday(d)+', '+fmtDateShort(d);
+  }
+  function adjustTime(delta){
+    const d = new Date(pendingTime.date);
+    d.setHours(pendingTime.h, pendingTime.m + delta, 0, 0);
+    pendingTime.date = d;
+    pendingTime.h = d.getHours();
+    pendingTime.m = d.getMinutes();
+    updateModalDisplay();
+  }
+  window.adjustTime = adjustTime;
+  window.closeModal = closeModal;
+
+  function confirmPunch(){
+    const timeStr = pad(pendingTime.h)+':'+pad(pendingTime.m);
+    const dateShort = fmtDateShort(pendingTime.date);
+    const dateLong = fmtDateLong(pendingTime.date);
+    const wd = weekday(pendingTime.date);
+
+    if(pendingAction === 'entrada'){
+      data.plantoes.push({
+        entrada: { time: timeStr, dateShort: dateShort, iso: pendingTime.date.toISOString() },
+        saida: null
+      });
+      showSuccess('Entrada registrada às '+timeStr, wd+', '+dateLong);
+    } else {
+      const ultimo = getUltimoPlantao();
+      ultimo.saida = { time: timeStr, dateShort: dateShort, iso: pendingTime.date.toISOString() };
+      showSuccess('Saída registrada às '+timeStr, wd+', '+dateLong);
+    }
+    saveData(data);
+    closeModal();
+    renderPunchButton();
+    renderHistorico();
+  }
+  window.confirmPunch = confirmPunch;
+
+  function showSuccess(msg, sub){
+    document.getElementById('successMsg').textContent = '✅ '+msg;
+    document.getElementById('successSub').textContent = sub;
+    const box = document.getElementById('successBox');
+    box.classList.add('show');
+    setTimeout(function(){ box.classList.remove('show'); }, 4000);
+  }
+
+  function dayLabel(d, hoje){
+    const diffDias = Math.round((hoje - d) / 86400000);
+    if(diffDias === 0) return 'Hoje';
+    if(diffDias === 1) return 'Ontem';
+    return 'Mais antigos';
+  }
+
+  function renderHistorico(){
+    const wrap = document.getElementById('historicoWrap');
+    wrap.innerHTML = '';
+    if(data.plantoes.length === 0){
+      wrap.innerHTML = '<div class="empty-msg">Nenhum plantão registrado ainda.</div>';
+      return;
+    }
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const ordenados = data.plantoes.slice().reverse();
+    let currentGroup = null;
+
+    ordenados.forEach(function(p, idx){
+      const realIdx = data.plantoes.length - 1 - idx;
+      const entradaDate = new Date(p.entrada.iso);
+      const entradaDay = new Date(entradaDate); entradaDay.setHours(0,0,0,0);
+      const grupo = dayLabel(entradaDay, hoje);
+
+      if(grupo !== currentGroup){
+        currentGroup = grupo;
+        const h = document.createElement('div');
+        h.className = 'section-title';
+        h.textContent = grupo;
+        wrap.appendChild(h);
+      }
+
+      const card = document.createElement('div');
+      card.className = 'plantao-card';
+
+      let html = '<div class="plantao-row"><span class="dot in"></span><span class="lbl">Entrada</span><span class="val">'+p.entrada.time+'</span><span style="color:var(--text-dim);font-size:12px;margin-left:4px;">'+p.entrada.dateShort+'</span></div>';
+
+      if(p.saida){
+        html += '<div class="plantao-arrow">↓</div>';
+        html += '<div class="plantao-row"><span class="dot out"></span><span class="lbl">Saída</span><span class="val">'+p.saida.time+'</span><span style="color:var(--text-dim);font-size:12px;margin-left:4px;">'+p.saida.dateShort+'</span></div>';
+      } else {
+        html += '<div class="plantao-arrow">↓ <span class="pending-tag">AGUARDANDO SAÍDA</span></div>';
+      }
+
+      card.innerHTML = html;
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'edit-icon';
+      editBtn.textContent = '🗑️';
+      editBtn.title = 'Excluir este plantão';
+      editBtn.onclick = function(){
+        if(confirm('Excluir este registro de plantão?')){
+          data.plantoes.splice(realIdx, 1);
+          saveData(data);
+          renderPunchButton();
+          renderHistorico();
+        }
+      };
+      card.appendChild(editBtn);
+
+      wrap.appendChild(card);
+    });
+  }
+
+  // ---- Backup: Exportar / Importar ----
+  function exportar(){
+    const payload = JSON.stringify(data, null, 2);
+    const blob = new Blob([payload], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Ponto_backup.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function importar(file){
+    const reader = new FileReader();
+    reader.onload = function(e){
+      let novo;
+      try{ novo = JSON.parse(e.target.result); }
+      catch(err){ alert('Arquivo inválido.'); return; }
+
+      if(!novo || !Array.isArray(novo.plantoes)){
+        alert('Arquivo não parece ser um backup válido do Ponto.');
+        return;
+      }
+
+      const atualTs = data.lastModified ? new Date(data.lastModified).getTime() : 0;
+      const novoTs = novo.lastModified ? new Date(novo.lastModified).getTime() : 0;
+
+      if(atualTs && novoTs && novoTs < atualTs){
+        const confirmaAntigo = confirm(
+          'Este backup é MAIS ANTIGO que os dados atuais deste aparelho.\n\n' +
+          'Importar mesmo assim vai sobrescrever o que está aqui. Tem certeza?'
+        );
+        if(!confirmaAntigo) return;
+      } else {
+        if(!confirm('Importar este backup e substituir os dados atuais?')) return;
+      }
+
+      data = novo;
+      saveData(data);
+      renderPunchButton();
+      renderHistorico();
+      showSuccess('Backup importado com sucesso', data.plantoes.length + ' plantões carregados');
+    };
+    reader.readAsText(file);
+  }
+
+  document.getElementById('btnExport').addEventListener('click', exportar);
+  document.getElementById('btnImport').addEventListener('click', function(){
+    document.getElementById('fileImport').click();
+  });
+  document.getElementById('fileImport').addEventListener('change', function(e){
+    if(e.target.files && e.target.files[0]){
+      importar(e.target.files[0]);
+      e.target.value = '';
+    }
+  });
+
+  renderPunchButton();
+  renderHistorico();
+
+  // Pontes pro módulo de sincronização (fora da IIFE) conseguir ler e aplicar dados
+  window.__pontoGetData = function(){ return data; };
+  window.__pontoSetDataRemoto = function(novo){
+    data = novo;
+    renderPunchButton();
+    renderHistorico();
+  };
+})();
+</script>
+
+<div id="loginOverlay" style="display:none;position:fixed;inset:0;background:#0a0a14;z-index:999;align-items:center;justify-content:center;padding:20px;">
+  <div style="width:100%;max-width:320px;text-align:center;">
+    <h2 style="font-size:16px;color:#c8a96e;letter-spacing:1px;margin-bottom:6px;">⚔ WILLIAM</h2>
+    <p style="font-size:12px;color:#666;margin-bottom:18px;">Entrar neste aparelho (só uma vez)</p>
+    <input type="password" id="loginPass" placeholder="Senha" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+      style="width:100%;background:#141424;border:1px solid #333;border-radius:10px;padding:12px;font-size:14px;color:#e8e8e8;outline:none;font-family:inherit;margin-bottom:10px;">
+    <button id="loginBtn" style="width:100%;background:#c8a96e;color:#111;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Entrar</button>
+    <div id="loginErr" style="font-size:11px;color:#ff6666;margin-top:10px;min-height:14px;"></div>
+  </div>
+</div>
+
+<div id="syncDot" title="Sincronizado"></div>
+
+<script type="module">
+// ══════════════════════════════════════════════════════
+// SINCRONIZAÇÃO — Firebase, documento próprio do Ponto.
+// Diferente dos outros apps: o Ponto nunca teve nuvem antes,
+// então não existe documento antigo pra migrar — a primeira
+// sincronização usa o que já está salvo neste aparelho como
+// ponto de partida.
+// ══════════════════════════════════════════════════════
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBNKjp7hLNK6mzAX2GK49WEZq-NKgQ9o5Y",
+  authDomain: "williamapp-31dff.firebaseapp.com",
+  projectId: "williamapp-31dff",
+  storageBucket: "williamapp-31dff.firebasestorage.app",
+  messagingSenderId: "171912065024",
+  appId: "1:171912065024:web:9c47f66f4b8e7fc727a8e5"
+};
+const ALLOWED_EMAIL = "marcelodossantosfc@gmail.com";
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
+
+// ══════════════════════════════════════════════════════
+// ALERTA DE DATA CRÍTICA NA BOLINHA DE SYNC — componente
+// reutilizável (mesmo padrão em todo app do ecossistema).
+// Busca o documento "william/datas_data" direto no Firebase
+// (esse app não tem essa informação por conta própria). Se
+// alguma data importante estiver a 0 ou 1 dia, a bolinha de
+// sincronização vira uma barra vermelha grande, centralizada
+// na tela, pulsando, com o texto escrito dentro — sem
+// precisar passar o mouse. Aniversário (tem "ano") usa 🎂;
+// data comum usa 📌.
+// ══════════════════════════════════════════════════════
+function proximaOcorrenciaDiasGlobal(dia, mes){
+  var hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  var anoAtual = hoje.getFullYear();
+  var data = new Date(anoAtual, mes - 1, dia);
+  data.setHours(0, 0, 0, 0);
+  if (data < hoje) {
+    data = new Date(anoAtual + 1, mes - 1, dia);
+    data.setHours(0, 0, 0, 0);
+  }
+  return Math.round((data - hoje) / 86400000);
+}
+
+// ---------- Mega-Sena / Loterias da Caixa — mesma lógica de contagem do Agenda ----------
+function loteriaEhDiaSorteioGlobal(date){ var dow=date.getDay(); return dow===0||dow===2||dow===4; } // Dom, Ter, Qui
+function loteriaHoraSorteioGlobal(date){ return date.getDay()===0 ? 11 : 21; }
+function loteriaContagemGlobal(inicio){
+  if(!inicio) return 0;
+  var d=new Date(inicio+'T00:00:00');
+  var agora=new Date();
+  var count=0, safety=0;
+  while(d<=agora && count<12 && safety<120){
+    if(loteriaEhDiaSorteioGlobal(d)){
+      var dtSorteio=new Date(d); dtSorteio.setHours(loteriaHoraSorteioGlobal(d),0,0,0);
+      if(dtSorteio<=agora) count++;
+    }
+    d.setDate(d.getDate()+1); safety++;
+  }
+  return count;
+}
+
+// ---------- Gás — checa os 3 servidores (EU/América/Murica) no doc remoto do Agenda ----------
+function diasEntreGlobal(dataIni, dataFim){ return Math.floor((new Date(dataFim+'T00:00:00') - new Date(dataIni+'T00:00:00')) / 86400000); }
+function gasDiasUsoRemoto(dadosAgenda){
+  var g = dadosAgenda.gas || [];
+  if (!g.length) return null;
+  var x = g[0];
+  var data = x.data !== undefined ? x.data : (x.inicio || x.compra);
+  var duracao = x.data !== undefined ? x.duracao : (x.acabou ? diasEntreGlobal(data, x.acabou) : null);
+  if (duracao !== null && duracao !== undefined) return null;
+  return diasEntreGlobal(data, new Date().toISOString().split('T')[0]);
+}
+
+// ---------- Contas — checa vencimento do mês real de hoje, comparando com o campo "pago" ----------
+function contasVencendoRemoto(dadosAgenda){
+  var hoje = new Date();
+  var chave = 'contas_' + hoje.getFullYear() + '_' + hoje.getMonth();
+  var contas = dadosAgenda[chave] || [];
+  var diaHoje = hoje.getDate();
+  var resultado = [];
+  contas.forEach(function(c){
+    if (c.pago || c.diaVenc === undefined) return;
+    var dias = c.diaVenc - diaHoje;
+    if (dias > 1) return;
+    var txt;
+    if (dias === 1) txt = '💳 ' + c.nome + ' vence amanhã!';
+    else if (dias === 0) txt = '💳 ' + c.nome + ' vence HOJE!';
+    else txt = '💳 ' + c.nome + ' venceu há ' + Math.abs(dias) + (Math.abs(dias)===1?' dia':' dias') + '!';
+    resultado.push(txt);
+  });
+  return resultado;
+}
+
+// ---------- Ciclo de textos na barra crítica (alterna quando há mais de um alerta) ----------
+var _criticoTextos = [];
+var _criticoIdx = 0;
+setInterval(function(){
+  var dot = document.getElementById('syncDot');
+  if (!dot || !dot.classList.contains('dot-critico') || _criticoTextos.length < 2) return;
+  _criticoIdx = (_criticoIdx + 1) % _criticoTextos.length;
+  dot.textContent = _criticoTextos[_criticoIdx];
+}, 3000);
+
+// ---------- Adiar alerta crítico (toque na barra vermelha soneca por 30min, só neste aparelho) ----------
+var ALERTA_SNOOZE_KEY = 'william_alerta_critico_snooze_ate';
+function alertaEstaAdiado(){
+  var t = localStorage.getItem(ALERTA_SNOOZE_KEY);
+  return !!t && Date.now() < parseInt(t, 10);
+}
+function adiarAlertaCritico(){
+  localStorage.setItem(ALERTA_SNOOZE_KEY, String(Date.now() + 30*60*1000));
+}
+
+async function verificarDataCriticaGlobal(){
+  var dot = document.getElementById('syncDot');
+  if (!dot) return;
+  try {
+    var comDias = [];
+    try {
+      var snap = await getDoc(doc(db, "william", "datas_data"));
+      if (snap.exists()) {
+        var lista = snap.data().datas_importantes || [];
+        comDias = lista.map(function(d){ return { nome: d.nome, ano: d.ano, dias: proximaOcorrenciaDiasGlobal(d.dia, d.mes) }; });
+      }
+    } catch(e) {}
+
+    var loteriaCount = 0;
+    var gasDias = null;
+    var textosContas = [];
+    try {
+      var snapAg = await getDoc(doc(db, "william", "agenda_data"));
+      if (snapAg.exists()) {
+        var dadosAg = snapAg.data();
+        loteriaCount = loteriaContagemGlobal(dadosAg.loteria_inicio || null);
+        gasDias = gasDiasUsoRemoto(dadosAg);
+        textosContas = contasVencendoRemoto(dadosAg);
+      }
+    } catch(e) {}
+
+    dot.classList.remove('dot-critico', 'dot-perto-laranja', 'dot-perto-amarelo');
+    dot.textContent = '';
+
+    var criticos = comDias.filter(function(item){ return item.dias <= 1; }).sort(function(a,b){ return a.dias - b.dias; });
+    var laranjas = comDias.filter(function(item){ return item.dias > 1 && item.dias <= 3; }).sort(function(a,b){ return a.dias - b.dias; });
+    var amarelos = comDias.filter(function(item){ return item.dias > 3 && item.dias <= 10; }).sort(function(a,b){ return a.dias - b.dias; });
+
+    var textosCriticos = criticos.map(function(item){
+      var prefixo = item.ano ? '🎂 ' : '📌 ';
+      return prefixo + item.nome + (item.dias === 0 ? ' é HOJE!' : ' é amanhã!');
+    });
+    var textosAmarelos = amarelos.map(function(item){ return (item.ano ? '🎂 ' : '📌 ') + item.nome + ' em ' + item.dias + ' dias'; });
+
+    // Mega-Sena: 12/12 é crítico (barra vermelha), 11/12 é aviso fraco (bolinha amarela)
+    if (loteriaCount >= 12) {
+      textosCriticos.push('🎰 Renovar Megasena!');
+    } else if (loteriaCount === 11) {
+      textosAmarelos.push('🎰 Megasena: falta 1 concurso, renove em breve');
+    }
+
+    // Gás: 90 dias de uso é crítico, 80 dias é aviso fraco — qualquer servidor dispara
+    if (gasDias !== null) {
+      if (gasDias >= 90) {
+        textosCriticos.push('🔥 Gás: ' + gasDias + ' dias de uso, hora de trocar!');
+      } else if (gasDias >= 80) {
+        textosAmarelos.push('🔥 Gás: ' + gasDias + ' dias de uso, perto da troca');
+      }
+    }
+
+    // Contas: vencendo/vencida e não paga — sempre crítico
+    textosContas.forEach(function(t){ textosCriticos.push(t); });
+
+    if (textosCriticos.length && !alertaEstaAdiado()){
+      dot.classList.add('dot-critico');
+      dot.title = textosCriticos.join(' • ') + ' (toque para adiar 30min)';
+      _criticoTextos = textosCriticos;
+      _criticoIdx = 0;
+      dot.textContent = textosCriticos[0];
+    } else if (laranjas.length){
+      var textosL = laranjas.map(function(item){ return (item.ano ? '🎂 ' : '📌 ') + item.nome + ' em ' + item.dias + ' dias'; });
+      dot.classList.add('dot-perto-laranja');
+      dot.title = textosL.join(' • ');
+      _criticoTextos = [];
+    } else if (textosAmarelos.length){
+      dot.classList.add('dot-perto-amarelo');
+      dot.title = textosAmarelos.join(' • ');
+      _criticoTextos = [];
+    } else {
+      dot.title = 'Sincronizado';
+      _criticoTextos = [];
+    }
+  } catch (e) { /* silencioso — não atrapalha o app se essa checagem falhar */ }
+}
+
+function iniciarChecagemDataCritica(){
+  var dot = document.getElementById('syncDot');
+  if (dot) {
+    dot.onclick = function(){
+      if (dot.classList.contains('dot-critico')){
+        adiarAlertaCritico();
+        verificarDataCriticaGlobal();
+      }
+    };
+    dot.style.cursor = 'pointer';
+  }
+  verificarDataCriticaGlobal();
+  setInterval(verificarDataCriticaGlobal, 30000);
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) verificarDataCriticaGlobal();
+  });
+}
+
+const docNovo = doc(db, "william", "ponto_data");
+
+let aplicandoRemoto = false;
+let pushTimer = null;
+let jaMigrou = false;
+
+function setDot(cor){ var d=document.getElementById('syncDot'); if(d) d.style.background=cor; }
+
+function abrirRetratoDB(){
+  return new Promise(function(resolve, reject){
+    var req = indexedDB.open('william_retratos', 1);
+    req.onupgradeneeded = function(){ req.result.createObjectStore('retratos'); };
+    req.onsuccess = function(){ resolve(req.result); };
+    req.onerror = function(){ reject(req.error); };
+  });
+}
+async function salvarRetratoLocal(conteudo){
+  try{
+    var db2 = await abrirRetratoDB();
+    var hoje = new Date().toISOString().slice(0,10);
+    var chave = 'ponto_' + hoje;
+    var tx = db2.transaction('retratos','readwrite');
+    tx.objectStore('retratos').put({ data: hoje, savedAt: new Date().toISOString(), conteudo: conteudo }, chave);
+    var getAllReq = tx.objectStore('retratos').getAllKeys();
+    getAllReq.onsuccess = function(){
+      var limite = new Date(); limite.setDate(limite.getDate()-30);
+      getAllReq.result.forEach(function(k){
+        if(typeof k==='string' && k.indexOf('ponto_')===0){
+          var dataK = new Date(k.replace('ponto_',''));
+          if(dataK < limite) tx.objectStore('retratos').delete(k);
+        }
+      });
+    };
+  }catch(e){ console.warn('Retrato local falhou (não crítico):', e); }
+}
+
+function agendarPush(){
+  if(aplicandoRemoto) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(async function(){
+    try{
+      setDot('#d6a24a');
+      var conteudo = window.__pontoGetData ? window.__pontoGetData() : null;
+      if(!conteudo) return;
+      conteudo.lastModified = new Date().toISOString();
+      await setDoc(docNovo, conteudo);
+      await salvarRetratoLocal(conteudo);
+      setDot('#3fae5c');
+    }catch(e){
+      console.error('Erro ao sincronizar Ponto:', e);
+      setDot('#c94f4f');
+    }
+  }, 800);
+}
+window.__pontoAoSalvar = agendarPush;
+
+function iniciarEscuta(){
+  onSnapshot(docNovo, function(snap){
+    if(!snap.exists()) return;
+    var remoto = snap.data();
+    var local = window.__pontoGetData ? window.__pontoGetData() : null;
+    if(!local) return;
+    if(JSON.stringify(local) === JSON.stringify(remoto)) return; // nada mudou
+    aplicandoRemoto = true;
+    if(window.__pontoSetDataRemoto) window.__pontoSetDataRemoto(remoto);
+    salvarRetratoLocal(remoto);
+    aplicandoRemoto = false;
+    setDot('#3fae5c');
+  }, function(err){
+    console.error('Erro de sincronização (Ponto):', err);
+    setDot('#c94f4f');
+  });
+}
+
+async function migrarSeNecessario(){
+  var snapNovo = await getDoc(docNovo);
+  if(snapNovo.exists()) return; // já existe na nuvem, não precisa semear
+  try{
+    // Ponto nunca teve nuvem antes — usa o que já está salvo neste aparelho como ponto de partida
+    var conteudo = window.__pontoGetData ? window.__pontoGetData() : { plantoes: [] };
+    conteudo.lastModified = new Date().toISOString();
+    await setDoc(docNovo, conteudo);
+  }catch(e){ console.error('Erro na configuração inicial do Ponto:', e); }
+}
+
+function mostrarLogin(){ document.getElementById('loginOverlay').style.display = 'flex'; }
+function esconderLogin(){ document.getElementById('loginOverlay').style.display = 'none'; }
+
+async function tentarLogin(){
+  var senha = document.getElementById('loginPass').value;
+  var errEl = document.getElementById('loginErr');
+  var btn = document.getElementById('loginBtn');
+  errEl.textContent = '';
+  if(!senha){ errEl.textContent = 'Digite a senha.'; return; }
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  try{
+    await setPersistence(auth, browserLocalPersistence);
+    await signInWithEmailAndPassword(auth, ALLOWED_EMAIL, senha);
+  }catch(e){
+    errEl.textContent = 'Senha incorreta.';
+  }
+  btn.disabled = false; btn.textContent = 'Entrar';
+}
+document.getElementById('loginBtn').addEventListener('click', tentarLogin);
+document.getElementById('loginPass').addEventListener('keydown', function(e){ if(e.key==='Enter') tentarLogin(); });
+
+onAuthStateChanged(auth, async function(user){
+  if(user && user.email === ALLOWED_EMAIL){
+    esconderLogin();
+    if(!jaMigrou){
+      jaMigrou = true;
+      await migrarSeNecessario();
+      iniciarEscuta();
+      iniciarChecagemDataCritica();
+    }
+  } else {
+    mostrarLogin();
+  }
+});
+</script>
+
+</body>
+</html>
