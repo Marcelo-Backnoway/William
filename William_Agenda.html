@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>📅 William Agenda</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a14; color: #e8e8e8; min-height: 100vh; }
+
+.topbar { background: #111122; border-bottom: 1px solid #2a2a3a; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.topbar h1 { font-size: 12px; color: #c8a96e; letter-spacing: 1px; font-weight: 700; }
+
+.container { padding: 10px; max-width: 480px; margin: 0 auto; }
+
+.card { background: #141424; border: 1px solid #2a2a3a; border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+.card-title { font-size: 11px; font-weight: 700; color: #c8a96e; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
+
+/* SUB-ABAS AGENDA */
+.ilha-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+.ilha-tab { flex: 1; padding: 7px 4px; text-align: center; font-size: 11px; font-weight: 700; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; background: #1a1a2a; color: #555; }
+.ilha-tab.active-rigel { background: #0f1a0f; color: #90EE90; border: 1px solid #90EE90; }
+
+/* ESCALA */
+.month-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.month-nav button { background: #2a2a3a; border: none; color: #c8a96e; font-size: 16px; padding: 4px 10px; border-radius: 8px; cursor: pointer; }
+.month-title { font-size: 14px; font-weight: 700; }
+.weekdays { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; margin-bottom: 3px; }
+.weekday { font-size: 9px; color: #555; text-align: center; font-weight: 700; }
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+.cal-day { aspect-ratio: 1; border-radius: 7px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; cursor: pointer; transition: transform 0.1s; }
+.cal-day:active { transform: scale(0.88); }
+.cal-day.empty { background: transparent; cursor: default; }
+.cal-day.work   { background: #1e5e2e; color: #ffffff; border: 1px solid #2a8a3e; }
+.cal-day.folga  { background: #1a0a0a; color: #ff6666; border: 1px solid #6a2a2a; }
+.cal-day.ferias { background: #2a1a3a; color: #DDA0DD; border: 1px solid #4a2a6a; }
+.cal-day.aniv   { background: #3a2a0a; color: #FFD700; border: 2px solid #c8a96e; }
+.cal-day.today  { border: 2px solid #c8a96e !important; }
+.cal-day.past   { opacity: 0.4; }
+
+.daymod-bg{ position:fixed; inset:0; background:rgba(0,0,0,0.75); display:none; align-items:center; justify-content:center; z-index:300; padding:20px; }
+.daymod-bg.show{ display:flex; }
+.daymod-box{ background:#141420; border:1px solid #333; border-radius:16px; padding:20px; width:100%; max-width:320px; }
+.daymod-box h3{ margin:0 0 4px; font-size:15px; color:#e8e8e8; text-align:center; }
+.daymod-box .daymod-sub{ font-size:12px; color:#888; text-align:center; margin-bottom:16px; }
+.daymod-btn{ width:100%; border:1px solid #333; background:#1c1c2a; color:#e8e8e8; border-radius:12px; padding:12px; font-size:14px; font-weight:600; cursor:pointer; margin-bottom:8px; text-align:left; }
+.daymod-btn:active{ background:#26263a; }
+.daymod-btn.cancel{ background:none; color:#888; text-align:center; border:none; margin-top:4px; }
+.cal-icon { font-size: 7px; line-height: 1; }
+.legend { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #888; }
+.legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+/* CONTAS */
+.mes-selector { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.mes-selector button { background: #2a2a3a; border: none; color: #c8a96e; font-size: 16px; padding: 4px 10px; border-radius: 8px; cursor: pointer; }
+.mes-label { font-size: 14px; font-weight: 700; }
+.resumo-contas { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.resumo-box { background: #0f0f1e; border-radius: 10px; padding: 10px; text-align: center; border: 1px solid #2a2a3a; }
+.resumo-box .rlabel { font-size: 10px; color: #666; margin-bottom: 3px; }
+.resumo-box .rval { font-size: 15px; font-weight: 700; }
+.resumo-box.pago .rval { color: #74c69d; }
+.resumo-box.pend .rval { color: #ff9944; }
+.conta-item { display: flex; align-items: center; gap: 10px; padding: 10px; background: #0f0f1e; border-radius: 10px; margin-bottom: 7px; border: 1px solid #2a2a3a; border-left: 4px solid #2a2a3a; cursor: pointer; }
+.conta-item.pago { border-color: #2d6a4f; background: #0f1a14; }
+.conta-item.cor-amarelo { border-left-color: #e8c547; }
+.conta-item.cor-laranja { border-left-color: #ff9944; }
+.conta-item.cor-vermelho { border-left-color: #ff5555; animation: pulsoContaItem 1.4s ease-in-out infinite; }
+@keyframes pulsoContaItem { 0%,100% { box-shadow: 0 0 0 0 rgba(255,85,85,0); } 50% { box-shadow: 0 0 0 3px rgba(255,85,85,0.35); } }
+.conta-check { width: 22px; height: 22px; border-radius: 6px; border: 2px solid #444; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+.conta-item.pago .conta-check { background: #2d6a4f; border-color: #2d6a4f; }
+.conta-info { flex: 1; }
+.conta-nome { font-size: 13px; font-weight: 600; }
+.conta-item.pago .conta-nome { color: #74c69d; }
+.conta-venc { font-size: 14px; color: #fff; font-weight: 600; margin-top: 2px; }
+.conta-valor { font-size: 13px; font-weight: 700; color: #c8a96e; }
+.conta-item.pago .conta-valor { color: #74c69d; }
+.edit-conta { background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 7px 10px; font-size: 13px; color: #e8e8e8; outline: none; width: 100%; font-family: inherit; margin-top: 3px; }
+.edit-conta:focus { border-color: #c8a96e; }
+
+/* GÁS CONTROLE */
+.gas-field { margin-bottom: 8px; }
+.gas-field label { font-size: 10px; color: #888; display: block; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+.gas-field input { width: 100%; background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 9px 10px; font-size: 13px; color: #e8e8e8; outline: none; font-family: inherit; }
+.gas-field input:focus { border-color: #c8a96e; }
+.gas-btn-row { display: flex; gap: 8px; margin-top: 4px; }
+.gas-btn { flex: 1; padding: 10px; background: #c8a96e; color: #111; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.gas-btn.secondary { background: #1a1a2a; color: #aaa; border: 1px solid #444; }
+.gas-item { padding: 10px 12px; background: #0f0f1e; border-radius: 10px; margin-bottom: 7px; border: 1px solid #2a2a3a; }
+.gas-item.ativo { border-color: #c8a96e; background: #1a1608; }
+.gas-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.gas-numero { font-size: 14px; font-weight: 700; color: #FFD700; }
+.gas-del { color: #444; font-size: 16px; cursor: pointer; padding: 2px 4px; }
+.gas-datas { font-size: 11px; color: #888; }
+.gas-duracao { font-size: 12px; font-weight: 700; color: #74c69d; margin-top: 3px; }
+.gas-duracao.aberto { color: #FFD700; }
+
+/* MOTO — ÓLEO E FILTRO */
+.moto-item { padding: 10px 12px; background: #0f0f1e; border-radius: 10px; margin-bottom: 7px; border: 1px solid #2a2a3a; }
+.moto-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.moto-numero { font-size: 13px; font-weight: 700; color: #87CEFA; }
+.moto-del { color: #444; font-size: 16px; cursor: pointer; padding: 2px 4px; }
+.moto-row { display: flex; gap: 8px; margin-bottom: 6px; }
+.moto-field { flex: 1; }
+.moto-field label { font-size: 9px; color: #666; display: block; margin-bottom: 2px; text-transform: uppercase; }
+.moto-field input { width: 100%; background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 7px 8px; font-size: 12px; color: #e8e8e8; outline: none; font-family: inherit; }
+.moto-field input:focus { border-color: #c8a96e; }
+.moto-proxima { font-size: 11px; color: #74c69d; font-weight: 700; margin-top: 2px; }
+
+/* ODÔMETRO — medidor de km rodados desde a troca */
+.odo-card { background: linear-gradient(135deg,#151530,#0f0f1e); border: 1px solid #2a2a3a; border-radius: 14px; padding: 16px 14px; margin-bottom: 14px; text-align: center; }
+.odo-emoji { font-size: 30px; margin-bottom: 4px; }
+.odo-input-row { display: flex; gap: 8px; margin: 10px 0; }
+.odo-input-row input { flex: 1; background: #1a1a2e; border: 1px solid #333; border-radius: 10px; padding: 12px 10px; font-size: 18px; font-weight: 700; color: #e8e8e8; outline: none; font-family: inherit; text-align: center; }
+.odo-input-row input:focus { border-color: #c8a96e; }
+.odo-btn { width: 100%; background: #2a2a55; border: none; border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 700; color: #b7a6ff; cursor: pointer; font-family: inherit; }
+.odo-btn:active { background: #35357a; }
+.odo-status { font-size: 12px; color: #888; margin-top: 10px; }
+.odo-gauge-track { width: 100%; height: 10px; border-radius: 6px; background: #1a1a2e; margin-top: 10px; overflow: hidden; }
+.odo-gauge-fill { height: 100%; border-radius: 6px; transition: width 0.3s; }
+.odo-gauge-fill.verde { background: #74c69d; }
+.odo-gauge-fill.amarelo { background: #e8c547; }
+.odo-gauge-fill.vermelho { background: #ff5555; }
+.odo-msg { font-size: 13px; font-weight: 700; margin-top: 8px; }
+.odo-msg.verde { color: #74c69d; }
+.odo-msg.amarelo { color: #e8c547; }
+.odo-msg.vermelho { color: #ff5555; }
+
+/* OBJETIVOS */
+.obj-item { display: flex; align-items: center; gap: 10px; padding: 10px; background: #0f0f1e; border-radius: 10px; margin-bottom: 7px; border: 1px solid #2a2a3a; }
+.obj-item.done { border-color: #2d6a4f; background: #0f1a14; }
+.obj-check { width: 22px; height: 22px; border-radius: 11px; border: 2px solid #444; display: flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; flex-shrink: 0; }
+.obj-item.done .obj-check { background: #2d6a4f; border-color: #2d6a4f; }
+.obj-text { flex: 1; font-size: 13px; }
+.obj-item.done .obj-text { color: #74c69d; text-decoration: line-through; }
+.obj-del { color: #444; font-size: 18px; cursor: pointer; padding: 4px; }
+.add-row { display: flex; gap: 8px; margin-top: 8px; }
+.add-input { flex: 1; background: #1a1a2e; border: 1px solid #333; border-radius: 10px; padding: 10px 12px; font-size: 13px; color: #e8e8e8; outline: none; font-family: inherit; }
+.add-input:focus { border-color: #c8a96e; }
+.add-btn { background: #c8a96e; color: #111; border: none; border-radius: 10px; padding: 10px 16px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.backup-row{ display:flex; gap:8px; padding:10px 10px 4px; max-width:480px; margin:0 auto; }
+.backup-btn{ flex:1; border:none; border-radius:10px; padding:11px 0; font-size:12px; font-weight:700; cursor:pointer; background:#141424; color:#e8e8e8; border:1px solid #2a2a3a; }
+.backup-btn:active{ background:#1a1a2e; }
+.backup-hint{ text-align:center; font-size:10px; color:#666; padding:0 10px 6px; max-width:480px; margin:0 auto; }
+input[type=file]{ display:none; }
+
+/* BANNER RENOVAR LOTERIA */
+.loteria-banner { display:none; background:#c62828; color:#fff; text-align:center; font-weight:800; font-size:12px; letter-spacing:0.5px; padding:9px 10px; }
+
+#syncDot{
+  position: fixed; bottom: 14px; right: 14px; z-index: 998;
+  width: 10px; height: 10px; border-radius: 50%; background: #555;
+  transition: all 0.25s ease;
+}
+@keyframes pulsoCriticoGrande {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,34,34,0.85), 0 0 22px 6px rgba(255,34,34,0.9); transform: translate(-50%, -50%) scale(1); }
+  50% { box-shadow: 0 0 0 18px rgba(255,34,34,0), 0 0 32px 10px rgba(255,34,34,0.55); transform: translate(-50%, -50%) scale(1.035); }
+}
+#syncDot.dot-critico {
+  position: fixed; top: 50%; left: 50%; right: auto; bottom: auto;
+  transform: translate(-50%, -50%);
+  width: auto; height: auto; min-width: 260px; max-width: calc(100vw - 40px);
+  border-radius: 16px; background: #ff2222 !important;
+  padding: 18px 26px; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; font-weight: 800; color: #fff; text-align: center;
+  line-height: 1.3; white-space: normal;
+  animation: pulsoCriticoGrande 1s ease-in-out infinite;
+}
+#syncDot.dot-perto-laranja {
+  box-shadow: 0 0 0 4px rgba(255,153,68,0.65);
+}
+#syncDot.dot-perto-amarelo {
+  box-shadow: 0 0 0 4px rgba(232,197,71,0.6);
+}
+</style>
+</head>
+<body>
+<div class="daymod-bg" id="daymodBg">
+  <div class="daymod-box">
+    <h3 id="daymodTitle">Editar dia</h3>
+    <div class="daymod-sub" id="daymodSub"></div>
+    <button class="daymod-btn" id="daymodPlantao">🔒 Marcar como Plantão</button>
+    <button class="daymod-btn" id="daymodFolga">😴 Marcar como Folga</button>
+    <button class="daymod-btn" id="daymodFerias">🌴 Marcar como Férias</button>
+    <button class="daymod-btn" id="daymodAuto">↩️ Voltar ao automático</button>
+    <button class="daymod-btn cancel" id="daymodCancel">Cancelar</button>
+  </div>
+</div>
+<div class="loteria-banner" id="loteriaBanner">🔴 RENOVAR MEGASENA</div>
+<div class="topbar">
+  <h1>⚔ WILLIAM — AGENDA</h1>
+</div>
+
+<div class="backup-row">
+  <button class="backup-btn" id="btnExport">⬇️ Exportar</button>
+  <button class="backup-btn" id="btnImport">⬆️ Importar</button>
+  <input type="file" id="fileImport" accept="application/json">
+</div>
+<div class="backup-hint">Backup manual — salve na sua pasta do Drive</div>
+
+<div class="container" id="main"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// CONFIG FIXA (escala 12x36, férias, datas especiais)
+// ══════════════════════════════════════════════════════
+var KEY = 'william_superapp_v1'; // mesma chave do SuperApp — dados ficam sincronizados
+var dashTab = 'escala';
+var calMonth = new Date().getMonth();
+var calYear  = new Date().getFullYear();
+var contasMes = new Date().getMonth();
+var contasAno = new Date().getFullYear();
+
+var CONTAS_DEFAULT = [
+  {id:'star',  nome:'🏍️ Star Monitoramento', valor:'', venc:'até dia 09', diaVenc:10},
+  {id:'iptu',  nome:'🏠 IPTU',               valor:'', venc:'vence 30 / paga até 06', diaVenc:5},
+  {id:'agua',  nome:'💧 Água',               valor:'', venc:'até dia 09', diaVenc:10},
+  {id:'cpfl',  nome:'⚡ CPFL (Luz)',          valor:'', venc:'até dia 15', diaVenc:17},
+  {id:'vivo',  nome:'📱 Vivo Controle',       valor:'', venc:'vence 26 / paga até 22', diaVenc:24},
+  {id:'sant',  nome:'🏦 Santander',           valor:'', venc:'vence dia 27', diaVenc:27},
+  {id:'bignet',nome:'🌐 BigNet',             valor:'', venc:'vence dia 30', diaVenc:29},
+  {id:'loteria',nome:'🎰 Loterias da Caixa', valor:'', venc:'até dia 30'},
+];
+
+var PLANTAO_INICIO = new Date(2026,6,2);
+var FERIAS_INICIO  = '2026-09-28';
+var FERIAS_FIM     = '2026-10-28';
+var FOLGA_ESP      = '2026-11-19';
+var ANIVERSARIO    = '2026-11-22';
+
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+function loadState() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) { return {}; } }
+function saveState(s) { try { s.lastModified = new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(s)); } catch(e) {} }
+function pertenceAoAgenda(k){
+  if(k==='loteria_inicio' || k==='loteria_inicio_backup' || k==='moto_oleo' || k==='motoKmAtual' || k==='corte_cabelo' || k==='obj' || k==='ferias' || k==='diaOverride' || k==='gas') return true;
+  return /^contas_\d+_\d+$|^veiculo_\d+$/.test(k);
+}
+
+function maskDate(v){
+  v=v.replace(/\D/g,'').slice(0,8);
+  if(v.length>4) return v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4);
+  if(v.length>2) return v.slice(0,2)+'/'+v.slice(2);
+  return v;
+}
+
+// Migração única: junta os dados que estavam separados por "servidor" (eu/america/murica —
+// conceito que só faz sentido em Ilhas/Gold/Personagens, nunca deveria ter entrado no Agenda)
+// numa cópia única. Mantém a versão 'eu' como fonte da verdade e descarta as outras.
+function migrarServidorParaUnico(){
+  var s = loadState();
+  var mudou = false;
+  ['gas','obj','ferias','diaOverride'].forEach(function(campo){
+    if (s[campo] === undefined && s['eu_'+campo] !== undefined) { s[campo] = s['eu_'+campo]; mudou = true; }
+    ['eu','america','murica'].forEach(function(sv){ if (s[sv+'_'+campo] !== undefined) { delete s[sv+'_'+campo]; mudou = true; } });
+  });
+  Object.keys(s).forEach(function(k){
+    var m = k.match(/^eu_contas_(\d+)_(\d+)$/);
+    if (m) { var nk='contas_'+m[1]+'_'+m[2]; if (s[nk]===undefined) { s[nk]=s[k]; mudou=true; } }
+  });
+  Object.keys(s).forEach(function(k){
+    var m = k.match(/^eu_veiculo_(\d+)$/);
+    if (m) { var nk='veiculo_'+m[1]; if (s[nk]===undefined) { s[nk]=s[k]; mudou=true; } }
+  });
+  Object.keys(s).forEach(function(k){
+    if (/^(eu|america|murica)_contas_\d+_\d+$/.test(k) || /^(eu|america|murica)_veiculo_\d+$/.test(k)) { delete s[k]; mudou=true; }
+  });
+  if (mudou) saveState(s);
+}
+migrarServidorParaUnico();
+
+function getContas(mes,ano) {
+  var s=loadState(), k='contas_'+ano+'_'+mes;
+  if(!s[k]){ s[k]=CONTAS_DEFAULT.map(function(c){ return Object.assign({},c,{pago:false,pagoEm:''}); }); saveState(s); }
+  else {
+    var mudou=false;
+    var porId={}; CONTAS_DEFAULT.forEach(function(c){ porId[c.id]=c; });
+    s[k].forEach(function(c){
+      if(c.pagoEm===undefined){ c.pagoEm=''; mudou=true; }
+      if(c.diaVenc===undefined && porId[c.id] && porId[c.id].diaVenc!==undefined){ c.diaVenc=porId[c.id].diaVenc; mudou=true; }
+    });
+    // Completa contas novas (adicionadas ao CONTAS_DEFAULT depois que este mês já existia)
+    var idsExistentes = s[k].map(function(c){ return c.id; });
+    CONTAS_DEFAULT.forEach(function(padrao){
+      if (idsExistentes.indexOf(padrao.id) === -1) {
+        s[k].push(Object.assign({}, padrao, {pago:false, pagoEm:''}));
+        mudou = true;
+      }
+    });
+    if(mudou) saveState(s);
+  }
+  return s[k];
+}
+function setContas(mes,ano,data){ var s=loadState(); s['contas_'+ano+'_'+mes]=data; saveState(s); }
+
+function getObj(){ var s=loadState(); return s.obj||[]; }
+function setObj(d){ var s=loadState(); s.obj=d; saveState(s); }
+
+function getVeiculo(ano){
+  var s=loadState(), k='veiculo_'+ano;
+  if(!s[k]){
+    s[k] = {
+      ipva:   {nome:'🚙 IPVA',           pago:false, valor:'', pagoEm:''},
+      lic:    {nome:'📄 Licenciamento',  pago:false, valor:'', pagoEm:''},
+      dpvat:  {nome:'🛡️ DPVAT', status:'suspenso', valor:'', pagoEm:''}
+    };
+    saveState(s);
+  }
+  return s[k];
+}
+function setVeiculo(ano,data){ var s=loadState(); s['veiculo_'+ano]=data; saveState(s); }
+
+function getFerias(){ var s=loadState(); return s.ferias||[]; }
+function setFerias(d){ var s=loadState(); s.ferias=d; saveState(s); }
+function getOverrides(){ var s=loadState(); return s.diaOverride||{}; }
+function setOverrides(d){ var s=loadState(); s.diaOverride=d; saveState(s); }
+
+// ══════════════════════════════════════════════════════
+// LOTERIAS DA CAIXA — sorteios Ter/Qui 21h, Dom 11h — 12 concursos por aposta
+// ══════════════════════════════════════════════════════
+function getLoteriaInicio(){ var s=loadState(); return s.loteria_inicio||null; }
+function setLoteriaInicio(d){ var s=loadState(); s.loteria_inicio=d; saveState(s); }
+function getLoteriaBackup(){ var s=loadState(); return s.loteria_inicio_backup||null; }
+function guardarLoteriaBackup(){ var s=loadState(); s.loteria_inicio_backup=s.loteria_inicio||null; saveState(s); }
+function restaurarLoteriaBackup(){ var s=loadState(); if(s.loteria_inicio_backup!==undefined){ s.loteria_inicio=s.loteria_inicio_backup; delete s.loteria_inicio_backup; saveState(s); } }
+function loteriaEhDiaSorteio(date){ var dow=date.getDay(); return dow===0||dow===2||dow===4; } // Dom, Ter, Qui
+function loteriaHoraSorteio(date){ return date.getDay()===0 ? 11 : 21; }
+function getLoteriaContagem(){
+  var inicio=getLoteriaInicio();
+  if(!inicio) return 0;
+  var d=new Date(inicio+'T00:00:00');
+  var agora=new Date();
+  var count=0, safety=0;
+  while(d<=agora && count<12 && safety<120){
+    if(loteriaEhDiaSorteio(d)){
+      var dtSorteio=new Date(d); dtSorteio.setHours(loteriaHoraSorteio(d),0,0,0);
+      if(dtSorteio<=agora) count++;
+    }
+    d.setDate(d.getDate()+1);
+    safety++;
+  }
+  return Math.min(count,12);
+}
+function atualizarLoteriaBanner(){
+  var banner=document.getElementById('loteriaBanner');
+  if(!banner) return;
+  banner.style.display = getLoteriaContagem()>=11 ? 'block' : 'none';
+}
+
+function diasEntre(dataIni, dataFim){ return Math.floor((new Date(dataFim+'T00:00:00') - new Date(dataIni+'T00:00:00')) / 86400000); }
+
+function getGas(){
+  var s=loadState(); var g=s.gas||[]; var mudou=false;
+  g = g.map(function(x){
+    if (x.data !== undefined) return x; // já no formato novo
+    mudou = true;
+    var baseData = x.inicio || x.compra;
+    var duracao = null;
+    if (x.acabou) duracao = diasEntre(baseData, x.acabou);
+    return { data: baseData, duracao: duracao };
+  });
+  if (g.length > 7) { g = g.slice(0,7); mudou = true; }
+  if (mudou){ s.gas=g; saveState(s); }
+  return g;
+}
+function setGas(d){ var s=loadState(); s.gas=d.slice(0,7); saveState(s); }
+function getGasDiasUso(){
+  var g = getGas();
+  if (!g.length) return null;
+  var atual = g[0];
+  if (atual.duracao !== null && atual.duracao !== undefined) return null; // não há botijão em uso registrado
+  return diasEntre(atual.data, new Date().toISOString().split('T')[0]);
+}
+
+// ---------- Contas — checa vencimento do mês real de hoje, comparando com o campo "pago" ----------
+function corVencimentoConta(c, mes, ano){
+  if (c.pago || c.diaVenc === undefined) return '';
+  var hoje = new Date();
+  if (mes !== hoje.getMonth() || ano !== hoje.getFullYear()) return ''; // só colore o mês real atual
+  var dias = c.diaVenc - hoje.getDate();
+  if (dias <= 1) return 'cor-vermelho';
+  if (dias <= 3) return 'cor-laranja';
+  if (dias <= 10) return 'cor-amarelo';
+  return '';
+}
+function getContasVencendoCriticas(){
+  var hoje = new Date();
+  var contas = getContas(hoje.getMonth(), hoje.getFullYear());
+  var diaHoje = hoje.getDate();
+  var resultado = [];
+  contas.forEach(function(c){
+    if (c.pago || c.diaVenc === undefined) return;
+    var dias = c.diaVenc - diaHoje;
+    if (dias > 1) return;
+    var txt;
+    if (dias === 1) txt = '💳 ' + c.nome + ' vence amanhã!';
+    else if (dias === 0) txt = '💳 ' + c.nome + ' vence HOJE!';
+    else txt = '💳 ' + c.nome + ' venceu há ' + Math.abs(dias) + (Math.abs(dias)===1?' dia':' dias') + '!';
+    resultado.push(txt);
+  });
+  return resultado;
+}
+
+var KM_INTERVALO = 2800;
+function getMoto(){
+  var s=loadState(); var m=s.moto_oleo||[]; var mudou=false;
+  for (var i=0;i<m.length;i++){
+    if (m[i].duracao === undefined){
+      m[i].duracao = (i===0) ? null : diasEntre(m[i].data, m[i-1].data);
+      mudou = true;
+    }
+  }
+  if (m.length > 7) { m = m.slice(0,7); mudou = true; }
+  if (mudou){ s.moto_oleo=m; saveState(s); }
+  return m;
+}
+function setMoto(d){ var s=loadState(); s.moto_oleo=d.slice(0,7); saveState(s); }
+
+// ---------- Quilometragem atual (odômetro) — o que realmente dispara o alerta ----------
+function getMotoKmAtual(){ var s=loadState(); return s.motoKmAtual || null; } // {km, atualizadoEm}
+function setMotoKmAtual(km){ var s=loadState(); s.motoKmAtual = {km:km, atualizadoEm:new Date().toISOString().split('T')[0]}; saveState(s); }
+function getMotoKmStatus(){
+  var atual = getMotoKmAtual();
+  var historico = getMoto();
+  if (!atual || !historico.length) return null;
+  return { diff: atual.km - historico[0].km, kmAtual: atual.km, kmTroca: historico[0].km, atualizadoEm: atual.atualizadoEm };
+}
+function getCorte(){
+  var s=loadState(); var c=s.corte_cabelo||[]; var mudou=false;
+  for (var i=0;i<c.length;i++){
+    if (c[i].duracao === undefined){
+      c[i].duracao = (i===0) ? null : diasEntre(c[i].data, c[i-1].data);
+      mudou = true;
+    }
+  }
+  if (c.length > 7) { c = c.slice(0,7); mudou = true; }
+  if (mudou){ s.corte_cabelo=c; saveState(s); }
+  return c;
+}
+function setCorte(d){ var s=loadState(); s.corte_cabelo=d.slice(0,7); saveState(s); }
+
+// ══════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════
+function el(tag,cls,txt){var e=document.createElement(tag);e.className=cls;if(txt!==undefined)e.textContent=txt;return e;}
+function vibe(p){try{if(navigator.vibrate)navigator.vibrate(p);}catch(e){}}
+
+/* ---------- MICROFONE REUTILIZÁVEL ---------- */
+function anexarMicrofone(inputEl, opts){
+  opts = opts || {};
+  var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = '🎤';
+  btn.title = 'Falar';
+  btn.style.cssText = 'flex:0 0 40px;width:40px;height:40px;border-radius:8px;border:1px solid #333;background:#1a1a2e;color:#e8e8e8;font-size:16px;cursor:pointer;';
+  inputEl.parentNode.appendChild(btn);
+  if(!Rec){ btn.style.display='none'; return btn; }
+  var rec = new Rec();
+  rec.lang = 'pt-BR'; rec.continuous = false; rec.interimResults = false;
+  btn.addEventListener('click', function(){
+    btn.style.background = '#c8a96e'; btn.style.color = '#111'; btn.textContent = '●';
+    try{ rec.start(); }catch(e){}
+  });
+  rec.onresult = function(e){
+    inputEl.value = e.results[0][0].transcript;
+    inputEl.dispatchEvent(new Event('input', {bubbles:true}));
+    inputEl.dispatchEvent(new Event('change', {bubbles:true}));
+    if(opts.onDone) opts.onDone();
+  };
+  rec.onend = function(){ btn.style.background='#1a1a2e'; btn.style.color='#e8e8e8'; btn.textContent='🎤'; };
+  rec.onerror = function(){ btn.style.background='#1a1a2e'; btn.style.color='#e8e8e8'; btn.textContent='🎤'; };
+  return btn;
+}
+function fmtData(iso){ if(!iso) return ''; var p=iso.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+
+// ══════════════════════════════════════════════════════
+// RENDER PRINCIPAL
+// ══════════════════════════════════════════════════════
+function render() {
+  var main = document.getElementById('main');
+  var dtabs = document.createElement('div'); dtabs.className='ilha-tabs';
+  [['escala','📅 Escala'],['contas','💰 Contas'],['obj','🎯 Objetivos']].forEach(function(d){
+    var b=document.createElement('button');
+    b.className='ilha-tab'+(dashTab===d[0]?' active-rigel':'');
+    b.textContent=d[1]; b.onclick=(function(k){return function(){dashTab=k;render();}})(d[0]);
+    dtabs.appendChild(b);
+  });
+  main.innerHTML=''; main.appendChild(dtabs);
+  if(dashTab==='escala') renderEscala(main);
+  else if(dashTab==='contas') renderContas(main);
+  else renderObj(main);
+  atualizarLoteriaBanner();
+}
+
+// ══════════════════════════════════════════════════════
+// ESCALA
+// ══════════════════════════════════════════════════════
+function renderEscala(main) {
+  var today=new Date(), meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var firstDay=new Date(calYear,calMonth,1), lastDay=new Date(calYear,calMonth+1,0);
+  var card=document.createElement('div'); card.className='card';
+  var mn=document.createElement('div'); mn.className='month-nav';
+  var pb=document.createElement('button'); pb.textContent='‹'; pb.onclick=function(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}render();};
+  var nb=document.createElement('button'); nb.textContent='›'; nb.onclick=function(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}render();};
+  mn.appendChild(pb); mn.appendChild(el('div','month-title',meses[calMonth]+' '+calYear)); mn.appendChild(nb);
+  card.appendChild(mn);
+  var wd=document.createElement('div'); wd.className='weekdays';
+  ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].forEach(function(d){ var e=el('div','weekday',d); wd.appendChild(e); });
+  card.appendChild(wd);
+  var cg=document.createElement('div'); cg.className='cal-grid';
+  for(var i=0;i<firstDay.getDay();i++){var emp=document.createElement('div');emp.className='cal-day empty';cg.appendChild(emp);}
+  for(var d=1;d<=lastDay.getDate();d++){
+    var dt=new Date(calYear,calMonth,d);
+    var ds=dt.toISOString().split('T')[0];
+    var isToday=dt.toDateString()===today.toDateString();
+    var isPast=dt<today&&!isToday;
+    var ferias=getFerias(); var isFer=ferias.indexOf(ds)>=0;
+    var isFerPer=ds>=FERIAS_INICIO&&ds<=FERIAS_FIM;
+    var isFolgaEsp=ds===FOLGA_ESP;
+    var isAniv=ds===ANIVERSARIO;
+    var overrides=getOverrides(); var manual=overrides[ds];
+    var isWork;
+    if(isFer||isFerPer||isFolgaEsp||isAniv){ isWork=false; }
+    else if(manual==='trabalho'){ isWork=true; }
+    else if(manual==='folga'){ isWork=false; }
+    else { isWork=isWorkDay(dt); }
+    var cls='cal-day';
+    if(isAniv) cls+=' aniv';
+    else if(isFer||isFerPer||isFolgaEsp) cls+=' ferias';
+    else if(isWork) cls+=' work';
+    else cls+=' folga';
+    if(isToday) cls+=' today';
+    if(isPast)  cls+=' past';
+    var icon=isAniv?'🎂':(isFer||isFerPer||isFolgaEsp)?'🌴':isWork?'🔒':'😴';
+    var dayEl=document.createElement('div'); dayEl.className=cls;
+    dayEl.innerHTML='<span>'+d+'</span><span class="cal-icon">'+icon+'</span>';
+    dayEl.onclick=(function(dds){ return function(){ openDayModal(dds); }; })(ds);
+    cg.appendChild(dayEl);
+  }
+  card.appendChild(cg);
+  var leg=document.createElement('div'); leg.className='legend';
+  [{bg:'#1e5e2e',bc:'#2a8a3e',txt:'Plantão'},{bg:'#1a2a1a',bc:'#2a4a2a',txt:'Folga'},{bg:'#2a1a3a',bc:'#4a2a6a',txt:'Férias'},{bg:'#3a2a0a',bc:'#c8a96e',txt:'🎂 Aniv.'}].forEach(function(l){
+    var li=document.createElement('div'); li.className='legend-item';
+    var dot=document.createElement('div'); dot.className='legend-dot'; dot.style.cssText='background:'+l.bg+';border:1px solid '+l.bc;
+    li.appendChild(dot); li.appendChild(document.createTextNode(' '+l.txt)); leg.appendChild(li);
+  });
+  card.appendChild(leg);
+  main.appendChild(card);
+}
+
+function isWorkDay(date) {
+  var diff=Math.floor((date-PLANTAO_INICIO)/(1000*60*60*24));
+  return diff>=0 && diff%2===0;
+}
+
+// ---------- Modal de edição manual do dia (Plantão/Folga/Férias/Automático) ----------
+var daymodDateStr = null;
+function openDayModal(ds){
+  daymodDateStr = ds;
+  var dt = new Date(ds+'T00:00:00');
+  var dias=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  var meses=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  document.getElementById('daymodSub').textContent = dias[dt.getDay()]+', '+dt.getDate()+' de '+meses[dt.getMonth()]+' de '+dt.getFullYear();
+  document.getElementById('daymodBg').classList.add('show');
+}
+function closeDayModal(){
+  document.getElementById('daymodBg').classList.remove('show');
+  daymodDateStr = null;
+}
+function setDiaManual(tipo){
+  if(!daymodDateStr) return;
+  var ov = getOverrides();
+  var fer = getFerias();
+  var idxFer = fer.indexOf(daymodDateStr);
+
+  if(tipo==='ferias'){
+    if(idxFer<0) fer.push(daymodDateStr);
+    delete ov[daymodDateStr];
+  } else if(tipo==='trabalho'){
+    if(idxFer>=0) fer.splice(idxFer,1);
+    ov[daymodDateStr] = 'trabalho';
+  } else if(tipo==='folga'){
+    if(idxFer>=0) fer.splice(idxFer,1);
+    ov[daymodDateStr] = 'folga';
+  } else if(tipo==='auto'){
+    if(idxFer>=0) fer.splice(idxFer,1);
+    delete ov[daymodDateStr];
+  }
+  setFerias(fer);
+  setOverrides(ov);
+  closeDayModal();
+  render();
+}
+document.getElementById('daymodPlantao').addEventListener('click', function(){ setDiaManual('trabalho'); });
+document.getElementById('daymodFolga').addEventListener('click', function(){ setDiaManual('folga'); });
+document.getElementById('daymodFerias').addEventListener('click', function(){ setDiaManual('ferias'); });
+document.getElementById('daymodAuto').addEventListener('click', function(){ setDiaManual('auto'); });
+document.getElementById('daymodCancel').addEventListener('click', closeDayModal);
+document.getElementById('daymodBg').addEventListener('click', function(e){ if(e.target===this) closeDayModal(); });
+
+// ══════════════════════════════════════════════════════
+// CONTAS + GÁS CONTROLE
+// ══════════════════════════════════════════════════════
+function renderContas(main) {
+  var meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var contas=getContas(contasMes,contasAno);
+  var totP=0,totPend=0;
+  contas.forEach(function(c){ var v=parseFloat((c.valor||'0').replace(',','.'))||0; if(c.pago)totP+=v; else totPend+=v; });
+
+  var card=document.createElement('div'); card.className='card';
+  var ms=document.createElement('div'); ms.className='mes-selector';
+  var mpb=document.createElement('button'); mpb.textContent='‹'; mpb.onclick=function(){contasMes--;if(contasMes<0){contasMes=11;contasAno--;}render();};
+  var mnb=document.createElement('button'); mnb.textContent='›'; mnb.onclick=function(){contasMes++;if(contasMes>11){contasMes=0;contasAno++;}render();};
+  ms.appendChild(mpb); ms.appendChild(el('div','mes-label',meses[contasMes]+' '+contasAno)); ms.appendChild(mnb);
+  card.appendChild(ms);
+
+  var rc=document.createElement('div'); rc.className='resumo-contas';
+  rc.innerHTML='<div class="resumo-box pago"><div class="rlabel">✅ Pago</div><div class="rval">R$ '+totP.toFixed(2).replace('.',',')+'</div></div><div class="resumo-box pend"><div class="rlabel">⏳ Pendente</div><div class="rval">R$ '+totPend.toFixed(2).replace('.',',')+'</div></div>';
+  card.appendChild(rc);
+
+  contas.forEach(function(c,i){
+    var cor = corVencimentoConta(c, contasMes, contasAno);
+    var ci=document.createElement('div'); ci.className='conta-item'+(c.pago?' pago':'')+(cor?' '+cor:'');
+    ci.onclick=function(){
+      var cs=getContas(contasMes,contasAno);
+      cs[i].pago=!cs[i].pago;
+      if(cs[i].pago && !cs[i].pagoEm){
+        var hoje=new Date();
+        cs[i].pagoEm=String(hoje.getDate()).padStart(2,'0')+'/'+String(hoje.getMonth()+1).padStart(2,'0')+'/'+hoje.getFullYear();
+      }
+      setContas(contasMes,contasAno,cs); render();
+    };
+    var pagoTxt=c.pago&&c.pagoEm?'Pago em '+c.pagoEm:'';
+    ci.innerHTML='<div class="conta-check">'+(c.pago?'✓':'')+'</div><div class="conta-info"><div class="conta-nome">'+c.nome+'</div><div class="conta-venc">'+pagoTxt+'</div></div><div class="conta-valor">R$ '+(c.valor||'—')+'</div>';
+    card.appendChild(ci);
+  });
+  main.appendChild(card);
+
+  // LOTERIAS DA CAIXA — contador de concursos
+  main.appendChild(renderLoteriaControle());
+
+  // GÁS CONTROLE
+  main.appendChild(renderGasControle());
+
+  // MOTO — ÓLEO E FILTRO
+  main.appendChild(renderMotoControle());
+
+  // CORTE DE CABELO
+  main.appendChild(renderCorteControle());
+
+  // VEÍCULO — IPVA / LICENCIAMENTO / DPVAT (anual)
+  main.appendChild(renderVeiculoControle());
+
+  var ecard=document.createElement('div'); ecard.className='card';
+  ecard.appendChild(el('div','card-title','✏️ Editar Valores'));
+  contas.forEach(function(c,i){
+    var wrap=document.createElement('div'); wrap.style.marginBottom='8px';
+    wrap.innerHTML='<div style="font-size:11px;color:#888;margin-bottom:2px">'+c.nome+'</div>';
+    var row1=document.createElement('div'); row1.style.cssText='display:flex;gap:8px;';
+    var inp=document.createElement('input'); inp.className='edit-conta'; inp.type='text'; inp.style.flex='1';
+    inp.placeholder='0,00'; inp.value=c.valor||''; inp.inputMode='decimal';
+    inp.onchange=(function(idx){ return function(){ var cs=getContas(contasMes,contasAno); cs[idx].valor=this.value; setContas(contasMes,contasAno,cs); }; })(i);
+    row1.appendChild(inp); wrap.appendChild(row1);
+    anexarMicrofone(inp);
+    var row2=document.createElement('div'); row2.style.cssText='display:flex;gap:8px;margin-top:4px;';
+    var inpPago=document.createElement('input'); inpPago.className='edit-conta'; inpPago.type='text'; inpPago.style.cssText='flex:1;margin-top:0;';
+    inpPago.placeholder='Paga em (ex: 07/07/2026)'; inpPago.value=c.pagoEm||'';
+    inpPago.inputMode='numeric'; inpPago.maxLength=10;
+    inpPago.oninput=function(){ this.value=maskDate(this.value); };
+    inpPago.onchange=(function(idx){ return function(){ var cs=getContas(contasMes,contasAno); cs[idx].pagoEm=this.value; setContas(contasMes,contasAno,cs); }; })(i);
+    row2.appendChild(inpPago); wrap.appendChild(row2);
+    ecard.appendChild(wrap);
+  });
+  main.appendChild(ecard);
+}
+
+function renderVeiculoControle(){
+  var ano = contasAno;
+  var v = getVeiculo(ano);
+  var card = document.createElement('div'); card.className='card';
+  card.appendChild(el('div','card-title','🚗 VEÍCULO — ANUAL ('+ano+')'));
+
+  var hint = el('p','','IPVA e Licenciamento seguem o ano da navegação acima. O DPVAT fica registrado mesmo suspenso, pra você saber a situação de cada ano.');
+  hint.style.cssText='font-size:12px;color:#555;margin-bottom:10px;';
+  card.appendChild(hint);
+
+  ['ipva','lic'].forEach(function(key){
+    var c = v[key];
+    var ci=document.createElement('div'); ci.className='conta-item'+(c.pago?' pago':'');
+    ci.onclick=function(){
+      var vv=getVeiculo(ano);
+      vv[key].pago=!vv[key].pago;
+      if(vv[key].pago && !vv[key].pagoEm){
+        var hoje=new Date();
+        vv[key].pagoEm=String(hoje.getDate()).padStart(2,'0')+'/'+String(hoje.getMonth()+1).padStart(2,'0')+'/'+hoje.getFullYear();
+      }
+      setVeiculo(ano,vv); render();
+    };
+    var pagoTxt=c.pago&&c.pagoEm?'Pago em '+c.pagoEm:'';
+    ci.innerHTML='<div class="conta-check">'+(c.pago?'✓':'')+'</div><div class="conta-info"><div class="conta-nome">'+c.nome+'</div><div class="conta-venc">'+pagoTxt+'</div></div><div class="conta-valor">R$ '+(c.valor||'—')+'</div>';
+    card.appendChild(ci);
+  });
+
+  // DPVAT — 3 estados (suspenso / valendo, pendente / valendo, pago)
+  var dpvatWrap = document.createElement('div');
+  dpvatWrap.style.cssText='padding:12px 4px 4px;';
+  var dpvatLbl=document.createElement('div');
+  dpvatLbl.textContent='🛡️ DPVAT';
+  dpvatLbl.style.cssText='font-size:11px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;';
+  dpvatWrap.appendChild(dpvatLbl);
+
+  var sel = document.createElement('select');
+  sel.style.cssText='width:100%;background:#1a1a2e;border:1px solid #333;border-radius:10px;padding:10px 12px;font-size:14px;color:#e8e8e8;outline:none;font-family:inherit;';
+  var opts=[['suspenso','Suspenso pelo governo'],['valendo_pendente','Valendo — ainda não paguei'],['valendo_pago','Valendo — já paguei']];
+  opts.forEach(function(o){
+    var op=document.createElement('option'); op.value=o[0]; op.textContent=o[1];
+    if(v.dpvat.status===o[0]) op.selected=true;
+    sel.appendChild(op);
+  });
+  sel.onchange=function(){
+    var vv=getVeiculo(ano);
+    vv.dpvat.status=this.value;
+    if(this.value==='valendo_pago' && !vv.dpvat.pagoEm){
+      var hoje=new Date();
+      vv.dpvat.pagoEm=String(hoje.getDate()).padStart(2,'0')+'/'+String(hoje.getMonth()+1).padStart(2,'0')+'/'+hoje.getFullYear();
+    }
+    setVeiculo(ano,vv); render();
+  };
+  dpvatWrap.appendChild(sel);
+
+  if(v.dpvat.status==='valendo_pago' && v.dpvat.pagoEm){
+    var pagoLbl=document.createElement('div');
+    pagoLbl.style.cssText='font-size:12px;color:#7fd99a;margin-top:6px;';
+    pagoLbl.textContent='Pago em '+v.dpvat.pagoEm;
+    dpvatWrap.appendChild(pagoLbl);
+  }
+  card.appendChild(dpvatWrap);
+
+  // Editar valores (IPVA / Licenciamento / DPVAT)
+  var editTitle=document.createElement('div');
+  editTitle.textContent='✏️ Valores';
+  editTitle.style.cssText='font-size:11px;color:#888;margin:16px 0 6px;text-transform:uppercase;letter-spacing:0.5px;';
+  card.appendChild(editTitle);
+
+  ['ipva','lic','dpvat'].forEach(function(key){
+    var c=v[key];
+    var wrap=document.createElement('div'); wrap.style.marginBottom='8px';
+    wrap.innerHTML='<div style="font-size:11px;color:#888;margin-bottom:2px">'+c.nome+'</div>';
+
+    var row1=document.createElement('div'); row1.style.cssText='display:flex;gap:8px;';
+    var inp=document.createElement('input'); inp.className='edit-conta'; inp.type='text'; inp.style.flex='1';
+    inp.placeholder='0,00'; inp.value=c.valor||''; inp.inputMode='decimal';
+    inp.onchange=function(){ var vv=getVeiculo(ano); vv[key].valor=this.value; setVeiculo(ano,vv); };
+    row1.appendChild(inp); wrap.appendChild(row1);
+    anexarMicrofone(inp);
+
+    var inpPago=document.createElement('input'); inpPago.className='edit-conta'; inpPago.type='text';
+    inpPago.placeholder='Pago em (ex: 07/07/2026)'; inpPago.value=c.pagoEm||'';
+    inpPago.style.marginTop='4px'; inpPago.inputMode='numeric'; inpPago.maxLength=10;
+    inpPago.oninput=function(){ this.value=maskDate(this.value); };
+    inpPago.onchange=function(){ var vv=getVeiculo(ano); vv[key].pagoEm=this.value; setVeiculo(ano,vv); render(); };
+    wrap.appendChild(inpPago);
+
+    card.appendChild(wrap);
+  });
+
+  return card;
+}
+
+// ══════════════════════════════════════════════════════
+// LOTERIAS DA CAIXA — CONTADOR DE CONCURSOS
+// ══════════════════════════════════════════════════════
+function renderLoteriaControle() {
+  var card = document.createElement('div'); card.className='card';
+  card.appendChild(el('div','card-title','🎰 LOTERIAS DA CAIXA — SORTEIOS'));
+
+  var hint = el('p','','Sorteios: Terça e Quinta às 21h, Domingo às 11h. Cada aposta cobre 12 concursos.');
+  hint.style.cssText='font-size:12px;color:#555;margin-bottom:10px;';
+  card.appendChild(hint);
+
+  var inicio = getLoteriaInicio();
+  var count = getLoteriaContagem();
+  var backup = getLoteriaBackup();
+
+  if (!inicio) {
+    var empty = el('div','','Nenhuma aposta registrada ainda.');
+    empty.style.cssText='text-align:center;color:#555;font-size:13px;padding:4px 0 12px;';
+    card.appendChild(empty);
+  } else {
+    var statusBox = document.createElement('div'); statusBox.className='gas-item ativo';
+    var cor = count>=11 ? '#ff5555' : '#FFD700';
+    statusBox.innerHTML = '<div class="gas-item-top"><div class="gas-numero" style="color:'+cor+'">🎟️ Concurso '+count+'/12</div></div>'+
+      '<div class="gas-datas">Aposta iniciada em '+fmtData(inicio)+'</div>';
+    card.appendChild(statusBox);
+    if (count>=11) {
+      var aviso = el('div','','⚠️ Falta pouco — renove a aposta em breve!');
+      aviso.style.cssText='font-size:12px;font-weight:700;color:#ff5555;margin-top:-3px;margin-bottom:8px;';
+      card.appendChild(aviso);
+    }
+  }
+
+  if (backup) {
+    var simBox = document.createElement('div');
+    simBox.style.cssText='background:#2a1a3a;border:1px solid #7b5ecf;border-radius:10px;padding:10px 12px;margin-bottom:10px;';
+    simBox.innerHTML='<div style="font-size:12px;font-weight:700;color:#b79cff;margin-bottom:6px;">🧪 Modo simulação ativo</div>'+
+      '<div style="font-size:12px;color:#ccc;">Data real guardada: '+fmtData(backup)+'</div>';
+    var btnRestaurar=document.createElement('button'); btnRestaurar.className='gas-btn secondary';
+    btnRestaurar.style.marginTop='8px'; btnRestaurar.textContent='↩️ Restaurar data real';
+    btnRestaurar.onclick=function(){ restaurarLoteriaBackup(); vibe([30]); render(); };
+    simBox.appendChild(btnRestaurar);
+    card.appendChild(simBox);
+  }
+
+  var fData = document.createElement('div'); fData.className='gas-field'; fData.style.marginTop='6px';
+  fData.innerHTML='<label>Dia do 1º concurso da nova aposta</label>';
+  var iData=document.createElement('input'); iData.id='loteriaData'; iData.type='date';
+  iData.value=new Date().toISOString().split('T')[0];
+  fData.appendChild(iData); card.appendChild(fData);
+
+  var btnRow = document.createElement('div'); btnRow.className='gas-btn-row';
+
+  var btnHoje=document.createElement('button'); btnHoje.className='gas-btn'; btnHoje.textContent='🔄 Renovei agora (antecipado)';
+  btnHoje.onclick=function(){
+    var hoje=new Date().toISOString().split('T')[0];
+    setLoteriaInicio(hoje);
+    vibe([30]);
+    render();
+  };
+
+  var btnData=document.createElement('button'); btnData.className='gas-btn secondary'; btnData.textContent='Usar data escolhida (real)';
+  btnData.onclick=function(){
+    var data=document.getElementById('loteriaData').value;
+    if(!data){ alert('Escolha o dia do 1º concurso!'); return; }
+    setLoteriaInicio(data);
+    vibe([30]);
+    render();
+  };
+
+  btnRow.appendChild(btnHoje); btnRow.appendChild(btnData);
+  card.appendChild(btnRow);
+
+  var btnSim=document.createElement('button'); btnSim.className='gas-btn secondary';
+  btnSim.style.cssText='margin-top:8px;width:100%;background:#2a1a3a;border-color:#7b5ecf;color:#b79cff;';
+  btnSim.textContent='🧪 Simular data escolhida (guarda a real)';
+  btnSim.onclick=function(){
+    var data=document.getElementById('loteriaData').value;
+    if(!data){ alert('Escolha o dia do 1º concurso!'); return; }
+    if(!getLoteriaBackup()){ guardarLoteriaBackup(); }
+    setLoteriaInicio(data);
+    vibe([30]);
+    render();
+  };
+  card.appendChild(btnSim);
+
+  return card;
+}
+
+function renderGasControle() {
+  var card = document.createElement('div'); card.className='card';
+  card.appendChild(el('div','card-title','🔥 GÁS CONTROLE'));
+
+  var hint = el('p','','Registre o dia que instalou o botijão novo. Ao registrar um novo, os dias de uso do anterior ficam gravados automaticamente.');
+  hint.style.cssText='font-size:12px;color:#555;margin-bottom:10px;';
+  card.appendChild(hint);
+
+  var fData = document.createElement('div'); fData.className='gas-field';
+  fData.innerHTML='<label>Dia que instalou</label>';
+  var iData=document.createElement('input'); iData.id='gasData'; iData.type='date';
+  iData.value=new Date().toISOString().split('T')[0];
+  fData.appendChild(iData); card.appendChild(fData);
+
+  var btn=document.createElement('button'); btn.className='gas-btn'; btn.textContent='＋ Registrar botijão novo';
+  btn.style.marginTop='4px';
+  btn.onclick=function(){
+    var data=document.getElementById('gasData').value;
+    if(!data){ alert('Escolha o dia que instalou!'); return; }
+    var g=getGas();
+    if (g.length>0 && (g[0].duracao===null || g[0].duracao===undefined)) {
+      g[0].duracao = diasEntre(g[0].data, data);
+    }
+    g.unshift({data:data, duracao:null});
+    setGas(g);
+    vibe([30]);
+    render();
+  };
+  card.appendChild(btn);
+
+  var gas = getGas();
+  if (gas.length > 0) {
+    var hTitle=el('div','card-title','📋 Histórico de botijões');
+    hTitle.style.marginTop='16px';
+    card.appendChild(hTitle);
+    gas.forEach(function(item,i){
+      var numero = gas.length - i;
+      var box=document.createElement('div'); box.className='gas-item'+(i===0?' ativo':'');
+      var top=document.createElement('div'); top.className='gas-item-top';
+      top.innerHTML='<div class="gas-numero">🔥 Botijão '+numero+'</div><div class="gas-del" onclick="delGasItem('+i+')">🗑️</div>';
+      box.appendChild(top);
+      box.appendChild(el('div','gas-datas','Instalado em '+fmtData(item.data)));
+      if (item.duracao !== null && item.duracao !== undefined) {
+        box.appendChild(el('div','gas-duracao','Durou '+item.duracao+' dia'+(item.duracao!==1?'s':'')));
+      } else {
+        var diasUso = diasEntre(item.data, new Date().toISOString().split('T')[0]);
+        box.appendChild(el('div','gas-duracao aberto','Em uso há '+diasUso+' dia'+(diasUso!==1?'s':'')));
+      }
+      card.appendChild(box);
+    });
+  } else {
+    var empty=el('div','','Nenhum botijão registrado ainda.');
+    empty.style.cssText='text-align:center;color:#555;font-size:13px;padding:10px 0;';
+    card.appendChild(empty);
+  }
+
+  return card;
+}
+
+function delGasItem(idx) {
+  if(!confirm('Remover este registro de botijão?')) return;
+  var g=getGas(); g.splice(idx,1); setGas(g); render();
+}
+
+// ══════════════════════════════════════════════════════
+// MOTO — ÓLEO E FILTRO
+// ══════════════════════════════════════════════════════
+function renderMotoControle() {
+  var card = document.createElement('div'); card.className='card';
+  card.appendChild(el('div','card-title','🏍️ MOTO — FILTRO E ÓLEO'));
+
+  // ---------- Odômetro: registrador simples de km atual ----------
+  var odo = document.createElement('div'); odo.className='odo-card';
+  odo.innerHTML = '<div class="odo-emoji">🏍️💨</div><div style="font-size:12px;color:#888;">Digite o que está no visor da moto</div>';
+
+  var odoRow = document.createElement('div'); odoRow.className='odo-input-row';
+  var odoIn = document.createElement('input'); odoIn.id='odoKm'; odoIn.type='text'; odoIn.inputMode='numeric'; odoIn.placeholder='Ex: 179.450';
+  odoIn.addEventListener('input',function(){
+    var cursorNoFinal=(this.selectionStart===this.value.length);
+    var apenasDigitos=this.value.replace(/\D/g,'');
+    if(!apenasDigitos){ this.value=''; return; }
+    this.value=parseInt(apenasDigitos,10).toLocaleString('pt-BR');
+    if(cursorNoFinal){ this.setSelectionRange(this.value.length,this.value.length); }
+  });
+  odoRow.appendChild(odoIn); odo.appendChild(odoRow);
+  anexarMicrofone(odoIn);
+
+  var odoBtn = document.createElement('button'); odoBtn.className='odo-btn'; odoBtn.textContent='💾 Atualizar quilometragem';
+  odoBtn.onclick=function(){
+    var km = parseFloat(document.getElementById('odoKm').value.replace(/\./g,''));
+    if(!km && km!==0){ alert('Digite a quilometragem do visor!'); return; }
+    setMotoKmAtual(km);
+    vibe([30]);
+    render();
+  };
+  odo.appendChild(odoBtn);
+
+  var status = getMotoKmStatus();
+  if (status) {
+    var pct = Math.min(100, Math.round((status.diff / KM_INTERVALO) * 100));
+    var nivel = status.diff >= KM_INTERVALO ? 'vermelho' : (status.diff >= KM_INTERVALO - 200 ? 'amarelo' : 'verde');
+    var track = document.createElement('div'); track.className='odo-gauge-track';
+    var fill = document.createElement('div'); fill.className='odo-gauge-fill '+nivel; fill.style.width = Math.max(pct,3)+'%';
+    track.appendChild(fill); odo.appendChild(track);
+
+    var msgTxt = status.diff >= KM_INTERVALO
+      ? '🔴 ' + status.diff.toLocaleString('pt-BR') + ' km rodados — hora de trocar o óleo!'
+      : status.diff >= KM_INTERVALO - 200
+        ? '🟡 ' + status.diff.toLocaleString('pt-BR') + ' km rodados — troca em breve'
+        : '🟢 ' + status.diff.toLocaleString('pt-BR') + ' km rodados (faltam ' + (KM_INTERVALO - status.diff).toLocaleString('pt-BR') + ' km)';
+    var msg = el('div','odo-msg '+nivel, msgTxt);
+    odo.appendChild(msg);
+
+    var info = el('div','odo-status','Última leitura: '+status.kmAtual.toLocaleString('pt-BR')+' km em '+fmtData(status.atualizadoEm)+' • última troca: '+status.kmTroca.toLocaleString('pt-BR')+' km');
+    odo.appendChild(info);
+  } else {
+    var vazio = el('div','odo-status','Registre a quilometragem atual pra começar a acompanhar.');
+    odo.appendChild(vazio);
+  }
+  card.appendChild(odo);
+
+  var hint = el('p','','Registre a quilometragem da troca. A próxima troca é calculada automaticamente (+'+KM_INTERVALO+' km).');
+  hint.style.cssText='font-size:12px;color:#555;margin-bottom:10px;';
+  card.appendChild(hint);
+
+  var fKm = document.createElement('div'); fKm.className='gas-field';
+  fKm.innerHTML='<label>Quilometragem inicial (da troca)</label><div style="display:flex;gap:8px;" id="motoKmRow"></div>';
+  var iKm=document.createElement('input'); iKm.id='motoKm'; iKm.type='text'; iKm.inputMode='numeric'; iKm.placeholder='Ex: 178.300'; iKm.style.flex='1';
+  iKm.addEventListener('input',function(){
+    var cursorNoFinal=(this.selectionStart===this.value.length);
+    var apenasDigitos=this.value.replace(/\D/g,'');
+    if(!apenasDigitos){ this.value=''; return; }
+    this.value=parseInt(apenasDigitos,10).toLocaleString('pt-BR');
+    if(cursorNoFinal){ this.setSelectionRange(this.value.length,this.value.length); }
+  });
+  fKm.querySelector('#motoKmRow').appendChild(iKm); card.appendChild(fKm);
+  anexarMicrofone(iKm);
+
+  var fData = document.createElement('div'); fData.className='gas-field';
+  fData.innerHTML='<label>Dia da troca</label>';
+  var iData=document.createElement('input'); iData.id='motoData'; iData.type='date';
+  iData.value=new Date().toISOString().split('T')[0];
+  fData.appendChild(iData); card.appendChild(fData);
+
+  var btnAdd=document.createElement('button'); btnAdd.className='gas-btn'; btnAdd.textContent='＋ Registrar troca';
+  btnAdd.style.marginTop='4px';
+  btnAdd.onclick=function(){
+    var km=parseFloat(document.getElementById('motoKm').value.replace(/\./g,''));
+    var data=document.getElementById('motoData').value;
+    if(!km&&km!==0){ alert('Digite a quilometragem!'); return; }
+    if(!data){ alert('Escolha o dia da troca!'); return; }
+    var m=getMoto();
+    if (m.length>0 && (m[0].duracao===null || m[0].duracao===undefined)) {
+      m[0].duracao = diasEntre(m[0].data, data);
+    }
+    m.unshift({km:km, proxima:km+KM_INTERVALO, data:data, duracao:null});
+    setMoto(m);
+    vibe([30]);
+    document.getElementById('motoKm').value='';
+    render();
+  };
+  card.appendChild(btnAdd);
+
+  // Histórico (até 5 registros)
+  var moto = getMoto();
+  if (moto.length > 0) {
+    var hTitle=el('div','card-title','📋 Histórico de trocas');
+    hTitle.style.marginTop='16px';
+    card.appendChild(hTitle);
+    moto.forEach(function(item,i){
+      var box=document.createElement('div'); box.className='moto-item';
+      var top=document.createElement('div'); top.className='moto-item-top';
+      top.innerHTML='<div class="moto-numero">🔧 Troca #'+(moto.length-i)+'</div><div class="moto-del" onclick="delMotoItem('+i+')">🗑️</div>';
+      box.appendChild(top);
+
+      var row=document.createElement('div'); row.className='moto-row';
+      var f1=document.createElement('div'); f1.className='moto-field';
+      f1.innerHTML='<label>KM da troca</label>';
+      var i1=document.createElement('input'); i1.type='text'; i1.inputMode='numeric'; i1.value=Number(item.km).toLocaleString('pt-BR');
+      i1.addEventListener('input',function(){
+        var cursorNoFinal=(this.selectionStart===this.value.length);
+        var apenasDigitos=this.value.replace(/\D/g,'');
+        if(!apenasDigitos){ this.value=''; return; }
+        this.value=parseInt(apenasDigitos,10).toLocaleString('pt-BR');
+        if(cursorNoFinal){ this.setSelectionRange(this.value.length,this.value.length); }
+      });
+      i1.onchange=(function(idx){ return function(){ var mm=getMoto(); var novoKm=parseFloat(this.value.replace(/\./g,''))||0; mm[idx].km=novoKm; mm[idx].proxima=novoKm+KM_INTERVALO; setMoto(mm); render(); }; })(i);
+      f1.appendChild(i1); row.appendChild(f1);
+
+      var f2=document.createElement('div'); f2.className='moto-field';
+      f2.innerHTML='<label>Data</label>';
+      var i2=document.createElement('input'); i2.type='date'; i2.value=item.data;
+      i2.onchange=(function(idx){ return function(){ var mm=getMoto(); mm[idx].data=this.value; setMoto(mm); }; })(i);
+      f2.appendChild(i2); row.appendChild(f2);
+      box.appendChild(row);
+
+      var prox=el('div','moto-proxima','🔜 Próxima troca: '+item.proxima.toLocaleString('pt-BR')+' km');
+      box.appendChild(prox);
+
+      if (item.duracao !== null && item.duracao !== undefined) {
+        var dur = el('div', 'moto-proxima', '⏱️ Durou ' + item.duracao + ' dia' + (item.duracao!==1?'s':''));
+        dur.style.color = '#74c69d';
+        box.appendChild(dur);
+      } else {
+        var diasDesde = diasEntre(item.data, new Date().toISOString().split('T')[0]);
+        var textoDias = diasDesde <= 0 ? 'Trocado hoje 🔧' : (diasDesde === 1 ? '1 dia da troca' : diasDesde + ' dias da troca');
+        var contador = el('div', 'moto-proxima', '📅 ' + textoDias);
+        contador.style.color = '#87CEFA';
+        box.appendChild(contador);
+      }
+
+      card.appendChild(box);
+    });
+  } else {
+    var empty=el('div','','Nenhuma troca registrada ainda.');
+    empty.style.cssText='text-align:center;color:#555;font-size:13px;padding:10px 0;';
+    card.appendChild(empty);
+  }
+
+  return card;
+}
+
+function delMotoItem(idx) {
+  if(!confirm('Remover este registro de troca?')) return;
+  var m=getMoto(); m.splice(idx,1); setMoto(m); render();
+}
+
+// ══════════════════════════════════════════════════════
+// CORTE DE CABELO
+// ══════════════════════════════════════════════════════
+function renderCorteControle() {
+  var card = document.createElement('div'); card.className='card';
+  card.appendChild(el('div','card-title','💇 CORTE DE CABELO'));
+
+  var hint = el('p','','Registre o dia e o valor pago. A contagem de dias começa a partir daqui.');
+  hint.style.cssText='font-size:12px;color:#555;margin-bottom:10px;';
+  card.appendChild(hint);
+
+  var fData = document.createElement('div'); fData.className='gas-field';
+  fData.innerHTML='<label>Dia do corte</label>';
+  var iData=document.createElement('input'); iData.id='corteData'; iData.type='date';
+  iData.value=new Date().toISOString().split('T')[0];
+  fData.appendChild(iData); card.appendChild(fData);
+
+  var fValor = document.createElement('div'); fValor.className='gas-field';
+  fValor.innerHTML='<label>Valor pago (R$)</label><div style="display:flex;gap:8px;" id="corteValorRow"></div>';
+  var iValor=document.createElement('input'); iValor.id='corteValor'; iValor.type='text'; iValor.inputMode='decimal'; iValor.placeholder='0,00'; iValor.style.flex='1';
+  fValor.querySelector('#corteValorRow').appendChild(iValor); card.appendChild(fValor);
+  anexarMicrofone(iValor);
+
+  var btnAdd=document.createElement('button'); btnAdd.className='gas-btn'; btnAdd.textContent='＋ Registrar corte';
+  btnAdd.style.marginTop='4px';
+  btnAdd.onclick=function(){
+    var data=document.getElementById('corteData').value;
+    var valor=document.getElementById('corteValor').value;
+    if(!data){ alert('Escolha o dia do corte!'); return; }
+    var c=getCorte();
+    if (c.length>0 && (c[0].duracao===null || c[0].duracao===undefined)) {
+      c[0].duracao = diasEntre(c[0].data, data);
+    }
+    c.unshift({data:data, valor:valor, duracao:null});
+    setCorte(c);
+    vibe([30]);
+    document.getElementById('corteValor').value='';
+    render();
+  };
+  card.appendChild(btnAdd);
+
+  var cortes = getCorte();
+  if (cortes.length > 0) {
+    var hTitle=el('div','card-title','📋 Histórico de cortes');
+    hTitle.style.marginTop='16px';
+    card.appendChild(hTitle);
+    cortes.forEach(function(item,i){
+      var box=document.createElement('div'); box.className='moto-item';
+      var top=document.createElement('div'); top.className='moto-item-top';
+      top.innerHTML='<div class="moto-numero">💇 Corte #'+(cortes.length-i)+'</div><div class="moto-del" onclick="delCorteItem('+i+')">🗑️</div>';
+      box.appendChild(top);
+
+      var row=document.createElement('div'); row.className='moto-row';
+      var f1=document.createElement('div'); f1.className='moto-field';
+      f1.innerHTML='<label>Data</label>';
+      var i1=document.createElement('input'); i1.type='date'; i1.value=item.data;
+      i1.onchange=(function(idx){ return function(){ var cc=getCorte(); cc[idx].data=this.value; setCorte(cc); render(); }; })(i);
+      f1.appendChild(i1); row.appendChild(f1);
+
+      var f2=document.createElement('div'); f2.className='moto-field';
+      f2.innerHTML='<label>Valor pago (R$)</label>';
+      var i2=document.createElement('input'); i2.type='text'; i2.inputMode='decimal'; i2.value=item.valor||''; i2.placeholder='0,00';
+      i2.onchange=(function(idx){ return function(){ var cc=getCorte(); cc[idx].valor=this.value; setCorte(cc); }; })(i);
+      f2.appendChild(i2); row.appendChild(f2);
+      box.appendChild(row);
+
+      if (item.duracao !== null && item.duracao !== undefined) {
+        var dur = el('div', 'moto-proxima', '⏱️ Durou ' + item.duracao + ' dia' + (item.duracao!==1?'s':''));
+        dur.style.color = '#74c69d';
+        box.appendChild(dur);
+      } else {
+        var diasDesde = diasEntre(item.data, new Date().toISOString().split('T')[0]);
+        var textoDias = diasDesde <= 0 ? 'Cortado hoje 💇' : (diasDesde === 1 ? '1 dia do corte' : diasDesde + ' dias do corte');
+        var contador = el('div', 'moto-proxima', '📅 ' + textoDias);
+        contador.style.color = '#87CEFA';
+        box.appendChild(contador);
+      }
+
+      card.appendChild(box);
+    });
+  } else {
+    var empty=el('div','','Nenhum corte registrado ainda.');
+    empty.style.cssText='text-align:center;color:#555;font-size:13px;padding:10px 0;';
+    card.appendChild(empty);
+  }
+
+  return card;
+}
+
+function delCorteItem(idx) {
+  if(!confirm('Remover este registro de corte?')) return;
+  var c=getCorte(); c.splice(idx,1); setCorte(c); render();
+}
+
+// ══════════════════════════════════════════════════════
+// OBJETIVOS
+// ══════════════════════════════════════════════════════
+function renderObj(main) {
+  var objs=getObj(), done=objs.filter(function(o){return o.done;}).length;
+  var card=document.createElement('div'); card.className='card';
+  card.appendChild(el('div','card-title','🎯 Objetivos '+new Date().getFullYear()+' — '+done+'/'+objs.length));
+  if(objs.length===0) card.appendChild(el('p','','\nNenhum objetivo ainda. Adicione abaixo! 💪'));
+  objs.forEach(function(o,i){
+    var oi=document.createElement('div'); oi.className='obj-item'+(o.done?' done':'');
+    var ck=document.createElement('div'); ck.className='obj-check'; ck.textContent=o.done?'✓':'';
+    ck.onclick=function(){var os=getObj();os[i].done=!os[i].done;setObj(os);render();};
+    var tx=el('div','obj-text',o.text);
+    var dl=el('div','obj-del','×'); dl.onclick=function(){var os=getObj();os.splice(i,1);setObj(os);render();};
+    oi.appendChild(ck); oi.appendChild(tx); oi.appendChild(dl); card.appendChild(oi);
+  });
+  var ar=document.createElement('div'); ar.className='add-row';
+  var ai=document.createElement('input'); ai.className='add-input'; ai.id='objIn'; ai.placeholder='Novo objetivo...';
+  ai.addEventListener('keydown',function(e){if(e.key==='Enter')addObj2();});
+  var ab=document.createElement('button'); ab.className='add-btn'; ab.textContent='+'; ab.onclick=addObj2;
+  ar.appendChild(ai);
+  anexarMicrofone(ai);
+  ar.appendChild(ab); card.appendChild(ar);
+  main.appendChild(card);
+}
+function addObj2(){var i=document.getElementById('objIn');if(!i||!i.value.trim())return;var os=getObj();os.push({text:i.value.trim(),done:false});setObj(os);render();}
+
+// INIT
+render();
+setInterval(atualizarLoteriaBanner, 30000);
+document.addEventListener('visibilitychange', function(){ if(!document.hidden) atualizarLoteriaBanner(); });
+</script>
+
+<script type="module">
+// ══════════════════════════════════════════════════════
+// SINCRONIZAÇÃO — Firebase, documento próprio do Agenda
+// (não mais o "state" compartilhado antigo), tempo real,
+// login persistente (sem PIN), e retrato local de segurança.
+// ══════════════════════════════════════════════════════
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBNKjp7hLNK6mzAX2GK49WEZq-NKgQ9o5Y",
+  authDomain: "williamapp-31dff.firebaseapp.com",
+  projectId: "williamapp-31dff",
+  storageBucket: "williamapp-31dff.firebasestorage.app",
+  messagingSenderId: "171912065024",
+  appId: "1:171912065024:web:9c47f66f4b8e7fc727a8e5"
+};
+const ALLOWED_EMAIL = "marcelodossantosfc@gmail.com";
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
+
+// ══════════════════════════════════════════════════════
+// ALERTA DE DATA CRÍTICA NA BOLINHA DE SYNC — componente
+// reutilizável (mesmo padrão em todo app do ecossistema).
+// Busca o documento "william/datas_data" direto no Firebase
+// (esse app não tem essa informação por conta própria). Se
+// alguma data importante estiver a 0 ou 1 dia, a bolinha de
+// sincronização vira uma barra vermelha grande, centralizada
+// na tela, pulsando, com o texto escrito dentro — sem
+// precisar passar o mouse. Aniversário (tem "ano") usa 🎂;
+// data comum usa 📌.
+// ══════════════════════════════════════════════════════
+function proximaOcorrenciaDiasGlobal(dia, mes){
+  var hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  var anoAtual = hoje.getFullYear();
+  var data = new Date(anoAtual, mes - 1, dia);
+  data.setHours(0, 0, 0, 0);
+  if (data < hoje) {
+    data = new Date(anoAtual + 1, mes - 1, dia);
+    data.setHours(0, 0, 0, 0);
+  }
+  return Math.round((data - hoje) / 86400000);
+}
+
+// ---------- Ciclo de textos na barra crítica (alterna quando há mais de um alerta) ----------
+var _criticoTextos = [];
+var _criticoIdx = 0;
+setInterval(function(){
+  var dot = document.getElementById('syncDot');
+  if (!dot || !dot.classList.contains('dot-critico') || _criticoTextos.length < 2) return;
+  _criticoIdx = (_criticoIdx + 1) % _criticoTextos.length;
+  dot.textContent = _criticoTextos[_criticoIdx];
+}, 3000);
+
+// ---------- Adiar alerta crítico (toque na barra vermelha soneca por 30min, só neste aparelho) ----------
+var ALERTA_SNOOZE_KEY = 'william_alerta_critico_snooze_ate';
+function alertaEstaAdiado(){
+  var t = localStorage.getItem(ALERTA_SNOOZE_KEY);
+  return !!t && Date.now() < parseInt(t, 10);
+}
+function adiarAlertaCritico(){
+  localStorage.setItem(ALERTA_SNOOZE_KEY, String(Date.now() + 30*60*1000));
+}
+
+async function verificarDataCriticaGlobal(){
+  var dot = document.getElementById('syncDot');
+  if (!dot) return;
+  try {
+    var comDias = [];
+    try {
+      var snap = await getDoc(doc(db, "william", "datas_data"));
+      if (snap.exists()) {
+        var lista = snap.data().datas_importantes || [];
+        comDias = lista.map(function(d){ return { nome: d.nome, ano: d.ano, dias: proximaOcorrenciaDiasGlobal(d.dia, d.mes) }; });
+      }
+    } catch(e) {}
+
+    // Mega-Sena: este app é a própria fonte do dado, lê local (sem buscar remoto)
+    var loteriaCount = getLoteriaContagem();
+    // Gás: idem, fonte local — 90 dias de uso é o gatilho crítico, 80 dias aviso fraco
+    var gasDias = getGasDiasUso();
+    // Contas: vencimento (1 dia antes / no dia / vencida) — sempre crítico até marcar como paga
+    var textosContas = getContasVencendoCriticas();
+    // Moto: km rodados desde a troca (registrados manualmente por você no odômetro)
+    var motoStatus = getMotoKmStatus();
+
+    dot.classList.remove('dot-critico', 'dot-perto-laranja', 'dot-perto-amarelo');
+    dot.textContent = '';
+
+    var criticos = comDias.filter(function(item){ return item.dias <= 1; }).sort(function(a,b){ return a.dias - b.dias; });
+    var laranjas = comDias.filter(function(item){ return item.dias > 1 && item.dias <= 3; }).sort(function(a,b){ return a.dias - b.dias; });
+    var amarelos = comDias.filter(function(item){ return item.dias > 3 && item.dias <= 10; }).sort(function(a,b){ return a.dias - b.dias; });
+
+    var textosCriticos = criticos.map(function(item){
+      var prefixo = item.ano ? '🎂 ' : '📌 ';
+      return prefixo + item.nome + (item.dias === 0 ? ' é HOJE!' : ' é amanhã!');
+    });
+    var textosAmarelos = amarelos.map(function(item){ return (item.ano ? '🎂 ' : '📌 ') + item.nome + ' em ' + item.dias + ' dias'; });
+
+    // Mega-Sena: 12/12 é crítico (barra vermelha), 11/12 é aviso fraco (bolinha amarela)
+    if (loteriaCount >= 12) {
+      textosCriticos.push('🎰 Renovar Megasena!');
+    } else if (loteriaCount === 11) {
+      textosAmarelos.push('🎰 Megasena: falta 1 concurso, renove em breve');
+    }
+
+    // Gás: 90 dias de uso é crítico, 80 dias é aviso fraco
+    if (gasDias !== null) {
+      if (gasDias >= 90) {
+        textosCriticos.push('🔥 Gás: ' + gasDias + ' dias de uso, hora de trocar!');
+      } else if (gasDias >= 80) {
+        textosAmarelos.push('🔥 Gás: ' + gasDias + ' dias de uso, perto da troca');
+      }
+    }
+
+    // Contas: vencendo/vencida e não paga — sempre crítico
+    textosContas.forEach(function(t){ textosCriticos.push(t); });
+
+    // Moto: 2.800 km rodados é crítico, 2.600 km é aviso fraco
+    if (motoStatus) {
+      if (motoStatus.diff >= KM_INTERVALO) {
+        textosCriticos.push('🏍️ Moto: ' + motoStatus.diff.toLocaleString('pt-BR') + ' km rodados, hora de trocar o óleo!');
+      } else if (motoStatus.diff >= KM_INTERVALO - 200) {
+        textosAmarelos.push('🏍️ Moto: ' + motoStatus.diff.toLocaleString('pt-BR') + ' km rodados, troca em breve');
+      }
+    }
+
+    if (textosCriticos.length && !alertaEstaAdiado()){
+      dot.classList.add('dot-critico');
+      dot.title = textosCriticos.join(' • ') + ' (toque para adiar 30min)';
+      _criticoTextos = textosCriticos;
+      _criticoIdx = 0;
+      dot.textContent = textosCriticos[0];
+    } else if (laranjas.length){
+      var textosL = laranjas.map(function(item){ return (item.ano ? '🎂 ' : '📌 ') + item.nome + ' em ' + item.dias + ' dias'; });
+      dot.classList.add('dot-perto-laranja');
+      dot.title = textosL.join(' • ');
+      _criticoTextos = [];
+    } else if (textosAmarelos.length){
+      dot.classList.add('dot-perto-amarelo');
+      dot.title = textosAmarelos.join(' • ');
+      _criticoTextos = [];
+    } else {
+      dot.title = 'Sincronizado';
+      _criticoTextos = [];
+    }
+  } catch (e) { /* silencioso — não atrapalha o app se essa checagem falhar */ }
+}
+
+function iniciarChecagemDataCritica(){
+  var dot = document.getElementById('syncDot');
+  if (dot) {
+    dot.onclick = function(){
+      if (dot.classList.contains('dot-critico')){
+        adiarAlertaCritico();
+        verificarDataCriticaGlobal();
+      }
+    };
+    dot.style.cursor = 'pointer';
+  }
+  verificarDataCriticaGlobal();
+  setInterval(verificarDataCriticaGlobal, 30000);
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) verificarDataCriticaGlobal();
+  });
+}
+
+const docNovo   = doc(db, "william", "agenda_data");  // documento próprio do Agenda (novo)
+const docAntigo = doc(db, "william", "state");         // documento compartilhado antigo (só leitura, pra migração)
+
+let aplicandoRemoto = false;
+let pushTimer = null;
+let jaMigrou = false;
+
+function setDot(cor){ var d=document.getElementById('syncDot'); if(d) d.style.background=cor; }
+
+// ---------- Retrato local de segurança (IndexedDB) ----------
+function abrirRetratoDB(){
+  return new Promise(function(resolve, reject){
+    var req = indexedDB.open('william_retratos', 1);
+    req.onupgradeneeded = function(){ req.result.createObjectStore('retratos'); };
+    req.onsuccess = function(){ resolve(req.result); };
+    req.onerror = function(){ reject(req.error); };
+  });
+}
+async function salvarRetratoLocal(fatia){
+  try{
+    var db2 = await abrirRetratoDB();
+    var hoje = new Date().toISOString().slice(0,10);
+    var chave = 'agenda_' + hoje;
+    var tx = db2.transaction('retratos','readwrite');
+    tx.objectStore('retratos').put({ data: hoje, savedAt: new Date().toISOString(), conteudo: fatia }, chave);
+    var getAllReq = tx.objectStore('retratos').getAllKeys();
+    getAllReq.onsuccess = function(){
+      var limite = new Date(); limite.setDate(limite.getDate()-30);
+      getAllReq.result.forEach(function(k){
+        if(typeof k==='string' && k.indexOf('agenda_')===0){
+          var dataK = new Date(k.replace('agenda_',''));
+          if(dataK < limite) tx.objectStore('retratos').delete(k);
+        }
+      });
+    };
+  }catch(e){ console.warn('Retrato local falhou (não crítico):', e); }
+}
+
+function fatiaAgendaAtual(){
+  var s = loadState();
+  var fatia = {};
+  Object.keys(s).forEach(function(k){ if(pertenceAoAgenda(k)) fatia[k]=s[k]; });
+  return fatia;
+}
+
+function agendarPush(){
+  if(aplicandoRemoto) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(async function(){
+    try{
+      setDot('#d6a24a');
+      var fatia = fatiaAgendaAtual();
+      fatia.lastModified = new Date().toISOString();
+      await setDoc(docNovo, fatia);
+      await salvarRetratoLocal(fatia);
+      setDot('#3fae5c');
+    }catch(e){
+      console.error('Erro ao sincronizar Agenda:', e);
+      setDot('#c94f4f');
+    }
+  }, 800);
+}
+
+function iniciarEscuta(){
+  onSnapshot(docNovo, function(snap){
+    if(!snap.exists()) return;
+    var remoto = snap.data();
+    var local = loadState();
+    var mudou = false;
+    Object.keys(remoto).forEach(function(k){
+      if(pertenceAoAgenda(k) && JSON.stringify(local[k]) !== JSON.stringify(remoto[k])){
+        local[k] = remoto[k]; mudou = true;
+      }
+    });
+    if(mudou){
+      aplicandoRemoto = true;
+      saveState(local);
+      salvarRetratoLocal(fatiaAgendaAtual());
+      if(typeof render === 'function') render();
+      aplicandoRemoto = false;
+      setDot('#3fae5c');
+    }
+  }, function(err){
+    console.error('Erro de sincronização (Agenda):', err);
+    setDot('#c94f4f');
+  });
+}
+
+async function migrarSeNecessario(){
+  var snapNovo = await getDoc(docNovo);
+  if(snapNovo.exists()) return;
+  try{
+    var snapAntigo = await getDoc(docAntigo);
+    var fatia = {};
+    if(snapAntigo.exists()){
+      var dadosAntigos = snapAntigo.data();
+      Object.keys(dadosAntigos).forEach(function(k){ if(pertenceAoAgenda(k)) fatia[k]=dadosAntigos[k]; });
+    }
+    fatia.lastModified = new Date().toISOString();
+    await setDoc(docNovo, fatia);
+  }catch(e){ console.error('Erro na migração inicial do Agenda:', e); }
+}
+
+function mostrarLogin(){ document.getElementById('loginOverlay').style.display = 'flex'; }
+function esconderLogin(){ document.getElementById('loginOverlay').style.display = 'none'; }
+
+async function tentarLogin(){
+  var senha = document.getElementById('codigoAcesso').value;
+  var errEl = document.getElementById('loginErr');
+  var btn = document.getElementById('loginBtn');
+  errEl.textContent = '';
+  if(!senha){ errEl.textContent = 'Digite a senha.'; return; }
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  try{
+    await setPersistence(auth, browserLocalPersistence);
+    await signInWithEmailAndPassword(auth, ALLOWED_EMAIL, senha);
+  }catch(e){
+    errEl.textContent = 'Senha incorreta.';
+  }
+  btn.disabled = false; btn.textContent = 'Entrar';
+}
+document.getElementById('loginBtn').addEventListener('click', tentarLogin);
+document.getElementById('codigoAcesso').addEventListener('keydown', function(e){ if(e.key==='Enter') tentarLogin(); });
+anexarMicrofone(document.getElementById('codigoAcesso'));
+
+onAuthStateChanged(auth, async function(user){
+  if(user && user.email === ALLOWED_EMAIL){
+    esconderLogin();
+    if(!jaMigrou){
+      jaMigrou = true;
+      await migrarSeNecessario();
+      iniciarEscuta();
+      iniciarChecagemDataCritica();
+    }
+  } else {
+    mostrarLogin();
+  }
+});
+
+var saveStateOriginal = window.saveState;
+window.saveState = function(s){
+  saveStateOriginal(s);
+  agendarPush();
+};
+</script>
+
+
+
+<!-- 💾 BACKUP LOCAL (Exportar / Importar) -->
+<script>
+(function(){
+  function exportar(){
+    var s = loadState();
+    var payload = JSON.stringify(s, null, 2);
+    var blob = new Blob([payload], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'Agenda_backup.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function importar(file){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var novo;
+      try{ novo = JSON.parse(e.target.result); }
+      catch(err){ alert('Arquivo inválido.'); return; }
+
+      if(!novo || typeof novo !== 'object'){
+        alert('Arquivo não parece ser um backup válido.');
+        return;
+      }
+
+      var atual = loadState();
+      var atualTs = atual.lastModified ? new Date(atual.lastModified).getTime() : 0;
+      var novoTs = novo.lastModified ? new Date(novo.lastModified).getTime() : 0;
+
+      if(atualTs && novoTs && novoTs < atualTs){
+        if(!confirm('Este backup é MAIS ANTIGO que os dados atuais deste aparelho.\n\nImportar mesmo assim vai sobrescrever o que está aqui. Tem certeza?')) return;
+      } else {
+        if(!confirm('Importar este backup e substituir os dados atuais?')) return;
+      }
+
+      // Mescla só as chaves do Agenda (contas, objetivos, veículo, férias, ajustes de dia,
+      // gasolina — por servidor — mais loteria/moto/corte de cabelo, que são globais)
+      // — preserva Ilhas, Personagens, Gold, Nomes, Notas e Datas que moram na mesma gaveta.
+      var mesclado = Object.assign({}, atual);
+      Object.keys(novo).forEach(function(k){
+        if(pertenceAoAgenda(k)) mesclado[k] = novo[k];
+      });
+      saveState(mesclado);
+      render();
+      alert('Backup importado com sucesso!');
+    };
+    reader.readAsText(file);
+  }
+
+  document.getElementById('btnExport').addEventListener('click', exportar);
+  document.getElementById('btnImport').addEventListener('click', function(){
+    document.getElementById('fileImport').click();
+  });
+  document.getElementById('fileImport').addEventListener('change', function(e){
+    if(e.target.files && e.target.files[0]){
+      importar(e.target.files[0]);
+      e.target.value = '';
+    }
+  });
+})();
+</script>
+
+<div id="loginOverlay" style="display:none;position:fixed;inset:0;background:#0a0a14;z-index:999;align-items:center;justify-content:center;padding:20px;">
+  <div style="width:100%;max-width:320px;text-align:center;">
+    <h2 style="font-size:16px;color:#c8a96e;letter-spacing:1px;margin-bottom:6px;">⚔ WILLIAM</h2>
+    <p style="font-size:12px;color:#666;margin-bottom:18px;">Entrar neste aparelho (só uma vez)</p>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <input type="text" id="codigoAcesso" name="entrada_codigo" placeholder="Código de acesso" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+        style="flex:1;background:#141424;border:1px solid #333;border-radius:10px;padding:12px;font-size:14px;color:#e8e8e8;outline:none;font-family:inherit;-webkit-text-security:disc;text-security:disc;">
+    </div>
+    <button id="loginBtn" style="width:100%;background:#c8a96e;color:#111;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Entrar</button>
+    <div id="loginErr" style="font-size:11px;color:#ff6666;margin-top:10px;min-height:14px;"></div>
+  </div>
+</div>
+
+<div id="syncDot" title="Sincronizado"></div>
+
+</body>
+</html>
