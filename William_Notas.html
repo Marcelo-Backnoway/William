@@ -128,14 +128,43 @@ function renderNotas(main) {
   };
   card.appendChild(addBtn);
 
+  // Barra de busca
+  var buscaRow = document.createElement('div'); buscaRow.style.cssText='display:flex;gap:8px;margin-bottom:10px;';
+  var buscaIn = document.createElement('input');
+  buscaIn.id='notaBusca'; buscaIn.type='text'; buscaIn.placeholder='🔎 Buscar por título ou texto...';
+  buscaIn.value = window._notaBusca || '';
+  buscaIn.style.cssText='flex:1;background:#1a1a2e;border:1px solid #333;border-radius:10px;padding:10px 12px;font-size:13px;color:#e8e8e8;outline:none;font-family:inherit;';
+  buscaIn.oninput = function(){
+    window._notaBusca = this.value;
+    var pos = this.selectionStart;
+    render();
+    var novo = document.getElementById('notaBusca');
+    if(novo){ novo.focus(); novo.setSelectionRange(pos,pos); }
+  };
+  buscaRow.appendChild(buscaIn);
+  card.appendChild(buscaRow);
+
+  var termoBusca = (window._notaBusca||'').trim().toLowerCase();
+  var indicesVisiveis = notas.map(function(n,i){return i;}).filter(function(i){
+    if(!termoBusca) return true;
+    var n = notas[i];
+    return (n.titulo||'').toLowerCase().indexOf(termoBusca)>=0 || (n.texto||'').toLowerCase().indexOf(termoBusca)>=0;
+  });
+
   // Lista de títulos
   if(notas.length===0){
     var empty=el('div','','Nenhuma nota ainda. 💡');
     empty.style.cssText='text-align:center;color:#555;font-size:13px;padding:16px 0;';
     card.appendChild(empty);
+  } else if(indicesVisiveis.length===0){
+    var semResultado=el('div','','Nenhuma nota encontrada pra "'+window._notaBusca+'".');
+    semResultado.style.cssText='text-align:center;color:#555;font-size:13px;padding:16px 0;';
+    card.appendChild(semResultado);
   } else {
-    notas.forEach(function(n,i){
+    indicesVisiveis.forEach(function(i){
+      var n = notas[i];
       var isOpen = (aberto===i);
+      var isEditando = (window._notaEditando===i);
 
       var row = document.createElement('div');
       row.style.cssText='background:#0f0f1e;border:1px solid '+(isOpen?'#c8a96e':'#2a2a3a')+';border-radius:10px;margin-bottom:7px;overflow:hidden;';
@@ -154,6 +183,15 @@ function renderNotas(main) {
       titulo.style.cssText='flex:1;font-size:14px;font-weight:700;color:#e8e8e8;';
       var stamp = el('div','', n.data);
       stamp.style.cssText='font-size:10px;color:#555;white-space:nowrap;';
+      var edit = document.createElement('button');
+      edit.textContent='✏️';
+      edit.style.cssText='background:none;border:none;font-size:15px;cursor:pointer;color:#555;padding:2px 4px;flex-shrink:0;';
+      edit.onclick=(function(idx){ return function(e){
+        e.stopPropagation();
+        window._notaAberta = idx;
+        window._notaEditando = idx;
+        render();
+      };})(i);
       var del = document.createElement('button');
       del.textContent='🗑️';
       del.style.cssText='background:none;border:none;font-size:15px;cursor:pointer;color:#555;padding:2px 4px;flex-shrink:0;';
@@ -162,15 +200,58 @@ function renderNotas(main) {
         if(confirm('Deletar "'+notas[idx].titulo+'"?')){
           var ns=getNotas(); ns.splice(idx,1); setNotas(ns);
           if(window._notaAberta===idx) window._notaAberta=null;
+          if(window._notaEditando===idx) window._notaEditando=null;
           render();
         }
       };})(i);
 
-      hdr.appendChild(arrow); hdr.appendChild(titulo); hdr.appendChild(stamp); hdr.appendChild(del);
+      hdr.appendChild(arrow); hdr.appendChild(titulo); hdr.appendChild(stamp); hdr.appendChild(edit); hdr.appendChild(del);
       row.appendChild(hdr);
 
-      // Texto expandido
-      if(isOpen){
+      // Texto expandido — modo edição ou leitura
+      if(isOpen && isEditando){
+        var editBody = document.createElement('div');
+        editBody.style.cssText='padding:0 12px 12px;border-top:1px solid #2a2a3a;';
+
+        var editTituloRow = document.createElement('div'); editTituloRow.style.cssText='display:flex;gap:8px;margin:10px 0 8px;';
+        var editTitulo = document.createElement('input');
+        editTitulo.type='text'; editTitulo.value=n.titulo;
+        editTitulo.style.cssText='flex:1;background:#1a1a2e;border:1px solid #c8a96e;border-radius:10px;padding:9px 11px;font-size:14px;color:#c8a96e;font-weight:700;outline:none;font-family:inherit;';
+        editTituloRow.appendChild(editTitulo); anexarMicrofone(editTitulo);
+        editBody.appendChild(editTituloRow);
+
+        var editTextoRow = document.createElement('div'); editTextoRow.style.cssText='display:flex;gap:8px;margin-bottom:8px;';
+        var editTexto = document.createElement('textarea');
+        editTexto.value=n.texto;
+        editTexto.style.cssText='flex:1;background:#1a1a2e;border:1px solid #333;border-radius:10px;padding:9px 11px;font-size:13px;color:#e8e8e8;outline:none;font-family:inherit;resize:vertical;min-height:80px;';
+        editTextoRow.appendChild(editTexto); anexarMicrofone(editTexto, {append:true});
+        editBody.appendChild(editTextoRow);
+
+        var editBtnRow = document.createElement('div'); editBtnRow.style.cssText='display:flex;gap:8px;';
+        var salvarBtn = document.createElement('button');
+        salvarBtn.textContent='💾 Salvar edição';
+        salvarBtn.style.cssText='flex:1;background:#c8a96e;color:#111;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;';
+        salvarBtn.onclick=(function(idx){ return function(){
+          var novoTitulo = editTitulo.value.trim();
+          var novoTexto = editTexto.value.trim();
+          if(!novoTitulo){ alert('Digite um título!'); return; }
+          if(!novoTexto){ alert('Digite o texto da nota!'); return; }
+          var ns=getNotas();
+          ns[idx].titulo = novoTitulo;
+          ns[idx].texto = novoTexto;
+          setNotas(ns);
+          window._notaEditando = null;
+          vibe([30]); render();
+        };})(i);
+        var cancelarBtn = document.createElement('button');
+        cancelarBtn.textContent='Cancelar';
+        cancelarBtn.style.cssText='flex:1;background:#1a1a2e;color:#aaa;border:1px solid #444;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;';
+        cancelarBtn.onclick=function(){ window._notaEditando=null; render(); };
+        editBtnRow.appendChild(salvarBtn); editBtnRow.appendChild(cancelarBtn);
+        editBody.appendChild(editBtnRow);
+
+        row.appendChild(editBody);
+      } else if(isOpen){
         var body = document.createElement('div');
         body.style.cssText='padding:0 12px 12px;border-top:1px solid #2a2a3a;';
         var stamp2 = el('div','','📅 '+n.data+' às '+n.hora);
