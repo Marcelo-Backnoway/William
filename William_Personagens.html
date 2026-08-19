@@ -629,21 +629,6 @@ function adiarAlertaCritico(){
 function limparAdiamento(){
   localStorage.removeItem(ALERTA_SNOOZE_KEY);
 }
-function limparAdiamento(){
-  localStorage.removeItem(ALERTA_SNOOZE_KEY);
-}
-function getBadgeAdiado(){
-  var b = document.getElementById('badgeAdiado');
-  if (!b){
-    b = document.createElement('div');
-    b.id = 'badgeAdiado';
-    b.title = 'Alerta adiado — toque para mostrar agora';
-    b.style.cssText = 'position:fixed;bottom:34px;right:14px;width:13px;height:13px;border-radius:50%;background:#9b7fe0;z-index:9998;cursor:pointer;box-shadow:0 0 7px rgba(155,127,224,0.9);display:none;';
-    b.onclick = function(){ limparAdiamento(); verificarDataCriticaGlobal(); };
-    document.body.appendChild(b);
-  }
-  return b;
-}
 
 async function verificarDataCriticaGlobal(){
   var dot = document.getElementById('syncDot');
@@ -709,8 +694,6 @@ async function verificarDataCriticaGlobal(){
       }
     }
 
-    var badge = getBadgeAdiado();
-    badge.style.display = (textosCriticos.length && alertaEstaAdiado()) ? 'block' : 'none';
 
     if (textosCriticos.length && !alertaEstaAdiado()){
       dot.classList.add('dot-critico');
