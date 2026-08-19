@@ -487,12 +487,29 @@ setInterval(function(){
 
 // ---------- Adiar alerta crítico (toque na barra vermelha soneca por 30min, só neste aparelho) ----------
 var ALERTA_SNOOZE_KEY = 'william_alerta_critico_snooze_ate';
-function alertaEstaAdiado(){
-  var t = localStorage.getItem(ALERTA_SNOOZE_KEY);
-  return !!t && Date.now() < parseInt(t, 10);
+function getAdiamentoInfo(){
+  try{
+    var raw = localStorage.getItem(ALERTA_SNOOZE_KEY);
+    if(!raw) return null;
+    var obj = JSON.parse(raw);
+    if(!obj || Date.now() >= obj.ate) return null;
+    return obj;
+  }catch(e){ return null; }
 }
-function adiarAlertaCritico(){
-  localStorage.setItem(ALERTA_SNOOZE_KEY, String(Date.now() + 30*60*1000));
+// Só considera "adiado" se o CONJUNTO de alertas críticos de agora for exatamente
+// igual ao que estava ativo quando você tocou pra adiar. Qualquer alerta novo ou
+// diferente (mesmo dentro dos 30min) ignora o adiamento e aparece na hora.
+function alertaEstaAdiadoPara(textosCriticos){
+  var info = getAdiamentoInfo();
+  if(!info) return false;
+  var atual = textosCriticos.slice().sort();
+  var adiado = info.textos.slice().sort();
+  if(atual.length !== adiado.length) return false;
+  for(var i=0;i<atual.length;i++){ if(atual[i]!==adiado[i]) return false; }
+  return true;
+}
+function adiarAlertaCritico(textosCriticos){
+  localStorage.setItem(ALERTA_SNOOZE_KEY, JSON.stringify({ ate: Date.now()+30*60*1000, textos: textosCriticos||[] }));
 }
 function limparAdiamento(){
   localStorage.removeItem(ALERTA_SNOOZE_KEY);
@@ -563,13 +580,13 @@ async function verificarDataCriticaGlobal(){
     }
 
 
-    if (textosCriticos.length && !alertaEstaAdiado()){
+    if (textosCriticos.length && !alertaEstaAdiadoPara(textosCriticos)){
       dot.classList.add('dot-critico');
       dot.title = textosCriticos.join(' • ') + ' (toque para adiar 30min)';
       _criticoTextos = textosCriticos;
       _criticoIdx = 0;
       dot.textContent = textosCriticos[0];
-    } else if (textosCriticos.length && alertaEstaAdiado()){
+    } else if (textosCriticos.length && alertaEstaAdiadoPara(textosCriticos)){
       dot.classList.add('dot-adiado');
       dot.title = 'Adiado — ainda ativo: ' + textosCriticos.join(' • ') + ' (toque para reativar agora)';
       _criticoTextos = [];
@@ -594,7 +611,7 @@ function iniciarChecagemDataCritica(){
   if (dot) {
     dot.addEventListener('click', function(){
       if (dot.classList.contains('dot-critico')){
-        adiarAlertaCritico();
+        adiarAlertaCritico(_criticoTextos);
         verificarDataCriticaGlobal();
       } else if (dot.classList.contains('dot-adiado')){
         limparAdiamento();
