@@ -126,6 +126,35 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .odo-msg.amarelo { color: #e8c547; }
 .odo-msg.vermelho { color: #ff5555; }
 
+/* PERGUNTA DIÁRIA — "Você saiu hoje?" */
+.moto-pergunta { background: linear-gradient(135deg,#1a1a3a,#141428); border: 1px solid #4a4a8a; border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+.moto-pergunta-titulo { font-size: 14px; font-weight: 700; color: #b7a6ff; margin-bottom: 10px; text-align: center; }
+.moto-pergunta-btns { display: flex; gap: 8px; }
+.moto-pergunta-btns button { flex: 1; padding: 12px; border-radius: 10px; border: none; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; }
+.moto-btn-sim { background: #2d6a4f; color: #b7e6c9; }
+.moto-btn-nao { background: #2a2a3a; color: #ccc; }
+.moto-pendente { background: #2a1a3a; border: 1px solid #7b5ecf; border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; }
+.moto-pendente-txt { font-size: 13px; color: #b79cff; margin-bottom: 8px; }
+.moto-destino-lista { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
+.moto-destino-cidade { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 8px; margin-bottom: 2px; }
+.moto-destino-btn { display: flex; justify-content: space-between; align-items: center; background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 9px 12px; cursor: pointer; font-size: 13px; color: #e8e8e8; }
+.moto-destino-btn:active { background: #2a2a45; }
+.moto-destino-btn .km-tag { font-size: 11px; color: #74c69d; }
+
+/* MENU DE PERCURSOS */
+.rota-toggle { background: #1a1a2e; border: 1px solid #333; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; font-size: 13px; color: #c8a96e; font-weight: 700; text-align: center; }
+.rota-menu { display: none; }
+.rota-menu.aberto { display: block; }
+.rota-cidade-box { background: #0f0f1e; border: 1px solid #2a2a3a; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+.rota-cidade-nome { font-size: 12px; font-weight: 700; color: #e8e8e8; margin-bottom: 6px; }
+.rota-variacoes { display: flex; gap: 6px; }
+.rota-variacoes .rv { flex: 1; }
+.rota-variacoes .rv label { font-size: 9px; color: #666; display: block; margin-bottom: 2px; }
+.rota-variacoes .rv input { width: 100%; background: #1a1a2e; border: 1px solid #333; border-radius: 6px; padding: 6px; font-size: 12px; color: #e8e8e8; outline: none; font-family: inherit; }
+.rota-trabalho-box { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.rota-trabalho-box label { font-size: 12px; color: #e8e8e8; flex: 1; }
+.rota-trabalho-box input { width: 80px; background: #1a1a2e; border: 1px solid #333; border-radius: 6px; padding: 7px; font-size: 12px; color: #e8e8e8; outline: none; font-family: inherit; text-align: center; }
+
 /* OBJETIVOS */
 .obj-item { display: flex; align-items: center; gap: 10px; padding: 10px; background: #0f0f1e; border-radius: 10px; margin-bottom: 7px; border: 1px solid #2a2a3a; }
 .obj-item.done { border-color: #2d6a4f; background: #0f1a14; }
@@ -238,7 +267,7 @@ var ANIVERSARIO    = '2026-11-22';
 function loadState() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) { return {}; } }
 function saveState(s) { try { s.lastModified = new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(s)); } catch(e) {} }
 function pertenceAoAgenda(k){
-  if(k==='loteria_inicio' || k==='loteria_inicio_backup' || k==='moto_oleo' || k==='motoKmAtual' || k==='corte_cabelo' || k==='obj' || k==='ferias' || k==='diaOverride' || k==='gas') return true;
+  if(k==='loteria_inicio' || k==='loteria_inicio_backup' || k==='moto_oleo' || k==='motoKmAtual' || k==='motoRotas' || k==='motoDiario' || k==='corte_cabelo' || k==='obj' || k==='ferias' || k==='diaOverride' || k==='gas') return true;
   return /^contas_\d+_\d+$|^veiculo_\d+$/.test(k);
 }
 
@@ -428,7 +457,84 @@ function getMotoKmStatus(){
   var atual = getMotoKmAtual();
   var historico = getMoto();
   if (!atual || !historico.length) return null;
-  return { diff: atual.km - historico[0].km, kmAtual: atual.km, kmTroca: historico[0].km, atualizadoEm: atual.atualizadoEm };
+  var estimado = getMotoKmAcumuladoEstimado();
+  var kmEfetivo = atual.km + estimado;
+  return { diff: kmEfetivo - historico[0].km, kmAtual: kmEfetivo, kmTroca: historico[0].km, atualizadoEm: atual.atualizadoEm, estimado: estimado };
+}
+
+// ---------- Km Diário — "Você saiu hoje?" alimenta a estimativa entre uma leitura real e outra ----------
+var MOTO_ROTAS_DEFAULT = {
+  trabalho:     { nome:'🏠 Trabalho (ida e volta)', km: 0 },
+  praia_grande: { nome:'🏖️ Praia Grande', variacoes:[null,null,null] },
+  sao_vicente:  { nome:'🌉 São Vicente', variacoes:[null,null,null] },
+  cubatao:      { nome:'🏭 Cubatão', variacoes:[null,null,null] },
+  casqueiro:    { nome:'🚤 Casqueiro', variacoes:[null,null,null] },
+  santos:       { nome:'⚓ Santos', variacoes:[null,null,null] },
+  guaruja:      { nome:'🏝️ Guarujá', variacoes:[null,null,null] },
+  peruibe:      { nome:'🌊 Peruíbe', variacoes:[null,null,null] },
+  sao_paulo:    { nome:'🏙️ São Paulo', variacoes:[null,null,null] }
+};
+function getMotoRotas(){
+  var s=loadState();
+  if(!s.motoRotas){ s.motoRotas = JSON.parse(JSON.stringify(MOTO_ROTAS_DEFAULT)); saveState(s); }
+  else {
+    // completa cidades novas que não existiam quando o menu foi criado
+    var mudou=false;
+    Object.keys(MOTO_ROTAS_DEFAULT).forEach(function(k){
+      if(!s.motoRotas[k]){ s.motoRotas[k]=JSON.parse(JSON.stringify(MOTO_ROTAS_DEFAULT[k])); mudou=true; }
+    });
+    if(mudou) saveState(s);
+  }
+  return s.motoRotas;
+}
+function setMotoRotas(r){ var s=loadState(); s.motoRotas=r; saveState(s); }
+
+function getMotoDiario(){ var s=loadState(); return s.motoDiario || {}; }
+function setMotoDiarioDia(ds, entrada){ var s=loadState(); if(!s.motoDiario) s.motoDiario={}; s.motoDiario[ds]=entrada; saveState(s); }
+
+function diaEhTrabalho(ds){
+  var dt = new Date(ds+'T00:00:00');
+  var ferias = getFerias(); var isFer = ferias.indexOf(ds)>=0;
+  var isFerPer = ds>=FERIAS_INICIO && ds<=FERIAS_FIM;
+  var isFolgaEsp = ds===FOLGA_ESP;
+  var isAniv = ds===ANIVERSARIO;
+  var overrides = getOverrides(); var manual = overrides[ds];
+  if(isFer||isFerPer||isFolgaEsp||isAniv) return false;
+  if(manual==='trabalho') return true;
+  if(manual==='folga') return false;
+  return isWorkDay(dt);
+}
+
+function motoKmDoDia(ds){
+  var e = getMotoDiario()[ds];
+  if(!e || e.pendente) return 0;
+  var rotas = getMotoRotas();
+  var trabalho = diaEhTrabalho(ds) ? (rotas.trabalho.km || 0) : 0;
+  var extra = 0;
+  if(e.resposta==='sim' && e.rotaId && e.variacao!==undefined && e.variacao!==null){
+    var r = rotas[e.rotaId];
+    if(r && r.variacoes && r.variacoes[e.variacao]!==null && r.variacoes[e.variacao]!==undefined){
+      extra = Number(r.variacoes[e.variacao]) || 0;
+    }
+  }
+  return trabalho + extra;
+}
+function getMotoKmAcumuladoEstimado(){
+  var atual = getMotoKmAtual();
+  if(!atual) return 0;
+  var diario = getMotoDiario();
+  var total = 0;
+  Object.keys(diario).forEach(function(ds){
+    if(ds > atual.atualizadoEm){ total += motoKmDoDia(ds); }
+  });
+  return total;
+}
+function motoHojeStr(){ return new Date().toISOString().split('T')[0]; }
+function motoPerguntaHojeStatus(){
+  var e = getMotoDiario()[motoHojeStr()];
+  if(!e) return 'nao_respondida';
+  if(e.pendente) return 'pendente';
+  return 'respondida';
 }
 function getCorte(){
   var s=loadState(); var c=s.corte_cabelo||[]; var mudou=false;
@@ -484,6 +590,8 @@ function fmtData(iso){ if(!iso) return ''; var p=iso.split('-'); return p[2]+'/'
 // ══════════════════════════════════════════════════════
 function render() {
   var main = document.getElementById('main');
+  main.innerHTML = '';
+  renderMotoPerguntaDiaria(main);
   var dtabs = document.createElement('div'); dtabs.className='ilha-tabs';
   [['escala','📅 Escala'],['contas','💰 Contas'],['obj','🎯 Objetivos']].forEach(function(d){
     var b=document.createElement('button');
@@ -491,11 +599,81 @@ function render() {
     b.textContent=d[1]; b.onclick=(function(k){return function(){dashTab=k;render();}})(d[0]);
     dtabs.appendChild(b);
   });
-  main.innerHTML=''; main.appendChild(dtabs);
+  main.appendChild(dtabs);
   if(dashTab==='escala') renderEscala(main);
   else if(dashTab==='contas') renderContas(main);
   else renderObj(main);
   atualizarLoteriaBanner();
+}
+
+// ══════════════════════════════════════════════════════
+// PERGUNTA DIÁRIA DA MOTO — "Você saiu hoje?"
+// ══════════════════════════════════════════════════════
+var motoDestinoEscolhendo = false;
+var motoRotasMenuAberto = false;
+function renderMotoPerguntaDiaria(main){
+  var status = motoPerguntaHojeStatus();
+  if (status === 'respondida') return;
+
+  if (status === 'pendente') {
+    var pend = document.createElement('div'); pend.className='moto-pendente';
+    pend.appendChild(el('div','moto-pendente-txt','🏍️ Falta escolher pra onde você foi hoje'));
+    var btnCompletar=document.createElement('button'); btnCompletar.className='moto-btn-sim'; btnCompletar.style.width='100%'; btnCompletar.style.padding='10px'; btnCompletar.style.borderRadius='8px'; btnCompletar.style.border='none'; btnCompletar.style.fontFamily='inherit'; btnCompletar.style.cursor='pointer'; btnCompletar.textContent='Completar agora';
+    btnCompletar.onclick=function(){ motoDestinoEscolhendo=true; render(); };
+    pend.appendChild(btnCompletar);
+    main.appendChild(pend);
+    if (motoDestinoEscolhendo) main.appendChild(renderMotoDestinoLista());
+    return;
+  }
+
+  if (motoDestinoEscolhendo) {
+    var card = document.createElement('div'); card.className='moto-pergunta';
+    card.appendChild(el('div','moto-pergunta-titulo','🏍️ Pra onde você foi hoje?'));
+    card.appendChild(renderMotoDestinoLista());
+    main.appendChild(card);
+    return;
+  }
+
+  var pergunta = document.createElement('div'); pergunta.className='moto-pergunta';
+  pergunta.appendChild(el('div','moto-pergunta-titulo','🏍️ Você saiu hoje?'));
+  var btns = document.createElement('div'); btns.className='moto-pergunta-btns';
+  var btnSim = document.createElement('button'); btnSim.className='moto-btn-sim'; btnSim.textContent='Sim';
+  btnSim.onclick=function(){
+    setMotoDiarioDia(motoHojeStr(), {resposta:'sim', pendente:true});
+    motoDestinoEscolhendo=true;
+    render();
+  };
+  var btnNao = document.createElement('button'); btnNao.className='moto-btn-nao'; btnNao.textContent='Não';
+  btnNao.onclick=function(){
+    setMotoDiarioDia(motoHojeStr(), {resposta:'nao'});
+    vibe([30]);
+    render();
+  };
+  btns.appendChild(btnSim); btns.appendChild(btnNao);
+  pergunta.appendChild(btns);
+  main.appendChild(pergunta);
+}
+function renderMotoDestinoLista(){
+  var wrap = document.createElement('div'); wrap.className='moto-destino-lista';
+  var rotas = getMotoRotas();
+  Object.keys(rotas).forEach(function(id){
+    if (id==='trabalho') return;
+    var r = rotas[id];
+    wrap.appendChild(el('div','moto-destino-cidade', r.nome));
+    r.variacoes.forEach(function(km, i){
+      var btn = document.createElement('div'); btn.className='moto-destino-btn';
+      var label = r.nome.replace(/^\S+\s/,'') + ' ' + (i+1);
+      btn.innerHTML = '<span>'+label+'</span><span class="km-tag">'+(km!==null && km!==undefined ? km+' km' : 'sem km ainda')+'</span>';
+      btn.onclick=function(){
+        setMotoDiarioDia(motoHojeStr(), {resposta:'sim', rotaId:id, variacao:i});
+        motoDestinoEscolhendo=false;
+        vibe([30]);
+        render();
+      };
+      wrap.appendChild(btn);
+    });
+  });
+  return wrap;
 }
 
 // ══════════════════════════════════════════════════════
@@ -865,6 +1043,25 @@ function renderGasControle() {
   var card = document.createElement('div'); card.className='card';
   card.appendChild(el('div','card-title','🔥 GÁS CONTROLE'));
 
+  var gasAtualPreview = getGas();
+  if (gasAtualPreview.length > 0 && (gasAtualPreview[0].duracao === null || gasAtualPreview[0].duracao === undefined)) {
+    var diasUsoAtual = diasEntre(gasAtualPreview[0].data, new Date().toISOString().split('T')[0]);
+    var pctGas = Math.min(100, Math.round((diasUsoAtual / 90) * 100));
+    var nivelGas = diasUsoAtual >= 90 ? 'vermelho' : (diasUsoAtual >= 80 ? 'amarelo' : 'verde');
+    var gaugeBox = document.createElement('div'); gaugeBox.className='odo-card';
+    gaugeBox.innerHTML = '<div class="odo-emoji">🔥</div><div style="font-size:12px;color:#888;">Botijão em uso</div>';
+    var trackGas = document.createElement('div'); trackGas.className='odo-gauge-track';
+    var fillGas = document.createElement('div'); fillGas.className='odo-gauge-fill '+nivelGas; fillGas.style.width=Math.max(pctGas,3)+'%';
+    trackGas.appendChild(fillGas); gaugeBox.appendChild(trackGas);
+    var msgTxtGas = diasUsoAtual >= 90
+      ? '🔴 '+diasUsoAtual+' dias de uso — hora de trocar o botijão!'
+      : diasUsoAtual >= 80
+        ? '🟡 '+diasUsoAtual+' dias de uso — troca em breve'
+        : '🟢 '+diasUsoAtual+' dias de uso (faltam '+(90-diasUsoAtual)+' dias)';
+    gaugeBox.appendChild(el('div','odo-msg '+nivelGas, msgTxtGas));
+    card.appendChild(gaugeBox);
+  }
+
   var hint = el('p','','Registre o dia que instalou o botijão novo. Ao registrar um novo, os dias de uso do anterior ficam gravados automaticamente.');
   hint.style.cssText='font-size:12px;color:#555;margin-bottom:10px;';
   card.appendChild(hint);
@@ -974,13 +1171,57 @@ function renderMotoControle() {
     var msg = el('div','odo-msg '+nivel, msgTxt);
     odo.appendChild(msg);
 
-    var info = el('div','odo-status','Última leitura: '+status.kmAtual.toLocaleString('pt-BR')+' km em '+fmtData(status.atualizadoEm)+' • última troca: '+status.kmTroca.toLocaleString('pt-BR')+' km');
+    var info = el('div','odo-status','Leitura real: '+status.kmTroca.toLocaleString('pt-BR')+' km (última troca) • '+(status.estimado>0 ? '+'+status.estimado.toLocaleString('pt-BR')+' km estimados desde então' : 'sem km estimado ainda'));
     odo.appendChild(info);
   } else {
     var vazio = el('div','odo-status','Registre a quilometragem atual pra começar a acompanhar.');
     odo.appendChild(vazio);
   }
   card.appendChild(odo);
+
+  // ---------- Menu de percursos (colapsável) ----------
+  var rotaToggle = document.createElement('div'); rotaToggle.className='rota-toggle';
+  rotaToggle.textContent = (motoRotasMenuAberto ? '▲' : '▼') + ' 🗺️ Meus Percursos (editar km)';
+  rotaToggle.onclick = function(){ motoRotasMenuAberto = !motoRotasMenuAberto; render(); };
+  card.appendChild(rotaToggle);
+
+  var rotaMenu = document.createElement('div'); rotaMenu.className='rota-menu'+(motoRotasMenuAberto?' aberto':'');
+  if (motoRotasMenuAberto) {
+    var rotas = getMotoRotas();
+
+    var trabBox = document.createElement('div'); trabBox.className='rota-trabalho-box';
+    var trabLabel = document.createElement('label'); trabLabel.textContent = rotas.trabalho.nome;
+    var trabInput = document.createElement('input'); trabInput.type='number'; trabInput.step='0.1'; trabInput.value = rotas.trabalho.km || '';
+    trabInput.placeholder='km';
+    trabInput.onchange = function(){
+      var r = getMotoRotas(); r.trabalho.km = parseFloat(this.value) || 0; setMotoRotas(r);
+    };
+    trabBox.appendChild(trabLabel); trabBox.appendChild(trabInput);
+    rotaMenu.appendChild(trabBox);
+
+    Object.keys(rotas).forEach(function(id){
+      if (id==='trabalho') return;
+      var r = rotas[id];
+      var box = document.createElement('div'); box.className='rota-cidade-box';
+      box.appendChild(el('div','rota-cidade-nome', r.nome));
+      var varsRow = document.createElement('div'); varsRow.className='rota-variacoes';
+      r.variacoes.forEach(function(km, i){
+        var rv = document.createElement('div'); rv.className='rv';
+        var lbl = document.createElement('label'); lbl.textContent='Opção '+(i+1);
+        var inp = document.createElement('input'); inp.type='number'; inp.step='0.1'; inp.value = km!==null && km!==undefined ? km : '';
+        inp.placeholder='km';
+        inp.onchange = (function(cidadeId, idx){ return function(){
+          var rr = getMotoRotas();
+          rr[cidadeId].variacoes[idx] = this.value==='' ? null : (parseFloat(this.value) || 0);
+          setMotoRotas(rr);
+        }; })(id, i);
+        rv.appendChild(lbl); rv.appendChild(inp); varsRow.appendChild(rv);
+      });
+      box.appendChild(varsRow);
+      rotaMenu.appendChild(box);
+    });
+  }
+  card.appendChild(rotaMenu);
 
   var hint = el('p','','Registre a quilometragem da troca. A próxima troca é calculada automaticamente (+'+KM_INTERVALO+' km).');
   hint.style.cssText='font-size:12px;color:#555;margin-bottom:10px;';
