@@ -468,11 +468,52 @@ function gasDiasUsoRemoto(dadosAgenda){
 
 // ---------- Moto — km rodados desde a última troca, registrados manualmente no odômetro (Agenda) ----------
 var KM_INTERVALO_MOTO = 2800;
+var MOTO_PLANTAO_INICIO = new Date(2026,6,2);
+var MOTO_FERIAS_INICIO='2026-09-28', MOTO_FERIAS_FIM='2026-10-28', MOTO_FOLGA_ESP='2026-11-19', MOTO_ANIVERSARIO='2026-11-22';
+function motoIsWorkDayRemoto(date){
+  var diff=Math.floor((date-MOTO_PLANTAO_INICIO)/(1000*60*60*24));
+  return diff>=0 && diff%2===0;
+}
+function motoDiaEhTrabalhoRemoto(ds, dadosAgenda){
+  var dt = new Date(ds+'T00:00:00');
+  var ferias = dadosAgenda.ferias || []; var isFer = ferias.indexOf(ds)>=0;
+  var isFerPer = ds>=MOTO_FERIAS_INICIO && ds<=MOTO_FERIAS_FIM;
+  var isFolgaEsp = ds===MOTO_FOLGA_ESP;
+  var isAniv = ds===MOTO_ANIVERSARIO;
+  var overrides = dadosAgenda.diaOverride || {}; var manual = overrides[ds];
+  if(isFer||isFerPer||isFolgaEsp||isAniv) return false;
+  if(manual==='trabalho') return true;
+  if(manual==='folga') return false;
+  return motoIsWorkDayRemoto(dt);
+}
+var MOTO_TRABALHO_KM_REMOTO = 0.32; // 160m ida + 160m volta
+function motoItinerarioMediaRemoto(it){
+  if(!it || !it.medicoes || !it.medicoes.length) return null;
+  var soma=it.medicoes.reduce(function(a,m){return a+m.diff;},0);
+  return soma/it.medicoes.length;
+}
+function motoKmDoDiaRemoto(ds, dadosAgenda){
+  var diario = dadosAgenda.motoDiario||{};
+  var e = diario[ds];
+  if(!e || e.pendente) return 0;
+  var total=0;
+  if (motoDiaEhTrabalhoRemoto(ds,dadosAgenda)) total += MOTO_TRABALHO_KM_REMOTO;
+  if (e.resposta==='sim' && e.itinerarioId){
+    var itins = dadosAgenda.motoItinerarios||{};
+    var it = itins[e.itinerarioId];
+    var valor = e.kmMedido !== undefined ? e.kmMedido : (it?motoItinerarioMediaRemoto(it):0);
+    total += valor || 0;
+  }
+  return total;
+}
 function motoKmStatusRemoto(dadosAgenda){
   var atual = dadosAgenda.motoKmAtual;
   var historico = dadosAgenda.moto_oleo || [];
   if (!atual || !historico.length) return null;
-  return { diff: atual.km - historico[0].km };
+  var diario = dadosAgenda.motoDiario || {};
+  var estimado = 0;
+  Object.keys(diario).forEach(function(ds){ if(ds>atual.atualizadoEm){ estimado += motoKmDoDiaRemoto(ds, dadosAgenda); } });
+  return { diff: (atual.km+estimado) - historico[0].km };
 }
 
 // ---------- Ciclo de textos na barra crítica (alterna quando há mais de um alerta) ----------
@@ -573,9 +614,9 @@ async function verificarDataCriticaGlobal(){
     // Moto: 2.800 km rodados é crítico, 2.600 km é aviso fraco
     if (motoStatus) {
       if (motoStatus.diff >= KM_INTERVALO_MOTO) {
-        textosCriticos.push('🏍️ Moto: ' + motoStatus.diff.toLocaleString('pt-BR') + ' km rodados, hora de trocar o óleo!');
+        textosCriticos.push('🏍️ Moto: ' + motoStatus.diff.toFixed(1) + ' km rodados, hora de trocar o óleo!');
       } else if (motoStatus.diff >= KM_INTERVALO_MOTO - 200) {
-        textosAmarelos.push('🏍️ Moto: ' + motoStatus.diff.toLocaleString('pt-BR') + ' km rodados, troca em breve');
+        textosAmarelos.push('🏍️ Moto: ' + motoStatus.diff.toFixed(1) + ' km rodados, troca em breve');
       }
     }
 
