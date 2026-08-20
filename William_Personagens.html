@@ -26,6 +26,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .char-title { flex: 1; }
 .char-title .nome { font-size: 17px; font-weight: 700; color: #e8e8e8; }
 .char-title .cat  { font-size: 10px; color: #888; margin-top: 2px; }
+.char-titulo-badge { display: inline-block; margin-top: 3px; font-size: 11px; font-style: italic; font-weight: 700; color: #1a1a2e; background: linear-gradient(135deg,#e8c96e,#c8a96e); padding: 2px 9px; border-radius: 6px; letter-spacing: 0.3px; }
 .char-counter { font-size: 11px; color: #555; }
 
 .char-fields { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
@@ -34,6 +35,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .char-field-label.lv  { color: #c8a96e; }
 .char-field-label.lg  { color: #87CEFA; }
 .char-field-label.bk  { color: #74c69d; }
+.char-field-label.tl  { color: #e8c96e; }
 .char-field-input { flex: 1; background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 8px 10px; font-size: 14px; color: #e8e8e8; outline: none; font-family: inherit; }
 .char-field-input:focus { border-color: #c8a96e; }
 
@@ -165,7 +167,9 @@ var EU_CHARS_DEFAULT = [
 
 var KEY = 'william_superapp_v1'; // mesma chave do SuperApp — dados ficam sincronizados
 var server = 'eu';
-var charIdx = 0;
+var charSelId = null; // id do personagem selecionado — nunca depende de posição na lista
+function gerarIdPersonagem(){ return 'c_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function charIndexPorId(chars, id){ for(var i=0;i<chars.length;i++){ if(chars[i].id===id) return i; } return -1; }
 
 // ══════════════════════════════════════════════════════
 // STATE
@@ -177,6 +181,9 @@ function pertenceAoPersonagens(k){ return /_chars$/.test(k) || k === 'personagen
 function getChars() {
   var s = loadState(), k = server+'_chars';
   if (!s[k]) { s[k] = server==='eu' ? JSON.parse(JSON.stringify(EU_CHARS_DEFAULT)) : []; saveState(s); }
+  var mudouId=false;
+  s[k].forEach(function(c){ if(!c.id){ c.id=gerarIdPersonagem(); mudouId=true; } });
+  if(mudouId) saveState(s);
   return s[k];
 }
 function setChars(data) { var s=loadState(); s[server+'_chars']=data; saveState(s); }
@@ -295,7 +302,7 @@ function anexarMicrofone(inputEl, opts){
 }
 
 function setServer(sv) {
-  server = sv; charIdx = 0;
+  server = sv; charSelId = null;
   document.querySelectorAll('.srv-btn').forEach(function(b){ b.className='srv-btn'; });
   document.getElementById('srv-'+sv).className='srv-btn active-'+sv;
   render();
@@ -315,7 +322,8 @@ function renderChars(main) {
   if (chars.length === 0) {
     renderAddChar(main, true); return;
   }
-  if (charIdx >= chars.length) charIdx = chars.length-1;
+  if (!charSelId || charIndexPorId(chars, charSelId) === -1) charSelId = chars[0].id;
+  var charIdx = charIndexPorId(chars, charSelId);
   var c = chars[charIdx];
 
   var navCard = document.createElement('div'); navCard.className='char-nav-card';
@@ -325,7 +333,7 @@ function renderChars(main) {
   var av = document.createElement('div'); av.className='char-avatar';
   av.textContent = (c.nome||'?').substring(0,2).toUpperCase();
   var ti = document.createElement('div'); ti.className='char-title';
-  ti.innerHTML='<div class="nome">'+c.nome+'</div><div class="cat">'+c.cat+'</div>';
+  ti.innerHTML='<div class="nome">'+c.nome+'</div><div class="cat">'+c.cat+'</div>'+(c.titulo ? '<div class="char-titulo-badge">🏅 '+c.titulo+'</div>' : '');
   var ct = el('div','char-counter',(charIdx+1)+'/'+chars.length);
   hdr.appendChild(av); hdr.appendChild(ti); hdr.appendChild(ct);
   navCard.appendChild(hdr);
@@ -337,14 +345,14 @@ function renderChars(main) {
   lvRow.appendChild(el('div','char-field-label lv','⚡ Level'));
   var lvIn = document.createElement('input'); lvIn.className='char-field-input'; lvIn.type='number';
   lvIn.value=c.nivel||''; lvIn.placeholder='—';
-  lvIn.onchange=function(){ var ch=getChars(); ch[charIdx].nivel=this.value?Number(this.value):null; setChars(ch); renderCharCounter(); };
+  lvIn.onchange=function(){ var ch=getChars(); var i=charIndexPorId(ch,charSelId); if(i>=0){ ch[i].nivel=this.value?Number(this.value):null; setChars(ch); } renderCharCounter(); };
   lvRow.appendChild(lvIn); anexarMicrofone(lvIn); fields.appendChild(lvRow);
 
   var lgRow = document.createElement('div'); lgRow.className='char-field';
   lgRow.appendChild(el('div','char-field-label lg','🔑 Login'));
   var lgIn = document.createElement('input'); lgIn.className='char-field-input'; lgIn.type='text';
   lgIn.value=c.login||''; lgIn.placeholder='usuário/senha';
-  lgIn.onchange=function(){ var ch=getChars(); ch[charIdx].login=this.value; setChars(ch); };
+  lgIn.onchange=function(){ var ch=getChars(); var i=charIndexPorId(ch,charSelId); if(i>=0){ ch[i].login=this.value; setChars(ch); } };
   lgRow.appendChild(lgIn); anexarMicrofone(lgIn); fields.appendChild(lgRow);
 
   var fnRow = document.createElement('div'); fnRow.className='char-field';
@@ -355,30 +363,30 @@ function renderChars(main) {
     if(catOpt === c.cat) op.selected = true;
     fnSel.appendChild(op);
   });
-  fnSel.onchange=function(){ var ch=getChars(); ch[charIdx].cat=this.value; setChars(ch); render(); };
+  fnSel.onchange=function(){ var ch=getChars(); var i=charIndexPorId(ch,charSelId); if(i>=0){ ch[i].cat=this.value; setChars(ch); } render(); };
   fnRow.appendChild(fnSel); fields.appendChild(fnRow);
 
   var tlRow = document.createElement('div'); tlRow.className='char-field';
-  tlRow.appendChild(el('div','char-field-label','📝 Título'));
+  tlRow.appendChild(el('div','char-field-label tl','📝 Título'));
   var tlIn = document.createElement('input'); tlIn.className='char-field-input'; tlIn.type='text';
   tlIn.value=c.titulo||''; tlIn.placeholder='Ex: Guarda Roupas de Archer';
-  tlIn.onchange=function(){ var ch=getChars(); ch[charIdx].titulo=this.value; setChars(ch); };
+  tlIn.onchange=function(){ var ch=getChars(); var i=charIndexPorId(ch,charSelId); if(i>=0){ ch[i].titulo=this.value; setChars(ch); } };
   tlRow.appendChild(tlIn); anexarMicrofone(tlIn); fields.appendChild(tlRow);
 
   var bkRow = document.createElement('div'); bkRow.className='char-field';
   bkRow.appendChild(el('div','char-field-label bk','💰 Banco'));
   var bkIn = document.createElement('input'); bkIn.className='char-field-input'; bkIn.type='text';
   bkIn.value=c.banco||''; bkIn.placeholder='—';
-  bkIn.onchange=function(){ var ch=getChars(); ch[charIdx].banco=this.value; setChars(ch); };
+  bkIn.onchange=function(){ var ch=getChars(); var i=charIndexPorId(ch,charSelId); if(i>=0){ ch[i].banco=this.value; setChars(ch); } };
   bkRow.appendChild(bkIn); anexarMicrofone(bkIn); fields.appendChild(bkRow);
 
   navCard.appendChild(fields);
 
   // Nav buttons
   var nr = document.createElement('div'); nr.className='char-nav-row';
-  var prev=btn('◀ Anterior','btn-nav-char btn-prev-char',function(){ if(charIdx>0){charIdx--;render();} });
+  var prev=btn('◀ Anterior','btn-nav-char btn-prev-char',function(){ if(charIdx>0){ charSelId=chars[charIdx-1].id; render(); } });
   prev.disabled = charIdx===0;
-  var next=btn('Próximo ▶','btn-nav-char btn-next-char',function(){ if(charIdx<chars.length-1){charIdx++;render();} });
+  var next=btn('Próximo ▶','btn-nav-char btn-next-char',function(){ if(charIdx<chars.length-1){ charSelId=chars[charIdx+1].id; render(); } });
   next.disabled = charIdx===chars.length-1;
   nr.appendChild(prev); nr.appendChild(next);
   navCard.appendChild(nr);
@@ -386,7 +394,15 @@ function renderChars(main) {
   // Del button
   var del = document.createElement('button'); del.className='btn-reset'; del.style.marginTop='8px';
   del.textContent='🗑️ Remover este personagem';
-  del.onclick = function(){ if(confirm('Remover '+c.nome+'?')){ var ch=getChars(); ch.splice(charIdx,1); setChars(ch); if(charIdx>=ch.length) charIdx=Math.max(0,ch.length-1); render(); } };
+  del.onclick = function(){
+    if(confirm('Remover '+c.nome+'?')){
+      var ch=getChars(); var i=charIndexPorId(ch,charSelId);
+      if(i>=0) ch.splice(i,1);
+      setChars(ch);
+      charSelId = ch.length ? ch[Math.min(i,ch.length-1)].id : null;
+      render();
+    }
+  };
   navCard.appendChild(del);
   main.appendChild(navCard);
 
@@ -395,7 +411,7 @@ function renderChars(main) {
 
 function renderCharCounter() {
   var ct = document.querySelector('.char-counter');
-  if (ct) ct.textContent = (charIdx+1)+'/'+getChars().length;
+  if (ct){ var chars=getChars(); var i=charIndexPorId(chars,charSelId); ct.textContent = (i+1)+'/'+chars.length; }
 }
 
 function renderAddChar(main, empty) {
@@ -412,6 +428,8 @@ function renderAddChar(main, empty) {
   f4.innerHTML='<label>Login</label><div class="mic-row" style="display:flex;gap:8px;"><input id="ac_login" type="text" placeholder="usuário" style="flex:1;"></div>';
   var f5=document.createElement('div'); f5.className='add-field';
   f5.innerHTML='<label>💰 Banco</label><div class="mic-row" style="display:flex;gap:8px;"><input id="ac_banco" type="text" placeholder="—" style="flex:1;"></div>';
+  var f6=document.createElement('div'); f6.className='add-field';
+  f6.innerHTML='<label>📝 Título</label><div class="mic-row" style="display:flex;gap:8px;"><input id="ac_titulo" type="text" placeholder="Ex: Guarda Roupas de Archer" style="flex:1;"></div>';
 
   var addBtn = document.createElement('button'); addBtn.className='btn-add-char';
   addBtn.textContent='✅ Adicionar';
@@ -419,13 +437,15 @@ function renderAddChar(main, empty) {
     var nome=document.getElementById('ac_nome').value.trim();
     if(!nome){ alert('Digite um nome!'); return; }
     var ch=getChars();
-    ch.push({ nome:nome, cat:document.getElementById('ac_cat').value, nivel:document.getElementById('ac_nivel').value?Number(document.getElementById('ac_nivel').value):null, login:document.getElementById('ac_login').value, banco:document.getElementById('ac_banco').value });
-    setChars(ch); charIdx=ch.length-1; render();
+    var novoId = gerarIdPersonagem();
+    ch.push({ id:novoId, nome:nome, cat:document.getElementById('ac_cat').value, nivel:document.getElementById('ac_nivel').value?Number(document.getElementById('ac_nivel').value):null, login:document.getElementById('ac_login').value, banco:document.getElementById('ac_banco').value, titulo:document.getElementById('ac_titulo').value });
+    setChars(ch); charSelId=novoId; render();
   };
-  [f1,f2,f3,f4,f5,addBtn].forEach(function(e){ ac.appendChild(e); });
+  [f1,f2,f3,f4,f5,f6,addBtn].forEach(function(e){ ac.appendChild(e); });
   main.appendChild(ac);
   anexarMicrofone(document.getElementById('ac_nome'), {aprenderCorrecoes: true});
   anexarMicrofone(document.getElementById('ac_nivel'));
+  anexarMicrofone(document.getElementById('ac_titulo'));
   anexarMicrofone(document.getElementById('ac_login'));
   anexarMicrofone(document.getElementById('ac_banco'));
 }
@@ -475,7 +495,7 @@ render();
       row.className = 'search-item';
       row.innerHTML = '<span class="snome">'+item.c.nome+'</span><span class="scat">'+item.c.cat+'</span>';
       row.onclick = function(){
-        charIdx = item.idx;
+        charSelId = item.c.id;
         render();
         results.classList.remove('show');
         input.value = '';
