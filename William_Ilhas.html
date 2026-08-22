@@ -1178,8 +1178,11 @@ async function verificarDataCriticaGlobal(){
         loteriaCount = loteriaContagemGlobal(dadosAg.loteria_inicio || null);
         gasDias = gasDiasUsoRemoto(dadosAg);
         textosContas = contasVencendoRemoto(dadosAg);
-        motoStatus = motoKmStatusRemoto(dadosAg);
       }
+    } catch(e) {}
+    try {
+      var snapMoto = await getDoc(doc(db, "william", "moto_data"));
+      if (snapMoto.exists()) motoStatus = motoKmStatusRemoto(snapMoto.data());
     } catch(e) {}
 
     dot.classList.remove('dot-critico', 'dot-adiado', 'dot-perto-laranja', 'dot-perto-amarelo');

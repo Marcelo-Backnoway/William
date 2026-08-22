@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🏍️ William Moto</title>
+<link rel="manifest" href="manifest-moto.json">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a14; color: #e8e8e8; min-height: 100vh; }
+  .topbar { background: #111122; border-bottom: 1px solid #2a2a3a; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .topbar h1 { font-size: 12px; color: #c8a96e; letter-spacing: 1px; font-weight: 700; }
+  .container { padding: 10px; max-width: 480px; margin: 0 auto; }
+  .card { background: #141424; border: 1px solid #2a2a3a; border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+  .card-title { font-size: 11px; font-weight: 700; color: #c8a96e; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
+
+  /* SYNC DOT + PULSO (padrão do ecossistema) */
+  #syncDot { position: fixed; bottom: 14px; right: 14px; width: 10px; height: 10px; border-radius: 50%; background: #555; z-index: 998; transition: background 0.3s; cursor: pointer; }
+  @keyframes pulsoCriticoGrande {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,34,34,0.85), 0 0 22px 6px rgba(255,34,34,0.9); transform: translate(-50%, -50%) scale(1); }
+    50% { box-shadow: 0 0 0 18px rgba(255,34,34,0), 0 0 32px 10px rgba(255,34,34,0.55); transform: translate(-50%, -50%) scale(1.035); }
+  }
+  #syncDot.dot-critico {
+    position: fixed !important; top: 50%; left: 50%; right: auto; bottom: auto;
+    transform: translate(-50%, -50%);
+    width: auto !important; height: auto !important; min-width: 260px; max-width: calc(100vw - 40px);
+    border-radius: 16px; background: #ff2222 !important;
+    padding: 18px 26px; z-index: 9999; margin: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; font-weight: 800; color: #fff; text-align: center;
+    line-height: 1.3; white-space: normal; cursor: pointer;
+    animation: pulsoCriticoGrande 1s ease-in-out infinite;
+  }
+  #syncDot.dot-perto-laranja { box-shadow: 0 0 0 4px rgba(255,153,68,0.65); }
+  #syncDot.dot-perto-amarelo { box-shadow: 0 0 0 4px rgba(232,197,71,0.6); }
+  #syncDot.dot-adiado { box-shadow: 0 0 0 4px rgba(150,150,190,0.55); }
+
+  /* LOGIN */
+  #loginOverlay { position: fixed; inset: 0; background: #0a0a14; z-index: 2000; display: flex; align-items: center; justify-content: center; }
+  #loginBox { background: #141424; border: 1px solid #2a2a3a; border-radius: 16px; padding: 28px 24px; width: 90%; max-width: 320px; text-align: center; }
+  #loginBox h2 { font-size: 14px; color: #c8a96e; margin-bottom: 16px; letter-spacing: 1px; }
+  #loginBox input { width: 100%; background: #1a1a2e; border: 1px solid #333; border-radius: 10px; padding: 12px; font-size: 15px; color: #e8e8e8; outline: none; margin-bottom: 10px; font-family: inherit; }
+  #loginBox button { width: 100%; background: #c8a96e; color: #111; border: none; border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  #loginErro { color: #ff5555; font-size: 12px; margin-top: 8px; min-height: 16px; }
+
+  /* PERGUNTA DIÁRIA */
+  .moto-pergunta { background: linear-gradient(135deg,#1a1a3a,#141428); border: 1px solid #4a4a8a; border-radius: 16px; padding: 18px; margin-bottom: 12px; }
+  .moto-pergunta-titulo { font-size: 16px; font-weight: 700; color: #b7a6ff; margin-bottom: 14px; text-align: center; }
+  .moto-pergunta-btns { display: flex; gap: 10px; }
+  .moto-pergunta-btns button { flex: 1; padding: 16px; border-radius: 12px; border: none; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; }
+  .moto-btn-sim { background: #2d6a4f; color: #b7e6c9; }
+  .moto-btn-nao { background: #2a2a3a; color: #ccc; }
+  .moto-respondido { background: #0f1a14; border: 1px solid #2d6a4f; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .moto-respondido-txt { font-size: 13px; color: #b7e6c9; }
+  .moto-refazer { background: none; border: none; color: #888; font-size: 12px; text-decoration: underline; cursor: pointer; font-family: inherit; }
+
+  .moto-percurso-label { font-size: 12px; color: #888; margin: 14px 0 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .moto-percurso-row { display: flex; gap: 8px; }
+  .moto-percurso-row input { flex: 1; background: #1a1a2e; border: 1px solid #333; border-radius: 10px; padding: 13px; font-size: 15px; color: #e8e8e8; outline: none; font-family: inherit; }
+
+  .moto-sugestao { background: #241d10; border: 1px solid #c8a96e; border-radius: 12px; padding: 14px; margin-top: 14px; }
+  .moto-sugestao-txt { font-size: 14px; color: #e8c96e; margin-bottom: 12px; line-height: 1.4; }
+
+  .moto-km-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  @media (max-width: 380px) { .moto-km-grid { grid-template-columns: 1fr; } }
+  .moto-km-box { background: #0f0f1e; border: 2px solid #333; border-radius: 14px; padding: 14px; text-align: center; }
+  .moto-km-box.inicio { border-color: #74c69d; }
+  .moto-km-box.fim { border-color: #ff9944; }
+  .moto-km-box label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 8px; }
+  .moto-km-box input { width: 100%; background: transparent; border: none; color: #fff; font-size: 26px; font-weight: 800; text-align: center; outline: none; font-family: inherit; }
+  .moto-km-box input::placeholder { color: #444; font-size: 18px; }
+
+  .moto-btn-registrar { width: 100%; background: #c8a96e; color: #111; border: none; border-radius: 12px; padding: 16px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 14px; }
+  .moto-btn-cancelar { width: 100%; background: none; border: none; color: #888; font-size: 13px; padding: 10px; cursor: pointer; font-family: inherit; }
+
+  /* ODÔMETRO */
+  .odo-card { background: linear-gradient(135deg,#151530,#0f0f1e); border: 1px solid #2a2a3a; border-radius: 14px; padding: 16px 14px; margin-bottom: 14px; text-align: center; }
+  .odo-emoji { font-size: 30px; margin-bottom: 4px; }
+  .odo-input-row { display: flex; gap: 8px; margin: 10px 0; }
+  .odo-input-row input { flex: 1; background: #1a1a2e; border: 1px solid #333; border-radius: 10px; padding: 12px 10px; font-size: 18px; font-weight: 700; color: #e8e8e8; outline: none; font-family: inherit; text-align: center; }
+  .odo-btn { width: 100%; background: #2a2a55; border: none; border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 700; color: #b7a6ff; cursor: pointer; font-family: inherit; }
+  .odo-status { font-size: 12px; color: #888; margin-top: 10px; }
+  .odo-gauge-track { width: 100%; height: 10px; border-radius: 6px; background: #1a1a2e; margin-top: 10px; overflow: hidden; }
+  .odo-gauge-fill { height: 100%; border-radius: 6px; transition: width 0.3s; }
+  .odo-gauge-fill.verde { background: #74c69d; }
+  .odo-gauge-fill.amarelo { background: #e8c547; }
+  .odo-gauge-fill.vermelho { background: #ff5555; }
+  .odo-msg { font-size: 13px; font-weight: 700; margin-top: 8px; }
+  .odo-msg.verde { color: #74c69d; }
+  .odo-msg.amarelo { color: #e8c547; }
+  .odo-msg.vermelho { color: #ff5555; }
+
+  /* MICROFONE */
+  button.mic-btn { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 10px; border: 1px solid #333; background: #1a1a2e; color: #e8e8e8; font-size: 17px; cursor: pointer; }
+
+  /* TROCA DE ÓLEO */
+  .moto-item { padding: 10px 12px; background: #0f0f1e; border-radius: 10px; margin-bottom: 7px; border: 1px solid #2a2a3a; }
+  .moto-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .moto-numero { font-size: 13px; font-weight: 700; color: #87CEFA; }
+  .moto-del { color: #444; font-size: 16px; cursor: pointer; padding: 2px 4px; }
+  .moto-row { display: flex; gap: 8px; margin-bottom: 6px; }
+  .moto-field { flex: 1; }
+  .moto-field label { font-size: 9px; color: #666; display: block; margin-bottom: 2px; text-transform: uppercase; }
+  .moto-field input { width: 100%; background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 7px 8px; font-size: 12px; color: #e8e8e8; outline: none; font-family: inherit; }
+  .moto-field input:focus { border-color: #c8a96e; }
+  .moto-proxima { font-size: 11px; color: #74c69d; font-weight: 700; margin-top: 2px; }
+  .moto-btn-add { width: 100%; background: #c8a96e; color: #111; border: none; border-radius: 10px; padding: 11px; font-size: 13px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
+
+  /* CONFERÊNCIAS */
+  .conf-linha { display: flex; justify-content: space-between; padding: 8px 10px; background: #0f0f1e; border-radius: 8px; margin-bottom: 6px; border: 1px solid #2a2a3a; }
+  .conf-data { font-size: 11px; color: #888; }
+  .conf-dif { font-size: 12px; font-weight: 700; }
+
+  /* ITINERÁRIOS APRENDIDOS — sempre visíveis */
+  .itin-card { background: #0f0f1e; border: 1px solid #2a2a3a; border-radius: 12px; padding: 12px; margin-bottom: 8px; }
+  .itin-desc { font-size: 13px; color: #e8e8e8; margin-bottom: 4px; }
+  .itin-meta { display: flex; justify-content: space-between; align-items: center; }
+  .itin-nivel { font-size: 11px; color: #888; }
+  .itin-media { font-size: 15px; font-weight: 800; color: #74c69d; }
+  .itin-acoes { display: flex; gap: 10px; margin-top: 8px; }
+  .itin-acoes button { background: none; border: none; font-size: 12px; color: #888; cursor: pointer; font-family: inherit; padding: 0; }
+  .itin-vazio { text-align: center; color: #555; font-size: 13px; padding: 20px 0; }
+
+  /* LISTA DE ITINERÁRIOS NA TELA "VOU SAIR AGORA" */
+  .moto-lista-item { background: #0f0f1e; border: 2px solid #2a2a3a; border-radius: 12px; padding: 12px; margin-bottom: 8px; cursor: pointer; }
+  .moto-lista-item.selecionado { border-color: #c8a96e; background: #1e1a10; }
+  .moto-lista-seg { font-size: 14px; color: #e8e8e8; margin-bottom: 4px; }
+  .moto-lista-meta { display: flex; justify-content: space-between; font-size: 11px; color: #888; }
+  .moto-lista-km { font-weight: 700; color: #74c69d; }
+
+  .toggle-secao { background: #1a1a2e; border: 1px solid #333; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; font-size: 13px; color: #c8a96e; font-weight: 700; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="topbar"><h1>🏍️ WILLIAM — MOTO</h1></div>
+<div id="syncDot" title="Sincronizado"></div>
+
+<div id="loginOverlay">
+  <div id="loginBox">
+    <h2>🔒 ACESSO RESTRITO</h2>
+    <input type="text" id="loginPass" placeholder="Senha" style="-webkit-text-security: disc;">
+    <button id="loginBtn">Entrar</button>
+    <div id="loginErro"></div>
+  </div>
+</div>
+
+<div class="container" id="main"></div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw-moto.js').catch(function(e){ console.error('Erro ao registrar service worker:', e); });
+  });
+}
+
+var KEY = 'william_superapp_v1'; // mesma chave do SuperApp — dados ficam sincronizados
+var server = null; // sem conceito de servidor aqui — Moto é vida real, não jogo
+
+function loadState() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) { return {}; } }
+function saveState(s) { try { s.lastModified = new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(s)); } catch(e) {} }
+
+function pertenceAoMoto(k){
+  return k==='moto_oleo' || k==='motoKmAtual' || k==='motoItinerarios' || k==='motoConferencias' || k==='motoDiario';
+}
+
+function diasEntre(dataIni, dataFim){ return Math.floor((new Date(dataFim+'T00:00:00') - new Date(dataIni+'T00:00:00')) / 86400000); }
+function fmtData(iso){ if(!iso) return ''; var p=iso.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+function el(tag,cls,txt){var e=document.createElement(tag);e.className=cls;if(txt!==undefined)e.textContent=txt;return e;}
+function vibe(p){try{if(navigator.vibrate)navigator.vibrate(p);}catch(e){}}
+
+/* ---------- MICROFONE REUTILIZÁVEL ---------- */
+function anexarMicrofone(inputEl, opts){
+  opts = opts || {};
+  var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var btn = document.createElement('button');
+  btn.type = 'button'; btn.className = 'mic-btn';
+  btn.textContent = '🎤'; btn.title = 'Falar';
+  inputEl.parentNode.appendChild(btn);
+  if(!Rec){ btn.style.display='none'; return btn; }
+  var rec = new Rec();
+  rec.lang = 'pt-BR'; rec.continuous = false; rec.interimResults = false;
+  btn.addEventListener('click', function(){
+    btn.style.background = '#c8a96e'; btn.style.color = '#111'; btn.textContent = '●';
+    try{ rec.start(); }catch(e){}
+  });
+  rec.onresult = function(e){
+    inputEl.value = e.results[0][0].transcript;
+    inputEl.dispatchEvent(new Event('input', {bubbles:true}));
+    inputEl.dispatchEvent(new Event('change', {bubbles:true}));
+    if(opts.onDone) opts.onDone();
+  };
+  rec.onend = function(){ btn.style.background='#1a1a2e'; btn.style.color='#e8e8e8'; btn.textContent='🎤'; };
+  rec.onerror = function(){ btn.style.background='#1a1a2e'; btn.style.color='#e8e8e8'; btn.textContent='🎤'; };
+  return btn;
+}
+
+// ══════════════════════════════════════════════════════
+// ESCALA (lida do Agenda — cache local, atualizado a cada ciclo do Pulso)
+// ══════════════════════════════════════════════════════
+var PLANTAO_INICIO = new Date(2026,6,2);
+var FERIAS_INICIO  = '2026-09-28';
+var FERIAS_FIM     = '2026-10-28';
+var FOLGA_ESP      = '2026-11-19';
+var ANIVERSARIO    = '2026-11-22';
+var escalaCache = { ferias: [], diaOverride: {} }; // preenchido via fetch de agenda_data
+
+function isWorkDay(date) {
+  var diff=Math.floor((date-PLANTAO_INICIO)/(1000*60*60*24));
+  return diff>=0 && diff%2===0;
+}
+function diaEhTrabalho(ds){
+  var dt = new Date(ds+'T00:00:00');
+  var isFer = escalaCache.ferias.indexOf(ds)>=0;
+  var isFerPer = ds>=FERIAS_INICIO && ds<=FERIAS_FIM;
+  var isFolgaEsp = ds===FOLGA_ESP;
+  var isAniv = ds===ANIVERSARIO;
+  var manual = escalaCache.diaOverride[ds];
+  if(isFer||isFerPer||isFolgaEsp||isAniv) return false;
+  if(manual==='trabalho') return true;
+  if(manual==='folga') return false;
+  return isWorkDay(dt);
+}
+
+// ══════════════════════════════════════════════════════
+// TROCA DE ÓLEO E FILTRO
+// ══════════════════════════════════════════════════════
+var KM_INTERVALO = 2800;
+function getMoto(){
+  var s=loadState(); var m=s.moto_oleo||[]; var mudou=false;
+  for (var i=0;i<m.length;i++){
+    if (m[i].duracao === undefined){
+      m[i].duracao = (i===0) ? null : diasEntre(m[i].data, m[i-1].data);
+      mudou = true;
+    }
+  }
+  if (m.length > 7) { m = m.slice(0,7); mudou = true; }
+  if (mudou){ s.moto_oleo=m; saveState(s); }
+  return m;
+}
+function setMoto(d){ var s=loadState(); s.moto_oleo=d.slice(0,7); saveState(s); }
+
+// ══════════════════════════════════════════════════════
+// ODÔMETRO — leitura real (âncora), com conferência automática de precisão
+// ══════════════════════════════════════════════════════
+function getMotoKmAtual(){ var s=loadState(); return s.motoKmAtual || null; }
+function setMotoKmAtual(km){
+  var s=loadState();
+  if (s.motoKmAtual) {
+    var estimadoAgora = s.motoKmAtual.km + getMotoKmAcumuladoEstimado();
+    var diferenca = Math.round((km - estimadoAgora)*10)/10;
+    var confs = s.motoConferencias || [];
+    confs.unshift({ data: new Date().toISOString().split('T')[0], esperado: Math.round(estimadoAgora*10)/10, real: km, diferenca: diferenca });
+    s.motoConferencias = confs.slice(0,15);
+  }
+  s.motoKmAtual = {km:km, atualizadoEm:new Date().toISOString().split('T')[0]};
+  saveState(s);
+}
+function getMotoKmStatus(){
+  var atual = getMotoKmAtual();
+  var historico = getMoto();
+  if (!atual || !historico.length) return null;
+  var estimado = getMotoKmAcumuladoEstimado();
+  var kmEfetivo = atual.km + estimado;
+  return { diff: kmEfetivo - historico[0].km, kmAtual: kmEfetivo, kmReal: atual.km, kmTroca: historico[0].km, atualizadoEm: atual.atualizadoEm, estimado: estimado };
+}
+function getMotoConferencias(){ var s=loadState(); return s.motoConferencias || []; }
+function setMotoConferencias(c){ var s=loadState(); s.motoConferencias=c; saveState(s); }
+
+function maskKmDecimal(inputEl){
+  inputEl.addEventListener('input', function(){
+    var cursorNoFinal = (this.selectionStart===this.value.length);
+    var v = this.value.replace(/[^\d,]/g,'');
+    var temVirgula = v.indexOf(',') >= 0;
+    var partes = v.split(',');
+    var inteiro = partes[0].replace(/\D/g,'');
+    var decimal = partes.length>1 ? partes.slice(1).join('').replace(/\D/g,'').slice(0,1) : '';
+    var inteiroFmt = inteiro ? parseInt(inteiro,10).toLocaleString('pt-BR') : '';
+    this.value = inteiroFmt + (temVirgula ? ','+decimal : '');
+    if(cursorNoFinal){ this.setSelectionRange(this.value.length,this.value.length); }
+  });
+}
+function parseKmDecimal(str){
+  if(!str) return NaN;
+  var s = String(str).trim().replace(/\./g,'').replace(',','.');
+  return parseFloat(s);
+}
+
+// ══════════════════════════════════════════════════════
+// ITINERÁRIOS — memória de percursos por descrição livre
+// ══════════════════════════════════════════════════════
+var MOTO_TRABALHO_KM = 0.32; // 160m ida + 160m volta, fixo conforme a rotina de plantão
+
+function getMotoItinerarios(){ var s=loadState(); return s.motoItinerarios || {}; }
+function setMotoItinerarios(it){ var s=loadState(); s.motoItinerarios=it; saveState(s); }
+function gerarIdItinerario(){ return 'it_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+function itinerarioMedia(it){
+  if (!it || !it.medicoes.length) return null;
+  var soma = it.medicoes.reduce(function(a,m){ return a+m.diff; },0);
+  return Math.round((soma / it.medicoes.length)*10)/10;
+}
+function itinerarioNivel(it){
+  if (!it || it.medicoes.length===0) return 'sem_dados';
+  if (it.medicoes.length < 3) return 'aprendendo';
+  var media = itinerarioMedia(it);
+  if (!media) return 'aprendendo';
+  var variancia = it.medicoes.reduce(function(a,m){ return a+Math.pow(m.diff-media,2); },0)/it.medicoes.length;
+  var desvio = Math.sqrt(variancia);
+  return (desvio/media) <= 0.25 ? 'memorizado' : 'aprendendo';
+}
+function itinerarioNivelLabel(nivel){
+  return nivel==='memorizado' ? '✅ Memorizado' : nivel==='aprendendo' ? '🧠 Aprendendo' : '— sem dados';
+}
+function motoCriarItinerario(descricao, kmInicio, kmFim){
+  var itins = getMotoItinerarios();
+  var id = gerarIdItinerario();
+  var diff = Math.round((kmFim-kmInicio)*10)/10;
+  itins[id] = { descricaoOriginal: descricao, descricoesAlternativas: [], medicoes: [{kmInicio:kmInicio, kmFim:kmFim, diff:diff, data:motoHojeStr()}] };
+  setMotoItinerarios(itins);
+  return { id:id, diff:diff };
+}
+function motoRegistrarMedicaoItinerario(id, kmInicio, kmFim, descricaoNova){
+  var itins = getMotoItinerarios();
+  var it = itins[id];
+  if (!it) return null;
+  var diff = Math.round((kmFim-kmInicio)*10)/10;
+  it.medicoes.push({kmInicio:kmInicio, kmFim:kmFim, diff:diff, data:motoHojeStr()});
+  if (it.medicoes.length>20) it.medicoes = it.medicoes.slice(-20);
+  if (descricaoNova && it.descricaoOriginal!==descricaoNova && it.descricoesAlternativas.indexOf(descricaoNova)===-1) {
+    it.descricoesAlternativas.push(descricaoNova);
+  }
+  setMotoItinerarios(itins);
+  return diff;
+}
+function motoZerarItinerario(id){
+  var itins=getMotoItinerarios();
+  if(itins[id]){ itins[id].medicoes=[]; setMotoItinerarios(itins); }
+}
+function motoRemoverItinerario(id){
+  var itins=getMotoItinerarios();
+  delete itins[id];
+  setMotoItinerarios(itins);
+}
+
+// ══════════════════════════════════════════════════════
+// DIÁRIO — "Você saiu de moto hoje?"
+// ══════════════════════════════════════════════════════
+function getMotoDiario(){ var s=loadState(); return s.motoDiario || {}; }
+function setMotoDiarioDia(ds, entrada){ var s=loadState(); if(!s.motoDiario) s.motoDiario={}; s.motoDiario[ds]=entrada; saveState(s); }
+function motoKmDoDia(ds){
+  var e = getMotoDiario()[ds];
+  if(!e || e.pendente) return 0;
+  var total = 0;
+  if (diaEhTrabalho(ds)) total += MOTO_TRABALHO_KM;
+  if (e.resposta==='sim' && e.itinerarioId){
+    var it = getMotoItinerarios()[e.itinerarioId];
+    var valor = e.kmMedido !== undefined ? e.kmMedido : (it ? itinerarioMedia(it) : 0);
+    total += valor || 0;
+  }
+  return total;
+}
+function getMotoKmAcumuladoEstimado(){
+  var atual = getMotoKmAtual();
+  if(!atual) return 0;
+  var diario = getMotoDiario();
+  var total = 0;
+  Object.keys(diario).forEach(function(ds){
+    if(ds > atual.atualizadoEm){ total += motoKmDoDia(ds); }
+  });
+  return total;
+}
+function motoHojeStr(){ return new Date().toISOString().split('T')[0]; }
+function motoPerguntaHojeStatus(){
+  var e = getMotoDiario()[motoHojeStr()];
+  if(!e) return 'nao_respondida';
+  if(e.pendente) return 'pendente';
+  return 'respondida';
+}
+
+// ══════════════════════════════════════════════════════
+// UI — PERGUNTA DIÁRIA
+// ══════════════════════════════════════════════════════
+var motoModoSim = null;             // null | 'form'
+var motoAlvoAtual = null;           // {tipo:'existente', id} | {tipo:'novo', texto}
+var motoNovoTextoDigitado = '';
+var motoDesvioPendente = null;
+
+function motoFormatarSegmentos(texto){
+  var partes = String(texto||'').split(/\s*-\s*/).map(function(p){return p.trim();}).filter(Boolean);
+  return partes.join(' 🏍️ ');
+}
+function motoTextoNormalizado(s){ return String(s||'').trim().toLowerCase(); }
+function motoAcharPorTextoExato(texto){
+  var alvo = motoTextoNormalizado(texto);
+  var itins = getMotoItinerarios();
+  var achadoId = Object.keys(itins).filter(function(id){ return motoTextoNormalizado(itins[id].descricaoOriginal)===alvo; })[0];
+  return achadoId || null;
+}
+
+function renderPerguntaDiaria(main){
+  if (motoDesvioPendente) {
+    var itD = getMotoItinerarios()[motoDesvioPendente.id];
+    var box = document.createElement('div'); box.className='moto-pergunta';
+    box.appendChild(el('div','moto-sugestao-txt',
+      '🤔 "'+motoFormatarSegmentos(itD.descricaoOriginal)+'" costuma dar ~'+motoDesvioPendente.mediaAntes.toFixed(1)+' km, mas hoje deu '+motoDesvioPendente.diff.toFixed(1)+' km. Foi esse mesmo trajeto, só variou?'));
+    var rowD = document.createElement('div'); rowD.style.cssText='display:flex;gap:10px;margin-top:12px;';
+    var btnConfirma = document.createElement('button'); btnConfirma.className='moto-btn-sim'; btnConfirma.style.cssText='flex:1;padding:14px;border-radius:10px;border:none;font-family:inherit;cursor:pointer;font-weight:700;'; btnConfirma.textContent='Foi esse, só variou';
+    btnConfirma.onclick=function(){ motoDesvioPendente=null; vibe([30]); render(); };
+    var btnOutro = document.createElement('button'); btnOutro.className='moto-btn-nao'; btnOutro.style.cssText='flex:1;padding:14px;border-radius:10px;border:none;font-family:inherit;cursor:pointer;font-weight:700;'; btnOutro.textContent='Não, foi diferente';
+    btnOutro.onclick=function(){
+      var itins = getMotoItinerarios();
+      var itX = itins[motoDesvioPendente.id];
+      if (itX && itX.medicoes.length) { itX.medicoes.pop(); setMotoItinerarios(itins); }
+      var s=loadState(); if(s.motoDiario) delete s.motoDiario[motoHojeStr()]; saveState(s);
+      var novo = motoCriarItinerario(motoDesvioPendente.descricao, motoDesvioPendente.kmInicio, motoDesvioPendente.kmFim);
+      setMotoDiarioDia(motoHojeStr(), {resposta:'sim', itinerarioId:novo.id, kmMedido:novo.diff});
+      setMotoKmAtual(motoDesvioPendente.kmFim);
+      motoDesvioPendente=null; vibe([30]); render();
+    };
+    rowD.appendChild(btnConfirma); rowD.appendChild(btnOutro);
+    box.appendChild(rowD);
+    main.appendChild(box);
+    return;
+  }
+
+  var status = motoPerguntaHojeStatus();
+
+  if (status !== 'nao_respondida' && motoModoSim !== 'form') {
+    var e = getMotoDiario()[motoHojeStr()];
+    var resp = document.createElement('div'); resp.className='moto-respondido';
+    var txt;
+    if (status === 'pendente') txt = '⏳ Falta escolher o trajeto de hoje';
+    else if (e.resposta === 'nao') txt = '✅ Hoje: não saiu de moto';
+    else {
+      var it = getMotoItinerarios()[e.itinerarioId];
+      txt = '✅ Hoje: ' + (it ? motoFormatarSegmentos(it.descricaoOriginal) : 'saída registrada');
+    }
+    resp.appendChild(el('div','moto-respondido-txt', txt));
+    var refazerBtn = document.createElement('button'); refazerBtn.className='moto-refazer'; refazerBtn.textContent='↺ Refazer';
+    refazerBtn.onclick=function(){
+      var s=loadState(); if(s.motoDiario) delete s.motoDiario[motoHojeStr()]; saveState(s);
+      motoModoSim=null; motoAlvoAtual=null; motoNovoTextoDigitado='';
+      render();
+    };
+    resp.appendChild(refazerBtn);
+    main.appendChild(resp);
+    if (status === 'pendente') { motoModoSim='form'; }
+    else return;
+  }
+
+  if (motoModoSim === 'form') {
+    var cardF = document.createElement('div'); cardF.className='moto-pergunta';
+    cardF.appendChild(el('div','moto-pergunta-titulo','🏍️ Vou sair agora!'));
+
+    var itinsTodos = getMotoItinerarios();
+    var idsOrdenados = Object.keys(itinsTodos).sort(function(a,b){
+      return itinsTodos[b].medicoes.length - itinsTodos[a].medicoes.length;
+    });
+
+    if (idsOrdenados.length > 0) {
+      cardF.appendChild(el('div','moto-percurso-label','Já conhecidos — toque pra usar'));
+      var lista = document.createElement('div');
+      idsOrdenados.forEach(function(id){
+        var it = itinsTodos[id];
+        var media = itinerarioMedia(it);
+        var nivel = itinerarioNivel(it);
+        var linha = document.createElement('div'); linha.className='moto-lista-item';
+        if (motoAlvoAtual && motoAlvoAtual.tipo==='existente' && motoAlvoAtual.id===id) linha.classList.add('selecionado');
+        linha.innerHTML = '<div class="moto-lista-seg">'+motoFormatarSegmentos(it.descricaoOriginal)+'</div>'+
+          '<div class="moto-lista-meta"><span>'+itinerarioNivelLabel(nivel)+'</span><span class="moto-lista-km">'+(media!==null?media.toFixed(1)+' km':'—')+'</span></div>';
+        linha.onclick=function(){
+          if (nivel === 'memorizado') {
+            setMotoDiarioDia(motoHojeStr(), {resposta:'sim', itinerarioId:id});
+            motoModoSim=null; motoAlvoAtual=null; motoNovoTextoDigitado=''; vibe([30]); render();
+          } else {
+            motoAlvoAtual = {tipo:'existente', id:id};
+            render();
+          }
+        };
+        lista.appendChild(linha);
+      });
+      cardF.appendChild(lista);
+    }
+
+    cardF.appendChild(el('div','moto-percurso-label','+ Novo trajeto (separe os lugares com " - ")'));
+    var novoRow = document.createElement('div'); novoRow.className='moto-percurso-row';
+    var novoIn = document.createElement('input'); novoIn.type='text'; novoIn.id='motoNovoTrajeto';
+    novoIn.placeholder='Ex: Cubatão - Costa e Silva - Casa';
+    novoIn.value = motoNovoTextoDigitado;
+    var aplicarNovoTexto = function(){
+      motoNovoTextoDigitado = novoIn.value.trim();
+      if (motoNovoTextoDigitado) motoAlvoAtual = {tipo:'novo', texto:motoNovoTextoDigitado};
+      render();
+    };
+    novoIn.oninput=function(){ motoNovoTextoDigitado=this.value; };
+    novoIn.onblur=aplicarNovoTexto;
+    novoRow.appendChild(novoIn); anexarMicrofone(novoIn, {onDone:aplicarNovoTexto});
+    cardF.appendChild(novoRow);
+
+    if (motoAlvoAtual) {
+      var nomeAlvo = motoAlvoAtual.tipo==='existente' ? motoFormatarSegmentos(itinsTodos[motoAlvoAtual.id].descricaoOriginal) : motoFormatarSegmentos(motoAlvoAtual.texto);
+      var alvoLabel = el('div','moto-percurso-label','Registrando: '+nomeAlvo);
+      alvoLabel.style.color = '#c8a96e';
+      cardF.appendChild(alvoLabel);
+
+      var grid = document.createElement('div'); grid.className='moto-km-grid';
+      var boxIni = document.createElement('div'); boxIni.className='moto-km-box inicio';
+      boxIni.appendChild(el('label','','INÍCIO'));
+      var kmIn1 = document.createElement('input'); kmIn1.type='text'; kmIn1.id='motoKmIni'; kmIn1.inputMode='decimal'; kmIn1.placeholder='0,0';
+      var atualAgora = getMotoKmAtual();
+      if (atualAgora) kmIn1.value = (Math.round((atualAgora.km + getMotoKmAcumuladoEstimado())*10)/10).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});
+      maskKmDecimal(kmIn1);
+      boxIni.appendChild(kmIn1); grid.appendChild(boxIni);
+
+      var boxFim = document.createElement('div'); boxFim.className='moto-km-box fim';
+      boxFim.appendChild(el('label','','FIM'));
+      var kmIn2 = document.createElement('input'); kmIn2.type='text'; kmIn2.id='motoKmFim'; kmIn2.inputMode='decimal'; kmIn2.placeholder='0,0';
+      maskKmDecimal(kmIn2);
+      boxFim.appendChild(kmIn2); grid.appendChild(boxFim);
+      cardF.appendChild(grid);
+
+      var btnReg = document.createElement('button'); btnReg.className='moto-btn-registrar'; btnReg.textContent='✅ Registrar';
+      btnReg.onclick=function(){
+        var kmIni = parseKmDecimal(document.getElementById('motoKmIni').value);
+        var kmFim = parseKmDecimal(document.getElementById('motoKmFim').value);
+        if (isNaN(kmIni) || isNaN(kmFim)) { alert('Preencha os dois km!'); return; }
+        if (kmFim < kmIni) { alert('O km final não pode ser menor que o inicial.'); return; }
+
+        var idAlvo = motoAlvoAtual.tipo==='existente' ? motoAlvoAtual.id : motoAcharPorTextoExato(motoAlvoAtual.texto);
+
+        if (idAlvo) {
+          var itAlvo = getMotoItinerarios()[idAlvo];
+          var mediaAntes = itinerarioMedia(itAlvo);
+          var diff = motoRegistrarMedicaoItinerario(idAlvo, kmIni, kmFim);
+          setMotoDiarioDia(motoHojeStr(), {resposta:'sim', itinerarioId:idAlvo, kmMedido:diff});
+          setMotoKmAtual(kmFim);
+          if (mediaAntes!==null && mediaAntes>0 && Math.abs(diff-mediaAntes)/mediaAntes > 0.4) {
+            motoDesvioPendente = { id:idAlvo, diff:diff, mediaAntes:mediaAntes, kmInicio:kmIni, kmFim:kmFim, descricao:itAlvo.descricaoOriginal };
+          }
+        } else {
+          var resultado = motoCriarItinerario(motoAlvoAtual.texto, kmIni, kmFim);
+          setMotoDiarioDia(motoHojeStr(), {resposta:'sim', itinerarioId:resultado.id, kmMedido:resultado.diff});
+          setMotoKmAtual(kmFim);
+        }
+
+        motoModoSim=null; motoAlvoAtual=null; motoNovoTextoDigitado='';
+        vibe([30]); render();
+      };
+      cardF.appendChild(btnReg);
+    }
+
+    var btnCancelForm = document.createElement('button'); btnCancelForm.className='moto-btn-cancelar';
+    btnCancelForm.textContent='Cancelar';
+    btnCancelForm.onclick=function(){ motoModoSim=null; motoAlvoAtual=null; motoNovoTextoDigitado=''; render(); };
+    cardF.appendChild(btnCancelForm);
+
+    main.appendChild(cardF);
+    return;
+  }
+
+  if (status === 'nao_respondida') {
+    var pergunta = document.createElement('div'); pergunta.className='moto-pergunta';
+    pergunta.appendChild(el('div','moto-pergunta-titulo','🏍️ Você saiu de moto hoje?'));
+    var btns = document.createElement('div'); btns.className='moto-pergunta-btns';
+    var btnSim = document.createElement('button'); btnSim.className='moto-btn-sim'; btnSim.textContent='Sim';
+    btnSim.onclick=function(){ motoModoSim='form'; render(); };
+    var btnNao = document.createElement('button'); btnNao.className='moto-btn-nao'; btnNao.textContent='Não';
+    btnNao.onclick=function(){
+      setMotoDiarioDia(motoHojeStr(), {resposta:'nao'});
+      vibe([30]);
+      render();
+    };
+    btns.appendChild(btnSim); btns.appendChild(btnNao);
+    pergunta.appendChild(btns);
+    main.appendChild(pergunta);
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// UI — ODÔMETRO
+// ══════════════════════════════════════════════════════
+function renderOdometro(main){
+  var card = document.createElement('div'); card.className='card';
+  card.appendChild(el('div','card-title','🏍️ ODÔMETRO E ALERTA DE TROCA'));
+
+  var odo = document.createElement('div'); odo.className='odo-card';
+  odo.innerHTML = '<div class="odo-emoji">🏍️💨</div><div style="font-size:12px;color:#888;">Digite o que está no visor da moto (conferência semanal)</div>';
+
+  var odoRow = document.createElement('div'); odoRow.className='odo-input-row';
+  var odoIn = document.createElement('input'); odoIn.id='odoKm'; odoIn.type='text'; odoIn.inputMode='decimal'; odoIn.placeholder='Ex: 179.450,3';
+  maskKmDecimal(odoIn);
+  odoRow.appendChild(odoIn); odo.appendChild(odoRow);
+  anexarMicrofone(odoIn);
+
+  var odoBtn = document.createElement('button'); odoBtn.className='odo-btn'; odoBtn.textContent='💾 Atualizar quilometragem';
+  odoBtn.onclick=function(){
+    var km = parseKmDecimal(document.getElementById('odoKm').value);
+    if(isNaN(km)){ alert('Digite a quilometragem do visor!'); return; }
+    setMotoKmAtual(km);
+    vibe([30]);
+    render();
+    var confs = getMotoConferencias();
+    if (confs.length) {
+      var c = confs[0];
+      var sinal = c.diferenca>=0 ? '+' : '';
+      alert('Conferência registrada!\nEsperado: '+c.esperado.toFixed(1)+' km\nReal: '+c.real.toFixed(1)+' km\nDiferença: '+sinal+c.diferenca.toFixed(1)+' km');
+    }
+  };
+  odo.appendChild(odoBtn);
+
+  var status = getMotoKmStatus();
+  if (status) {
+    var pct = Math.min(100, Math.round((status.diff / KM_INTERVALO) * 100));
+    var nivel = status.diff >= KM_INTERVALO ? 'vermelho' : (status.diff >= KM_INTERVALO - 200 ? 'amarelo' : 'verde');
+    var track = document.createElement('div'); track.className='odo-gauge-track';
+    var fill = document.createElement('div'); fill.className='odo-gauge-fill '+nivel; fill.style.width = Math.max(pct,3)+'%';
+    track.appendChild(fill); odo.appendChild(track);
+
+    var msgTxt = status.diff >= KM_INTERVALO
+      ? '🔴 ' + status.diff.toFixed(1) + ' km rodados — hora de trocar o óleo!'
+      : status.diff >= KM_INTERVALO - 200
+        ? '🟡 ' + status.diff.toFixed(1) + ' km rodados — troca em breve'
+        : '🟢 ' + status.diff.toFixed(1) + ' km rodados (faltam ' + (KM_INTERVALO - status.diff).toFixed(1) + ' km)';
+    odo.appendChild(el('div','odo-msg '+nivel, msgTxt));
+
+    var comp = document.createElement('div'); comp.style.cssText='display:flex;justify-content:space-around;margin-top:10px;padding-top:10px;border-top:1px solid #2a2a3a;';
+    comp.innerHTML =
+      '<div style="text-align:center;"><div style="font-size:9px;color:#888;">🎯 REAL (última conferência)</div><div style="font-size:14px;font-weight:700;color:#e8e8e8;">'+status.kmReal.toFixed(1)+' km</div></div>'+
+      '<div style="text-align:center;"><div style="font-size:9px;color:#888;">📊 ESTIMADO DESDE ENTÃO</div><div style="font-size:14px;font-weight:700;color:#c8a96e;">'+(status.estimado>0?'+':'')+status.estimado.toFixed(1)+' km</div></div>';
+    odo.appendChild(comp);
+  } else {
+    odo.appendChild(el('div','odo-status','Registre a quilometragem atual pra começar a acompanhar.'));
+  }
+  card.appendChild(odo);
+
+  var conferencias = getMotoConferencias();
+  if (conferencias.length > 0) {
+    card.appendChild(el('div','card-title','🎯 Histórico de conferências'));
+    conferencias.forEach(function(c){
+      var linha = document.createElement('div'); linha.className='conf-linha';
+      var sinal = c.diferenca>=0?'+':'';
+      var cor = Math.abs(c.diferenca) <= 1 ? '#74c69d' : Math.abs(c.diferenca) <= 3 ? '#e8c547' : '#ff9944';
+      linha.innerHTML = '<span class="conf-data">'+fmtData(c.data)+'</span><span class="conf-dif" style="color:'+cor+';">'+sinal+c.diferenca.toFixed(1)+' km</span>';
+      card.appendChild(linha);
+    });
+  }
+
+  main.appendChild(card);
+}
+
+// ══════════════════════════════════════════════════════
+// UI — HISTÓRICO DE TROCAS
+// ══════════════════════════════════════════════════════
+function renderTrocas(main){
+  var card = document.createElement('div'); card.className='card';
+  card.appendChild(el('div','card-title','🛢️ TROCA DE FILTRO E ÓLEO'));
+
+  var fKm = document.createElement('div'); fKm.className='moto-field'; fKm.style.marginBottom='8px';
+  fKm.innerHTML = '<label>Quilometragem inicial (da troca)</label>';
+  var iKm = document.createElement('input'); iKm.id='novaTrocaKm'; iKm.type='text'; iKm.inputMode='decimal'; iKm.placeholder='Ex: 178.300';
+  maskKmDecimal(iKm);
+  fKm.appendChild(iKm); card.appendChild(fKm); anexarMicrofone(iKm);
+
+  var fData = document.createElement('div'); fData.className='moto-field'; fData.style.marginBottom='10px';
+  fData.innerHTML = '<label>Dia da troca</label>';
+  var iData = document.createElement('input'); iData.id='novaTrocaData'; iData.type='date'; iData.value=new Date().toISOString().split('T')[0];
+  fData.appendChild(iData); card.appendChild(fData);
+
+  var btnAdd = document.createElement('button'); btnAdd.className='moto-btn-add'; btnAdd.textContent='+ Registrar troca';
+  btnAdd.onclick=function(){
+    var km = parseKmDecimal(document.getElementById('novaTrocaKm').value);
+    if(isNaN(km)){ alert('Digite a quilometragem da troca!'); return; }
+    var data = document.getElementById('novaTrocaData').value;
+    var m = getMoto();
+    m.unshift({km:km, data:data});
+    setMoto(m);
+    vibe([30]); render();
+  };
+  card.appendChild(btnAdd);
+
+  var historico = getMoto();
+  if (historico.length===0) {
+    card.appendChild(el('div','itin-vazio','Nenhuma troca registrada ainda.'));
+  } else {
+    card.appendChild(el('div','card-title','📋 HISTÓRICO DE TROCAS'));
+    historico.forEach(function(t,i){
+      var item = document.createElement('div'); item.className='moto-item';
+      var top = document.createElement('div'); top.className='moto-item-top';
+      top.appendChild(el('div','moto-numero','Troca #'+(historico.length-i)));
+      var del = document.createElement('div'); del.className='moto-del'; del.textContent='🗑️';
+      del.onclick=function(){ if(confirm('Remover este registro de troca?')){ var mm=getMoto(); mm.splice(i,1); setMoto(mm); render(); } };
+      top.appendChild(del);
+      item.appendChild(top);
+
+      var row = document.createElement('div'); row.className='moto-row';
+      var f1 = document.createElement('div'); f1.className='moto-field';
+      f1.innerHTML='<label>Km da troca</label>';
+      var i1 = document.createElement('input'); i1.type='text'; i1.value=t.km.toLocaleString('pt-BR');
+      i1.onchange=function(){ var mm=getMoto(); mm[i].km=parseKmDecimal(this.value)||0; setMoto(mm); render(); };
+      f1.appendChild(i1); row.appendChild(f1);
+      var f2 = document.createElement('div'); f2.className='moto-field';
+      f2.innerHTML='<label>Data</label>';
+      var i2 = document.createElement('input'); i2.type='date'; i2.value=t.data;
+      i2.onchange=function(){ var mm=getMoto(); mm[i].data=this.value; setMoto(mm); render(); };
+      f2.appendChild(i2); row.appendChild(f2);
+      item.appendChild(row);
+
+      if (i===0) {
+        var proxima = t.km + KM_INTERVALO;
+        item.appendChild(el('div','moto-proxima','Próxima troca: '+proxima.toLocaleString('pt-BR')+' km'));
+      }
+      card.appendChild(item);
+    });
+  }
+
+  main.appendChild(card);
+}
+
+// ══════════════════════════════════════════════════════
+// UI — ITINERÁRIOS APRENDIDOS (sempre visíveis)
+// ══════════════════════════════════════════════════════
+function renderItinerarios(main){
+  var card = document.createElement('div'); card.className='card';
+  card.appendChild(el('div','card-title','🧠 ITINERÁRIOS APRENDIDOS'));
+
+  var itins = getMotoItinerarios();
+  var ids = Object.keys(itins).sort(function(a,b){
+    return itins[b].medicoes.length - itins[a].medicoes.length;
+  });
+
+  if (ids.length===0) {
+    card.appendChild(el('div','itin-vazio','Nenhum itinerário aprendido ainda — responda "Sim" na pergunta diária pra começar.'));
+  } else {
+    ids.forEach(function(id){
+      var it = itins[id];
+      var media = itinerarioMedia(it);
+      var box = document.createElement('div'); box.className='itin-card';
+      box.appendChild(el('div','itin-desc', motoFormatarSegmentos(it.descricaoOriginal)));
+      var meta = document.createElement('div'); meta.className='itin-meta';
+      meta.appendChild(el('div','itin-nivel', itinerarioNivelLabel(itinerarioNivel(it))+' • '+it.medicoes.length+' medição(ões)'));
+      meta.appendChild(el('div','itin-media', media!==null?media.toFixed(1)+' km':'—'));
+      box.appendChild(meta);
+      var acoes = document.createElement('div'); acoes.className='itin-acoes';
+      var zerarBtn = document.createElement('button'); zerarBtn.textContent='🗑️ Zerar histórico';
+      zerarBtn.onclick=function(){ if(confirm('Zerar o histórico de medições de "'+it.descricaoOriginal+'"?')){ motoZerarItinerario(id); render(); } };
+      var delBtn = document.createElement('button'); delBtn.textContent='❌ Remover';
+      delBtn.onclick=function(){ if(confirm('Remover completamente "'+it.descricaoOriginal+'"?')){ motoRemoverItinerario(id); render(); } };
+      acoes.appendChild(zerarBtn); acoes.appendChild(delBtn);
+      box.appendChild(acoes);
+      card.appendChild(box);
+    });
+  }
+
+  main.appendChild(card);
+}
+
+// ══════════════════════════════════════════════════════
+// RENDER PRINCIPAL
+// ══════════════════════════════════════════════════════
+function render(){
+  var main = document.getElementById('main');
+  main.innerHTML = '';
+  renderPerguntaDiaria(main);
+  renderOdometro(main);
+  renderTrocas(main);
+  renderItinerarios(main);
+}
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBNKjp7hLNK6mzAX2GK49WEZq-NKgQ9o5Y",
+  authDomain: "williamapp-31dff.firebaseapp.com",
+  projectId: "williamapp-31dff",
+  storageBucket: "williamapp-31dff.firebasestorage.app",
+  messagingSenderId: "171912065024",
+  appId: "1:171912065024:web:9c47f66f4b8e7fc727a8e5"
+};
+const ALLOWED_EMAIL = "marcelodossantosfc@gmail.com";
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
+const docMoto = doc(db, "william", "moto_data");
+
+let aplicandoRemoto = false;
+let pushTimer = null;
+let jaMigrou = false;
+
+function setDot(cor){ var d=document.getElementById('syncDot'); if(d) d.style.background=cor; }
+
+function fatiaMotoAtual(){
+  var s = loadState(); var fatia = {};
+  Object.keys(s).forEach(function(k){ if(pertenceAoMoto(k)) fatia[k]=s[k]; });
+  return fatia;
+}
+function agendarPush(){
+  if(aplicandoRemoto) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(async function(){
+    try{
+      setDot('#d6a24a');
+      var fatia = fatiaMotoAtual();
+      fatia.lastModified = new Date().toISOString();
+      await setDoc(docMoto, fatia);
+      setDot('#3fae5c');
+    }catch(e){
+      console.error('Erro ao sincronizar Moto:', e);
+      setDot('#c94f4f');
+    }
+  }, 800);
+}
+function iniciarEscuta(){
+  onSnapshot(docMoto, function(snap){
+    if(!snap.exists()) return;
+    var remoto = snap.data();
+    var local = loadState();
+    var mudou = false;
+    Object.keys(remoto).forEach(function(k){
+      if(pertenceAoMoto(k) && JSON.stringify(local[k]) !== JSON.stringify(remoto[k])){
+        local[k] = remoto[k]; mudou = true;
+      }
+    });
+    if(mudou){
+      aplicandoRemoto = true;
+      saveState(local);
+      if(typeof render === 'function') render();
+      aplicandoRemoto = false;
+      setDot('#3fae5c');
+    }
+  }, function(err){
+    console.error('Erro de sincronização (Moto):', err);
+    setDot('#c94f4f');
+  });
+}
+
+// Migração única: se o moto_data ainda não existe, semeia com o que já estava
+// guardado dentro do Agenda (de quando essa funcionalidade morava lá)
+async function migrarSeNecessario(){
+  try{
+    var snapNovo = await getDoc(docMoto);
+    if (snapNovo.exists()) return;
+    var snapAgenda = await getDoc(doc(db, "william", "agenda_data"));
+    var fatia = {};
+    if (snapAgenda.exists()) {
+      var dadosAntigos = snapAgenda.data();
+      Object.keys(dadosAntigos).forEach(function(k){ if(pertenceAoMoto(k)) fatia[k]=dadosAntigos[k]; });
+    }
+    var local = loadState();
+    Object.keys(fatia).forEach(function(k){ local[k]=fatia[k]; });
+    saveState(local);
+    fatia.lastModified = new Date().toISOString();
+    await setDoc(docMoto, fatia);
+  }catch(e){ console.error('Erro na migração inicial do Moto:', e); }
+}
+
+function mostrarLogin(){ document.getElementById('loginOverlay').style.display = 'flex'; }
+function esconderLogin(){ document.getElementById('loginOverlay').style.display = 'none'; }
+
+async function tentarLogin(){
+  var senha = document.getElementById('loginPass').value;
+  var errEl = document.getElementById('loginErro');
+  var btn = document.getElementById('loginBtn');
+  errEl.textContent = '';
+  if(!senha){ errEl.textContent = 'Digite a senha.'; return; }
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  try{
+    await setPersistence(auth, browserLocalPersistence);
+    await signInWithEmailAndPassword(auth, ALLOWED_EMAIL, senha);
+  }catch(e){
+    errEl.textContent = 'Senha incorreta.';
+  }
+  btn.disabled = false; btn.textContent = 'Entrar';
+}
+document.getElementById('loginBtn').addEventListener('click', tentarLogin);
+document.getElementById('loginPass').addEventListener('keydown', function(e){ if(e.key==='Enter') tentarLogin(); });
+
+onAuthStateChanged(auth, async function(user){
+  if(user && user.email === ALLOWED_EMAIL){
+    esconderLogin();
+    if(!jaMigrou){
+      jaMigrou = true;
+      await migrarSeNecessario();
+      render();
+      iniciarEscuta();
+      iniciarChecagemDataCritica();
+    }
+  } else {
+    mostrarLogin();
+  }
+});
+
+var saveStateOriginal = window.saveState;
+window.saveState = function(s){
+  saveStateOriginal(s);
+  agendarPush();
+};
+
+// ══════════════════════════════════════════════════════
+// PULSO — barra central crítica (aniversário, Mega-Sena, Gás, Contas)
+// A própria Moto usa getMotoKmStatus() local, já que os dados moram aqui agora.
+// ══════════════════════════════════════════════════════
+function proximaOcorrenciaDiasGlobal(dia, mes) {
+  var hoje = new Date(); hoje.setHours(0,0,0,0);
+  var anoAtual = hoje.getFullYear();
+  var data = new Date(anoAtual, mes - 1, dia); data.setHours(0,0,0,0);
+  if (data < hoje) { data = new Date(anoAtual + 1, mes - 1, dia); data.setHours(0,0,0,0); }
+  return Math.round((data - hoje) / 86400000);
+}
+function loteriaEhDiaSorteioGlobal(date){ var dow=date.getDay(); return dow===0||dow===2||dow===4; }
+function loteriaHoraSorteioGlobal(date){ return date.getDay()===0 ? 11 : 21; }
+function loteriaContagemGlobal(inicio){
+  if(!inicio) return 0;
+  var d=new Date(inicio+'T00:00:00');
+  var agora=new Date();
+  var count=0, safety=0;
+  while(d<=agora && count<12 && safety<120){
+    if(loteriaEhDiaSorteioGlobal(d)){
+      var dtSorteio=new Date(d); dtSorteio.setHours(loteriaHoraSorteioGlobal(d),0,0,0);
+      if(dtSorteio<=agora) count++;
+    }
+    d.setDate(d.getDate()+1); safety++;
+  }
+  return count;
+}
+function diasEntreGlobal(dataIni, dataFim){ return Math.floor((new Date(dataFim+'T00:00:00') - new Date(dataIni+'T00:00:00')) / 86400000); }
+function gasDiasUsoRemoto(dadosAgenda){
+  var g = dadosAgenda.gas || [];
+  if (!g.length) return null;
+  var x = g[0];
+  var data = x.data !== undefined ? x.data : (x.inicio || x.compra);
+  var duracao = x.data !== undefined ? x.duracao : (x.acabou ? diasEntreGlobal(data, x.acabou) : null);
+  if (duracao !== null && duracao !== undefined) return null;
+  return diasEntreGlobal(data, new Date().toISOString().split('T')[0]);
+}
+function contasVencendoRemoto(dadosAgenda){
+  var hoje = new Date();
+  var chave = 'contas_' + hoje.getFullYear() + '_' + hoje.getMonth();
+  var contas = dadosAgenda[chave] || [];
+  var diaHoje = hoje.getDate();
+  var resultado = [];
+  contas.forEach(function(c){
+    if (c.pago || c.diaVenc === undefined) return;
+    var dias = c.diaVenc - diaHoje;
+    if (dias > 1) return;
+    var txt;
+    if (dias === 1) txt = '💳 ' + c.nome + ' vence amanhã!';
+    else if (dias === 0) txt = '💳 ' + c.nome + ' vence HOJE!';
+    else txt = '💳 ' + c.nome + ' venceu há ' + Math.abs(dias) + (Math.abs(dias)===1?' dia':' dias') + '!';
+    resultado.push(txt);
+  });
+  return resultado;
+}
+
+var _criticoTextos = [];
+var _criticoIdx = 0;
+setInterval(function(){
+  var dot = document.getElementById('syncDot');
+  if (!dot || !dot.classList.contains('dot-critico') || _criticoTextos.length < 2) return;
+  _criticoIdx = (_criticoIdx + 1) % _criticoTextos.length;
+  dot.textContent = _criticoTextos[_criticoIdx];
+}, 3000);
+
+var ALERTA_SNOOZE_KEY = 'william_alerta_critico_snooze_ate';
+function getAdiamentoInfo(){
+  try{
+    var raw = localStorage.getItem(ALERTA_SNOOZE_KEY);
+    if(!raw) return null;
+    var obj = JSON.parse(raw);
+    if(!obj || Date.now() >= obj.ate) return null;
+    return obj;
+  }catch(e){ return null; }
+}
+function alertaEstaAdiadoPara(textosCriticos){
+  var info = getAdiamentoInfo();
+  if(!info) return false;
+  var atual = textosCriticos.slice().sort();
+  var adiado = info.textos.slice().sort();
+  if(atual.length !== adiado.length) return false;
+  for(var i=0;i<atual.length;i++){ if(atual[i]!==adiado[i]) return false; }
+  return true;
+}
+function adiarAlertaCritico(textosCriticos){
+  localStorage.setItem(ALERTA_SNOOZE_KEY, JSON.stringify({ ate: Date.now()+30*60*1000, textos: textosCriticos||[] }));
+}
+function limparAdiamento(){
+  localStorage.removeItem(ALERTA_SNOOZE_KEY);
+}
+
+async function verificarDataCriticaGlobal(){
+  var dot = document.getElementById('syncDot');
+  if (!dot) return;
+  try {
+    var comDias = [];
+    try {
+      var snap = await getDoc(doc(db, "william", "datas_data"));
+      if (snap.exists()) {
+        var lista = snap.data().datas_importantes || [];
+        comDias = lista.map(function(d){ return { nome: d.nome, ano: d.ano, dias: proximaOcorrenciaDiasGlobal(d.dia, d.mes) }; });
+      }
+    } catch(e) {}
+
+    var loteriaCount = 0;
+    var gasDias = null;
+    var textosContas = [];
+    try {
+      var snapAg = await getDoc(doc(db, "william", "agenda_data"));
+      if (snapAg.exists()) {
+        var dadosAg = snapAg.data();
+        loteriaCount = loteriaContagemGlobal(dadosAg.loteria_inicio || null);
+        gasDias = gasDiasUsoRemoto(dadosAg);
+        textosContas = contasVencendoRemoto(dadosAg);
+        escalaCache.ferias = dadosAg.ferias || [];
+        escalaCache.diaOverride = dadosAg.diaOverride || {};
+      }
+    } catch(e) {}
+
+    dot.classList.remove('dot-critico', 'dot-adiado', 'dot-perto-laranja', 'dot-perto-amarelo');
+    dot.textContent = '';
+
+    var criticos = comDias.filter(function(item){ return item.dias <= 1; }).sort(function(a,b){ return a.dias - b.dias; });
+    var laranjas = comDias.filter(function(item){ return item.dias > 1 && item.dias <= 3; }).sort(function(a,b){ return a.dias - b.dias; });
+    var amarelos = comDias.filter(function(item){ return item.dias > 3 && item.dias <= 10; }).sort(function(a,b){ return a.dias - b.dias; });
+
+    var textosCriticos = criticos.map(function(item){
+      var prefixo = item.ano ? '🎂 ' : '📌 ';
+      return prefixo + item.nome + (item.dias === 0 ? ' é HOJE!' : ' é amanhã!');
+    });
+    var textosAmarelos = amarelos.map(function(item){ return (item.ano ? '🎂 ' : '📌 ') + item.nome + ' em ' + item.dias + ' dias'; });
+
+    if (loteriaCount >= 12) {
+      textosCriticos.push('🎰 Renovar Megasena!');
+    } else if (loteriaCount === 11) {
+      textosAmarelos.push('🎰 Megasena: falta 1 concurso, renove em breve');
+    }
+
+    if (gasDias !== null) {
+      if (gasDias >= 90) {
+        textosCriticos.push('🔥 Gás: ' + gasDias + ' dias de uso, hora de trocar!');
+      } else if (gasDias >= 80) {
+        textosAmarelos.push('🔥 Gás: ' + gasDias + ' dias de uso, perto da troca');
+      }
+    }
+
+    textosContas.forEach(function(t){ textosCriticos.push(t); });
+
+    // Moto: dado local, já que agora mora aqui mesmo
+    var motoStatus = getMotoKmStatus();
+    if (motoStatus) {
+      if (motoStatus.diff >= KM_INTERVALO) {
+        textosCriticos.push('🏍️ Moto: ' + motoStatus.diff.toFixed(1) + ' km rodados, hora de trocar o óleo!');
+      } else if (motoStatus.diff >= KM_INTERVALO - 200) {
+        textosAmarelos.push('🏍️ Moto: ' + motoStatus.diff.toFixed(1) + ' km rodados, troca em breve');
+      }
+    }
+
+    if (textosCriticos.length && !alertaEstaAdiadoPara(textosCriticos)){
+      dot.classList.add('dot-critico');
+      dot.title = textosCriticos.join(' • ') + ' (toque para adiar 30min)';
+      _criticoTextos = textosCriticos;
+      _criticoIdx = 0;
+      dot.textContent = textosCriticos[0];
+    } else if (textosCriticos.length && alertaEstaAdiadoPara(textosCriticos)){
+      dot.classList.add('dot-adiado');
+      dot.title = 'Adiado — ainda ativo: ' + textosCriticos.join(' • ') + ' (toque para reativar agora)';
+      _criticoTextos = [];
+    } else if (laranjas.length){
+      var textosL = laranjas.map(function(item){ return (item.ano ? '🎂 ' : '📌 ') + item.nome + ' em ' + item.dias + ' dias'; });
+      dot.classList.add('dot-perto-laranja');
+      dot.title = textosL.join(' • ');
+      _criticoTextos = [];
+    } else if (textosAmarelos.length){
+      dot.classList.add('dot-perto-amarelo');
+      dot.title = textosAmarelos.join(' • ');
+      _criticoTextos = [];
+    } else {
+      dot.title = 'Sincronizado';
+      _criticoTextos = [];
+    }
+  } catch (e) { /* silencioso — não atrapalha o app se essa checagem falhar */ }
+}
+
+function iniciarChecagemDataCritica(){
+  var dot = document.getElementById('syncDot');
+  if (dot) {
+    dot.onclick = function(){
+      if (dot.classList.contains('dot-critico')){
+        adiarAlertaCritico(_criticoTextos);
+        verificarDataCriticaGlobal();
+      } else if (dot.classList.contains('dot-adiado')){
+        limparAdiamento();
+        verificarDataCriticaGlobal();
+      }
+    };
+  }
+  verificarDataCriticaGlobal();
+  setInterval(verificarDataCriticaGlobal, 30000);
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden) verificarDataCriticaGlobal();
+  });
+}
+</script>
+
+</body>
+</html>
