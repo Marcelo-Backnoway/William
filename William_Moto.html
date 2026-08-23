@@ -161,7 +161,7 @@ function loadState() { try { return JSON.parse(localStorage.getItem(KEY)) || {};
 function saveState(s) { try { s.lastModified = new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(s)); } catch(e) {} }
 
 function pertenceAoMoto(k){
-  return k==='moto_oleo' || k==='motoKmAtual' || k==='motoItinerarios' || k==='motoConferencias' || k==='motoDiario';
+  return k==='moto_oleo' || k==='motoKmAtual' || k==='motoItinerarios' || k==='motoConferencias' || k==='motoDiario' || k==='motoSaidaAtual';
 }
 
 function diasEntre(dataIni, dataFim){ return Math.floor((new Date(dataFim+'T00:00:00') - new Date(dataIni+'T00:00:00')) / 86400000); }
@@ -379,6 +379,12 @@ function motoPerguntaHojeStatus(){
 }
 
 // ══════════════════════════════════════════════════════
+// SAÍDA EM ANDAMENTO — "Vou sair agora", independente da pergunta diária
+// ══════════════════════════════════════════════════════
+function getMotoSaidaAtual(){ var s=loadState(); return s.motoSaidaAtual || null; }
+function setMotoSaidaAtual(v){ var s=loadState(); s.motoSaidaAtual=v; saveState(s); }
+
+// ══════════════════════════════════════════════════════
 // UI — PERGUNTA DIÁRIA
 // ══════════════════════════════════════════════════════
 var motoModoSim = null;             // null | 'form'
@@ -396,6 +402,170 @@ function motoAcharPorTextoExato(texto){
   var itins = getMotoItinerarios();
   var achadoId = Object.keys(itins).filter(function(id){ return motoTextoNormalizado(itins[id].descricaoOriginal)===alvo; })[0];
   return achadoId || null;
+}
+
+// Seletor de trajeto reutilizável — lista de conhecidos + campo de texto novo
+function renderSeletorTrajeto(container, valorAtual, aoSelecionar){
+  var itinsTodos = getMotoItinerarios();
+  var idsOrdenados = Object.keys(itinsTodos).sort(function(a,b){
+    return itinsTodos[b].medicoes.length - itinsTodos[a].medicoes.length;
+  });
+
+  if (idsOrdenados.length > 0) {
+    container.appendChild(el('div','moto-percurso-label','Já conhecidos — toque pra usar'));
+    var lista = document.createElement('div');
+    idsOrdenados.forEach(function(id){
+      var it = itinsTodos[id];
+      var media = itinerarioMedia(it);
+      var nivel = itinerarioNivel(it);
+      var linha = document.createElement('div'); linha.className='moto-lista-item';
+      if (valorAtual && valorAtual.tipo==='existente' && valorAtual.id===id) linha.classList.add('selecionado');
+      linha.innerHTML = '<div class="moto-lista-seg">'+motoFormatarSegmentos(it.descricaoOriginal)+'</div>'+
+        '<div class="moto-lista-meta"><span>'+itinerarioNivelLabel(nivel)+'</span><span class="moto-lista-km">'+(media!==null?media.toFixed(1)+' km':'—')+'</span></div>';
+      linha.onclick=function(){ aoSelecionar({tipo:'existente', id:id, nivel:nivel}); };
+      lista.appendChild(linha);
+    });
+    container.appendChild(lista);
+  }
+
+  container.appendChild(el('div','moto-percurso-label','+ Novo trajeto (separe os lugares com " - ")'));
+  var novoRow = document.createElement('div'); novoRow.className='moto-percurso-row';
+  var novoIn = document.createElement('input'); novoIn.type='text';
+  novoIn.placeholder='Ex: Cubatão - Costa e Silva - Casa';
+  novoIn.value = (valorAtual && valorAtual.tipo==='novo') ? valorAtual.texto : '';
+  var aplicarNovoTexto=function(){
+    var texto = novoIn.value.trim();
+    if (texto) aoSelecionar({tipo:'novo', texto:texto});
+  };
+  novoIn.onblur=aplicarNovoTexto;
+  novoRow.appendChild(novoIn); anexarMicrofone(novoIn, {onDone:aplicarNovoTexto});
+  container.appendChild(novoRow);
+}
+
+// ══════════════════════════════════════════════════════
+// "VOU SAIR AGORA" — seção independente, sempre visível, em duas etapas
+// ══════════════════════════════════════════════════════
+var motoSaidaModoUI = null; // null | 'iniciando' | 'chegando'
+var motoSaidaAlvo = null;   // {tipo:'existente', id} | {tipo:'novo', texto} — opcional, pode decidir na volta
+
+function renderVouSairAgora(main){
+  var saida = getMotoSaidaAtual();
+
+  if (saida && motoSaidaModoUI !== 'chegando') {
+    var hora = new Date(saida.dataInicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    var card1 = document.createElement('div'); card1.className='moto-pergunta';
+    card1.appendChild(el('div','moto-pergunta-titulo','🏍️ Saída em andamento'));
+    card1.appendChild(el('div','odo-status','Desde '+hora+' — km inicial: '+saida.kmInicial.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+' km'));
+    var btnChegou = document.createElement('button'); btnChegou.className='moto-btn-registrar'; btnChegou.textContent='🏁 Cheguei! Registrar chegada';
+    btnChegou.onclick=function(){ motoSaidaModoUI='chegando'; motoSaidaAlvo = saida.alvoTentativo || null; render(); };
+    card1.appendChild(btnChegou);
+    var btnCancela = document.createElement('button'); btnCancela.className='moto-btn-cancelar'; btnCancela.textContent='Cancelar saída';
+    btnCancela.onclick=function(){ if(confirm('Cancelar o registro dessa saída?')){ setMotoSaidaAtual(null); motoSaidaModoUI=null; motoSaidaAlvo=null; render(); } };
+    card1.appendChild(btnCancela);
+    main.appendChild(card1);
+    return;
+  }
+
+  if (saida && motoSaidaModoUI === 'chegando') {
+    var card2 = document.createElement('div'); card2.className='moto-pergunta';
+    card2.appendChild(el('div','moto-pergunta-titulo','🏍️ Qual foi o trajeto?'));
+    renderSeletorTrajeto(card2, motoSaidaAlvo, function(sel){ motoSaidaAlvo=sel; render(); });
+
+    if (motoSaidaAlvo) {
+      var nomeAlvo2 = motoSaidaAlvo.tipo==='existente' ? motoFormatarSegmentos(getMotoItinerarios()[motoSaidaAlvo.id].descricaoOriginal) : motoFormatarSegmentos(motoSaidaAlvo.texto);
+      var lbl2 = el('div','moto-percurso-label','Registrando: '+nomeAlvo2); lbl2.style.color='#c8a96e';
+      card2.appendChild(lbl2);
+
+      var grid2 = document.createElement('div'); grid2.className='moto-km-grid';
+      var boxIni2 = document.createElement('div'); boxIni2.className='moto-km-box inicio';
+      boxIni2.appendChild(el('label','','INÍCIO (já registrado)'));
+      var kmMostrarIni = document.createElement('div'); kmMostrarIni.style.cssText='font-size:22px;font-weight:800;color:#74c69d;padding:8px 0;';
+      kmMostrarIni.textContent = saida.kmInicial.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});
+      boxIni2.appendChild(kmMostrarIni); grid2.appendChild(boxIni2);
+
+      var boxFim2 = document.createElement('div'); boxFim2.className='moto-km-box fim';
+      boxFim2.appendChild(el('label','','FIM'));
+      var kmInFinal = document.createElement('input'); kmInFinal.type='text'; kmInFinal.id='motoKmFimSaida'; kmInFinal.inputMode='decimal'; kmInFinal.placeholder='0,0';
+      maskKmDecimal(kmInFinal);
+      boxFim2.appendChild(kmInFinal); grid2.appendChild(boxFim2);
+      card2.appendChild(grid2);
+
+      var btnReg2 = document.createElement('button'); btnReg2.className='moto-btn-registrar'; btnReg2.textContent='✅ Registrar';
+      btnReg2.onclick=function(){
+        var kmFim = parseKmDecimal(document.getElementById('motoKmFimSaida').value);
+        if (isNaN(kmFim)) { alert('Digite o km final!'); return; }
+        if (kmFim < saida.kmInicial) { alert('O km final não pode ser menor que o inicial.'); return; }
+
+        var idAlvo = motoSaidaAlvo.tipo==='existente' ? motoSaidaAlvo.id : motoAcharPorTextoExato(motoSaidaAlvo.texto);
+        if (idAlvo) {
+          var itAlvo = getMotoItinerarios()[idAlvo];
+          var mediaAntes = itinerarioMedia(itAlvo);
+          var diff = motoRegistrarMedicaoItinerario(idAlvo, saida.kmInicial, kmFim);
+          setMotoDiarioDia(motoHojeStr(), {resposta:'sim', itinerarioId:idAlvo, kmMedido:diff});
+          setMotoKmAtual(kmFim);
+          if (mediaAntes!==null && mediaAntes>0 && Math.abs(diff-mediaAntes)/mediaAntes > 0.4) {
+            motoDesvioPendente = { id:idAlvo, diff:diff, mediaAntes:mediaAntes, kmInicio:saida.kmInicial, kmFim:kmFim, descricao:itAlvo.descricaoOriginal };
+          }
+        } else {
+          var resultado = motoCriarItinerario(motoSaidaAlvo.texto, saida.kmInicial, kmFim);
+          setMotoDiarioDia(motoHojeStr(), {resposta:'sim', itinerarioId:resultado.id, kmMedido:resultado.diff});
+          setMotoKmAtual(kmFim);
+        }
+
+        setMotoSaidaAtual(null);
+        motoSaidaModoUI=null; motoSaidaAlvo=null;
+        vibe([30]); render();
+      };
+      card2.appendChild(btnReg2);
+    }
+
+    var btnVoltar2 = document.createElement('button'); btnVoltar2.className='moto-btn-cancelar'; btnVoltar2.textContent='Voltar';
+    btnVoltar2.onclick=function(){ motoSaidaModoUI=null; render(); };
+    card2.appendChild(btnVoltar2);
+
+    main.appendChild(card2);
+    return;
+  }
+
+  if (motoSaidaModoUI === 'iniciando') {
+    var cardI = document.createElement('div'); cardI.className='moto-pergunta';
+    cardI.appendChild(el('div','moto-pergunta-titulo','🏍️ Vou sair agora!'));
+    renderSeletorTrajeto(cardI, motoSaidaAlvo, function(sel){ motoSaidaAlvo=sel; render(); });
+
+    cardI.appendChild(el('div','moto-percurso-label','Km inicial (o trajeto pode ficar pra escolher na volta)'));
+    var grid3 = document.createElement('div'); grid3.className='moto-km-grid'; grid3.style.gridTemplateColumns='1fr';
+    var boxIni3 = document.createElement('div'); boxIni3.className='moto-km-box inicio';
+    boxIni3.appendChild(el('label','','INÍCIO'));
+    var kmInIni = document.createElement('input'); kmInIni.type='text'; kmInIni.id='motoKmIniSaida'; kmInIni.inputMode='decimal'; kmInIni.placeholder='0,0';
+    var atualAgora3 = getMotoKmAtual();
+    if (atualAgora3) kmInIni.value = (Math.round((atualAgora3.km + getMotoKmAcumuladoEstimado())*10)/10).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});
+    maskKmDecimal(kmInIni);
+    boxIni3.appendChild(kmInIni); grid3.appendChild(boxIni3);
+    cardI.appendChild(grid3);
+
+    var btnConfirmaSaida = document.createElement('button'); btnConfirmaSaida.className='moto-btn-registrar'; btnConfirmaSaida.textContent='🏍️ Confirmar saída';
+    btnConfirmaSaida.onclick=function(){
+      var kmIni = parseKmDecimal(document.getElementById('motoKmIniSaida').value);
+      if (isNaN(kmIni)) { alert('Digite o km inicial!'); return; }
+      setMotoSaidaAtual({ kmInicial: kmIni, dataInicio: new Date().toISOString(), alvoTentativo: motoSaidaAlvo });
+      motoSaidaModoUI=null; motoSaidaAlvo=null;
+      vibe([30]); render();
+    };
+    cardI.appendChild(btnConfirmaSaida);
+
+    var btnCancelI = document.createElement('button'); btnCancelI.className='moto-btn-cancelar'; btnCancelI.textContent='Cancelar';
+    btnCancelI.onclick=function(){ motoSaidaModoUI=null; motoSaidaAlvo=null; render(); };
+    cardI.appendChild(btnCancelI);
+
+    main.appendChild(cardI);
+    return;
+  }
+
+  var btnIniciar = document.createElement('button'); btnIniciar.className='moto-btn-registrar';
+  btnIniciar.style.cssText='background:linear-gradient(135deg,#c8a96e,#a3854f);color:#1a1408;font-size:17px;padding:18px;margin-bottom:12px;';
+  btnIniciar.textContent='🏍️ Vou sair agora!';
+  btnIniciar.onclick=function(){ motoSaidaModoUI='iniciando'; render(); };
+  main.appendChild(btnIniciar);
 }
 
 function renderPerguntaDiaria(main){
@@ -451,55 +621,20 @@ function renderPerguntaDiaria(main){
 
   if (motoModoSim === 'form') {
     var cardF = document.createElement('div'); cardF.className='moto-pergunta';
-    cardF.appendChild(el('div','moto-pergunta-titulo','🏍️ Vou sair agora!'));
+    cardF.appendChild(el('div','moto-pergunta-titulo','📝 O que você fez hoje?'));
 
-    var itinsTodos = getMotoItinerarios();
-    var idsOrdenados = Object.keys(itinsTodos).sort(function(a,b){
-      return itinsTodos[b].medicoes.length - itinsTodos[a].medicoes.length;
+    renderSeletorTrajeto(cardF, motoAlvoAtual, function(sel){
+      if (sel.tipo==='existente' && sel.nivel==='memorizado') {
+        setMotoDiarioDia(motoHojeStr(), {resposta:'sim', itinerarioId:sel.id});
+        motoModoSim=null; motoAlvoAtual=null; vibe([30]); render();
+      } else {
+        motoAlvoAtual = sel;
+        render();
+      }
     });
 
-    if (idsOrdenados.length > 0) {
-      cardF.appendChild(el('div','moto-percurso-label','Já conhecidos — toque pra usar'));
-      var lista = document.createElement('div');
-      idsOrdenados.forEach(function(id){
-        var it = itinsTodos[id];
-        var media = itinerarioMedia(it);
-        var nivel = itinerarioNivel(it);
-        var linha = document.createElement('div'); linha.className='moto-lista-item';
-        if (motoAlvoAtual && motoAlvoAtual.tipo==='existente' && motoAlvoAtual.id===id) linha.classList.add('selecionado');
-        linha.innerHTML = '<div class="moto-lista-seg">'+motoFormatarSegmentos(it.descricaoOriginal)+'</div>'+
-          '<div class="moto-lista-meta"><span>'+itinerarioNivelLabel(nivel)+'</span><span class="moto-lista-km">'+(media!==null?media.toFixed(1)+' km':'—')+'</span></div>';
-        linha.onclick=function(){
-          if (nivel === 'memorizado') {
-            setMotoDiarioDia(motoHojeStr(), {resposta:'sim', itinerarioId:id});
-            motoModoSim=null; motoAlvoAtual=null; motoNovoTextoDigitado=''; vibe([30]); render();
-          } else {
-            motoAlvoAtual = {tipo:'existente', id:id};
-            render();
-          }
-        };
-        lista.appendChild(linha);
-      });
-      cardF.appendChild(lista);
-    }
-
-    cardF.appendChild(el('div','moto-percurso-label','+ Novo trajeto (separe os lugares com " - ")'));
-    var novoRow = document.createElement('div'); novoRow.className='moto-percurso-row';
-    var novoIn = document.createElement('input'); novoIn.type='text'; novoIn.id='motoNovoTrajeto';
-    novoIn.placeholder='Ex: Cubatão - Costa e Silva - Casa';
-    novoIn.value = motoNovoTextoDigitado;
-    var aplicarNovoTexto = function(){
-      motoNovoTextoDigitado = novoIn.value.trim();
-      if (motoNovoTextoDigitado) motoAlvoAtual = {tipo:'novo', texto:motoNovoTextoDigitado};
-      render();
-    };
-    novoIn.oninput=function(){ motoNovoTextoDigitado=this.value; };
-    novoIn.onblur=aplicarNovoTexto;
-    novoRow.appendChild(novoIn); anexarMicrofone(novoIn, {onDone:aplicarNovoTexto});
-    cardF.appendChild(novoRow);
-
     if (motoAlvoAtual) {
-      var nomeAlvo = motoAlvoAtual.tipo==='existente' ? motoFormatarSegmentos(itinsTodos[motoAlvoAtual.id].descricaoOriginal) : motoFormatarSegmentos(motoAlvoAtual.texto);
+      var nomeAlvo = motoAlvoAtual.tipo==='existente' ? motoFormatarSegmentos(getMotoItinerarios()[motoAlvoAtual.id].descricaoOriginal) : motoFormatarSegmentos(motoAlvoAtual.texto);
       var alvoLabel = el('div','moto-percurso-label','Registrando: '+nomeAlvo);
       alvoLabel.style.color = '#c8a96e';
       cardF.appendChild(alvoLabel);
@@ -761,6 +896,7 @@ function renderItinerarios(main){
 function render(){
   var main = document.getElementById('main');
   main.innerHTML = '';
+  renderVouSairAgora(main);
   renderPerguntaDiaria(main);
   renderOdometro(main);
   renderTrocas(main);
