@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>📋 William Checklist</title>
+<link rel="manifest" href="manifest-checklist.json">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a14; color: #e8e8e8; min-height: 100vh; }
+  .topbar { background: #111122; border-bottom: 1px solid #2a2a3a; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .topbar h1 { font-size: 12px; color: #c8a96e; letter-spacing: 1px; font-weight: 700; }
+  .container { padding: 10px; max-width: 480px; margin: 0 auto; }
+  .card { background: #141424; border: 1px solid #2a2a3a; border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+  .card-title { font-size: 11px; font-weight: 700; color: #c8a96e; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
+
+  /* SYNC DOT + PULSO (padrão do ecossistema) */
+  #syncDot { position: fixed; bottom: 14px; right: 14px; width: 10px; height: 10px; border-radius: 50%; background: #555; z-index: 998; transition: background 0.3s; cursor: pointer; }
+  @keyframes pulsoCriticoGrande {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,34,34,0.85), 0 0 22px 6px rgba(255,34,34,0.9); transform: translate(-50%, -50%) scale(1); }
+    50% { box-shadow: 0 0 0 18px rgba(255,34,34,0), 0 0 32px 10px rgba(255,34,34,0.55); transform: translate(-50%, -50%) scale(1.035); }
+  }
+  #syncDot.dot-critico {
+    position: fixed !important; top: 50%; left: 50%; right: auto; bottom: auto;
+    transform: translate(-50%, -50%);
+    width: auto !important; height: auto !important; min-width: 260px; max-width: calc(100vw - 40px);
+    border-radius: 16px; background: #ff2222 !important;
+    padding: 18px 26px; z-index: 9999; margin: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; font-weight: 800; color: #fff; text-align: center;
+    line-height: 1.3; white-space: normal; cursor: pointer;
+    animation: pulsoCriticoGrande 1s ease-in-out infinite;
+  }
+  #syncDot.dot-perto-laranja { box-shadow: 0 0 0 4px rgba(255,153,68,0.65); }
+  #syncDot.dot-perto-amarelo { box-shadow: 0 0 0 4px rgba(232,197,71,0.6); }
+  #syncDot.dot-adiado { box-shadow: 0 0 0 4px rgba(150,150,190,0.55); }
+
+  /* LOGIN */
+  #loginOverlay { position: fixed; inset: 0; background: #0a0a14; z-index: 2000; display: flex; align-items: center; justify-content: center; }
+  #loginBox { background: #141424; border: 1px solid #2a2a3a; border-radius: 16px; padding: 28px 24px; width: 90%; max-width: 320px; text-align: center; }
+  #loginBox h2 { font-size: 14px; color: #c8a96e; margin-bottom: 16px; letter-spacing: 1px; }
+  #loginBox input { width: 100%; background: #1a1a2e; border: 1px solid #333; border-radius: 10px; padding: 12px; font-size: 15px; color: #e8e8e8; outline: none; margin-bottom: 10px; font-family: inherit; }
+  #loginBox button { width: 100%; background: #c8a96e; color: #111; border: none; border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  #loginErro { color: #ff5555; font-size: 12px; margin-top: 8px; min-height: 16px; }
+
+  /* PERGUNTA DIÁRIA */
+  .moto-pergunta { background: linear-gradient(135deg,#1a1a3a,#141428); border: 1px solid #4a4a8a; border-radius: 16px; padding: 18px; margin-bottom: 12px; }
+  .moto-pergunta-titulo { font-size: 16px; font-weight: 700; color: #b7a6ff; margin-bottom: 14px; text-align: center; }
+  .moto-pergunta-btns { display: flex; gap: 10px; }
+  .moto-pergunta-btns button { flex: 1; padding: 16px; border-radius: 12px; border: none; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; }
+  .moto-btn-sim { background: #2d6a4f; color: #b7e6c9; }
+  .moto-btn-nao { background: #2a2a3a; color: #ccc; }
+  .moto-respondido { background: #0f1a14; border: 1px solid #2d6a4f; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .moto-respondido-txt { font-size: 13px; color: #b7e6c9; }
+  .moto-refazer { background: none; border: none; color: #888; font-size: 12px; text-decoration: underline; cursor: pointer; font-family: inherit; }
+
+  .moto-percurso-label { font-size: 12px; color: #888; margin: 14px 0 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .moto-percurso-row { display: flex; gap: 8px; }
+  .moto-percurso-row input { flex: 1; background: #1a1a2e; border: 1px solid #333; border-radius: 10px; padding: 13px; font-size: 15px; color: #e8e8e8; outline: none; font-family: inherit; }
+
+  .moto-sugestao { background: #241d10; border: 1px solid #c8a96e; border-radius: 12px; padding: 14px; margin-top: 14px; }
+  .moto-sugestao-txt { font-size: 14px; color: #e8c96e; margin-bottom: 12px; line-height: 1.4; }
+
+  .moto-km-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  @media (max-width: 380px) { .moto-km-grid { grid-template-columns: 1fr; } }
+  .moto-km-box { background: #0f0f1e; border: 2px solid #333; border-radius: 14px; padding: 14px; text-align: center; }
+  .moto-km-box.inicio { border-color: #74c69d; }
+  .moto-km-box.fim { border-color: #ff9944; }
+  .moto-km-box label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 8px; }
+  .moto-km-box input { width: 100%; background: transparent; border: none; color: #fff; font-size: 26px; font-weight: 800; text-align: center; outline: none; font-family: inherit; }
+  .moto-km-box input::placeholder { color: #444; font-size: 18px; }
+
+  .moto-btn-registrar { width: 100%; background: #c8a96e; color: #111; border: none; border-radius: 12px; padding: 16px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 14px; }
+  .moto-btn-cancelar { width: 100%; background: none; border: none; color: #888; font-size: 13px; padding: 10px; cursor: pointer; font-family: inherit; }
+
+  /* ODÔMETRO */
+  .odo-card { background: linear-gradient(135deg,#151530,#0f0f1e); border: 1px solid #2a2a3a; border-radius: 14px; padding: 16px 14px; margin-bottom: 14px; text-align: center; }
+  .odo-emoji { font-size: 30px; margin-bottom: 4px; }
+  .odo-input-row { display: flex; gap: 8px; margin: 10px 0; }
+  .odo-input-row input { flex: 1; background: #1a1a2e; border: 1px solid #333; border-radius: 10px; padding: 12px 10px; font-size: 18px; font-weight: 700; color: #e8e8e8; outline: none; font-family: inherit; text-align: center; }
+  .odo-btn { width: 100%; background: #2a2a55; border: none; border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 700; color: #b7a6ff; cursor: pointer; font-family: inherit; }
+  .odo-status { font-size: 12px; color: #888; margin-top: 10px; }
+  .odo-gauge-track { width: 100%; height: 10px; border-radius: 6px; background: #1a1a2e; margin-top: 10px; overflow: hidden; }
+  .odo-gauge-fill { height: 100%; border-radius: 6px; transition: width 0.3s; }
+  .odo-gauge-fill.verde { background: #74c69d; }
+  .odo-gauge-fill.amarelo { background: #e8c547; }
+  .odo-gauge-fill.vermelho { background: #ff5555; }
+  .odo-msg { font-size: 13px; font-weight: 700; margin-top: 8px; }
+  .odo-msg.verde { color: #74c69d; }
+  .odo-msg.amarelo { color: #e8c547; }
+  .odo-msg.vermelho { color: #ff5555; }
+
+  /* MICROFONE */
+  button.mic-btn { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 10px; border: 1px solid #333; background: #1a1a2e; color: #e8e8e8; font-size: 17px; cursor: pointer; }
+
+  /* TROCA DE ÓLEO */
+  .moto-item { padding: 10px 12px; background: #0f0f1e; border-radius: 10px; margin-bottom: 7px; border: 1px solid #2a2a3a; }
+  .moto-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .moto-numero { font-size: 13px; font-weight: 700; color: #87CEFA; }
+  .moto-del { color: #444; font-size: 16px; cursor: pointer; padding: 2px 4px; }
+  .moto-row { display: flex; gap: 8px; margin-bottom: 6px; }
+  .moto-field { flex: 1; }
+  .moto-field label { font-size: 9px; color: #666; display: block; margin-bottom: 2px; text-transform: uppercase; }
+  .moto-field input { width: 100%; background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 7px 8px; font-size: 12px; color: #e8e8e8; outline: none; font-family: inherit; }
+  .moto-field input:focus { border-color: #c8a96e; }
+  .moto-proxima { font-size: 11px; color: #74c69d; font-weight: 700; margin-top: 2px; }
+  .moto-btn-add { width: 100%; background: #c8a96e; color: #111; border: none; border-radius: 10px; padding: 11px; font-size: 13px; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
+
+  /* CONFERÊNCIAS */
+  .conf-linha { display: flex; justify-content: space-between; padding: 8px 10px; background: #0f0f1e; border-radius: 8px; margin-bottom: 6px; border: 1px solid #2a2a3a; }
+  .conf-data { font-size: 11px; color: #888; }
+  .conf-dif { font-size: 12px; font-weight: 700; }
+
+  /* ITINERÁRIOS APRENDIDOS — sempre visíveis */
+  .itin-card { background: #0f0f1e; border: 1px solid #2a2a3a; border-radius: 12px; padding: 12px; margin-bottom: 8px; }
+  .itin-desc { font-size: 13px; color: #e8e8e8; margin-bottom: 4px; }
+  .itin-meta { display: flex; justify-content: space-between; align-items: center; }
+  .itin-nivel { font-size: 11px; color: #888; }
+  .itin-media { font-size: 15px; font-weight: 800; color: #74c69d; }
+  .itin-acoes { display: flex; gap: 10px; margin-top: 8px; }
+  .itin-acoes button { background: none; border: none; font-size: 12px; color: #888; cursor: pointer; font-family: inherit; padding: 0; }
+  .itin-vazio { text-align: center; color: #555; font-size: 13px; padding: 20px 0; }
+
+  /* LISTA DE ITINERÁRIOS NA TELA "VOU SAIR AGORA" */
+  .moto-lista-item { background: #0f0f1e; border: 2px solid #2a2a3a; border-radius: 12px; padding: 12px; margin-bottom: 8px; cursor: pointer; }
+  .moto-lista-item.selecionado { border-color: #c8a96e; background: #1e1a10; }
+  .moto-lista-seg { font-size: 14px; color: #e8e8e8; margin-bottom: 4px; }
+  .moto-lista-meta { display: flex; justify-content: space-between; font-size: 11px; color: #888; }
+  .moto-lista-km { font-weight: 700; color: #74c69d; }
+
+  .toggle-secao { background: #1a1a2e; border: 1px solid #333; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; font-size: 13px; color: #c8a96e; font-weight: 700; text-align: center; }
+
+  /* CHECKLIST */
+  .chk-item { background: #0f0f1e; border: 2px solid #2a2a3a; border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+  .chk-item.chk-ok { border-color: #2d6a4f; background: #0f1a14; }
+  .chk-item.chk-alerta { border-color: #ff5555; background: #1a0f0f; }
+  .chk-item-topo { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .chk-item-nome { font-size: 16px; font-weight: 700; color: #e8e8e8; }
+  .chk-item-hora { font-size: 12px; color: #888; }
+  .chk-btns-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .chk-btns-row button { flex: 1; padding: 12px; border-radius: 10px; border: 2px solid #333; background: #1a1a2e; color: #888; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .chk-btn-ok.ativo { background: #2d6a4f; border-color: #2d6a4f; color: #b7e6c9; }
+  .chk-btn-alerta.ativo { background: #6a2a2a; border-color: #ff5555; color: #ffb7b7; }
+  .chk-obs-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .chk-obs-row input { flex: 1; background: #1a1a2e; border: 1px solid #333; border-radius: 10px; padding: 11px; font-size: 13px; color: #e8e8e8; outline: none; font-family: inherit; }
+  .chk-foto-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .chk-btn-foto { flex: 1; background: #2a2a55; border: none; border-radius: 10px; padding: 12px; font-size: 13px; font-weight: 700; color: #b7a6ff; cursor: pointer; font-family: inherit; }
+  .chk-foto-tag { background: #241d10; border: 1px solid #c8a96e; border-radius: 8px; padding: 8px 12px; font-size: 13px; font-weight: 700; color: #e8c96e; }
+  .chk-btn-foto-mini { background: none; border: none; color: #888; font-size: 11px; text-decoration: underline; cursor: pointer; font-family: inherit; }
+  .chk-obs-leitura { font-size: 13px; color: #ccc; margin-bottom: 6px; }
+  .chk-edit-linha { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .chk-edit-linha input { flex: 1; background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 9px; font-size: 13px; color: #e8e8e8; outline: none; font-family: inherit; }
+  .chk-edit-del { background: none; border: none; font-size: 16px; cursor: pointer; padding: 4px 8px; }
+  .chk-select-data { width: 100%; background: #1a1a2e; border: 1px solid #333; border-radius: 10px; padding: 11px; font-size: 13px; color: #e8e8e8; outline: none; font-family: inherit; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<div class="topbar"><h1>📋 WILLIAM — CHECKLIST</h1></div>
+<div id="syncDot" title="Sincronizado"></div>
+
+<div id="loginOverlay">
+  <div id="loginBox">
+    <h2>🔒 ACESSO RESTRITO</h2>
+    <input type="text" id="loginPass" placeholder="Senha" style="-webkit-text-security: disc;">
+    <button id="loginBtn">Entrar</button>
+    <div id="loginErro"></div>
+  </div>
+</div>
+
+<div class="container" id="main"></div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw-checklist.js').catch(function(e){ console.error('Erro ao registrar service worker:', e); });
+  });
+}
+
+var KEY = 'william_superapp_v1'; // mesma chave do SuperApp — dados ficam sincronizados
+var server = null; // sem conceito de servidor aqui — Moto é vida real, não jogo
+
+function loadState() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) { return {}; } }
+function saveState(s) { try { s.lastModified = new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(s)); } catch(e) {} }
+
+function pertenceAoChecklist(k){
+  return k==='checklistItens' || k==='checklistDias' || k==='checklistProximoNumeroFoto';
+}
+
+function diasEntre(dataIni, dataFim){ return Math.floor((new Date(dataFim+'T00:00:00') - new Date(dataIni+'T00:00:00')) / 86400000); }
+function fmtData(iso){ if(!iso) return ''; var p=iso.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+function el(tag,cls,txt){var e=document.createElement(tag);e.className=cls;if(txt!==undefined)e.textContent=txt;return e;}
+function vibe(p){try{if(navigator.vibrate)navigator.vibrate(p);}catch(e){}}
+
+/* ---------- MICROFONE REUTILIZÁVEL ---------- */
+function anexarMicrofone(inputEl, opts){
+  opts = opts || {};
+  var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var btn = document.createElement('button');
+  btn.type = 'button'; btn.className = 'mic-btn';
+  btn.textContent = '🎤'; btn.title = 'Falar';
+  inputEl.parentNode.appendChild(btn);
+  if(!Rec){ btn.style.display='none'; return btn; }
+  var rec = new Rec();
+  rec.lang = 'pt-BR'; rec.continuous = false; rec.interimResults = false;
+  btn.addEventListener('click', function(){
+    btn.style.background = '#c8a96e'; btn.style.color = '#111'; btn.textContent = '●';
+    try{ rec.start(); }catch(e){}
+  });
+  rec.onresult = function(e){
+    inputEl.value = e.results[0][0].transcript;
+    inputEl.dispatchEvent(new Event('input', {bubbles:true}));
+    inputEl.dispatchEvent(new Event('change', {bubbles:true}));
+    if(opts.onDone) opts.onDone();
+  };
+  rec.onend = function(){ btn.style.background='#1a1a2e'; btn.style.color='#e8e8e8'; btn.textContent='🎤'; };
+  rec.onerror = function(){ btn.style.background='#1a1a2e'; btn.style.color='#e8e8e8'; btn.textContent='🎤'; };
+  return btn;
+}
+
+// ══════════════════════════════════════════════════════
+// ITENS DO CHECKLIST — lista fixa, editável (cadastro dos cômodos/pontos)
+// ══════════════════════════════════════════════════════
+var CHECKLIST_ITENS_DEFAULT = [
+  {id:'portao', nome:'Portão'},
+  {id:'sala2', nome:'Sala Console 2'},
+  {id:'sala3', nome:'Sala 3'},
+  {id:'sala4', nome:'Sala 4'},
+  {id:'sala5', nome:'Sala 5'},
+  {id:'artes', nome:'Sala de Artes'},
+  {id:'deficientes', nome:'Sala de Deficientes'}
+];
+function getChecklistItens(){
+  var s = loadState();
+  if (!s.checklistItens) { s.checklistItens = CHECKLIST_ITENS_DEFAULT.slice(); saveState(s); }
+  return s.checklistItens;
+}
+function setChecklistItens(itens){ var s=loadState(); s.checklistItens=itens; saveState(s); }
+function gerarIdItemChecklist(){ return 'item_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+// ══════════════════════════════════════════════════════
+// NÚMERO DE FOTO — mesmo esquema do Onde Está (reserva um número, você tira e renomeia depois)
+// ══════════════════════════════════════════════════════
+function reservarNumeroFoto(){
+  var s = loadState();
+  var n = (s.checklistProximoNumeroFoto || 1);
+  s.checklistProximoNumeroFoto = n + 1;
+  saveState(s);
+  return n;
+}
+
+// ══════════════════════════════════════════════════════
+// PLANTÕES — um checklist por dia
+// ══════════════════════════════════════════════════════
+function checklistHojeStr(){ return new Date().toISOString().split('T')[0]; }
+function getChecklistDias(){ var s=loadState(); return s.checklistDias || {}; }
+function getChecklistDia(ds){
+  var s = loadState();
+  if (!s.checklistDias) s.checklistDias = {};
+  if (!s.checklistDias[ds]) {
+    s.checklistDias[ds] = {};
+    saveState(s);
+  }
+  // garante que itens novos (cadastrados depois) apareçam também em dias já existentes
+  var itens = getChecklistItens();
+  var mudou = false;
+  itens.forEach(function(it){
+    if (!s.checklistDias[ds][it.id]) {
+      s.checklistDias[ds][it.id] = { ok: null, obs: '', fotoNumero: null, hora: null };
+      mudou = true;
+    }
+  });
+  if (mudou) saveState(s);
+  return s.checklistDias[ds];
+}
+function setChecklistItemDia(ds, itemId, dados){
+  var s = loadState();
+  if (!s.checklistDias) s.checklistDias = {};
+  if (!s.checklistDias[ds]) s.checklistDias[ds] = {};
+  var atual = s.checklistDias[ds][itemId] || { ok: null, obs: '', fotoNumero: null, hora: null };
+  var novo = Object.assign({}, atual, dados, { hora: new Date().toISOString() });
+  s.checklistDias[ds][itemId] = novo;
+  saveState(s);
+}
+
+// ══════════════════════════════════════════════════════
+// UI — CHECKLIST DE HOJE
+// ══════════════════════════════════════════════════════
+var checklistMenuEditarAberto = false;
+
+function renderChecklistHoje(main){
+  var ds = checklistHojeStr();
+  var itens = getChecklistItens();
+  var dia = getChecklistDia(ds);
+
+  var card = document.createElement('div'); card.className='card';
+  var hoje = new Date();
+  var dataFmt = hoje.toLocaleDateString('pt-BR', {weekday:'long', day:'2-digit', month:'long'});
+  card.appendChild(el('div','card-title','📋 PLANTÃO DE HOJE — '+dataFmt.toUpperCase()));
+
+  if (itens.length === 0) {
+    card.appendChild(el('div','itin-vazio','Nenhum item cadastrado ainda. Abra "⚙️ Editar itens" abaixo pra começar.'));
+  } else {
+    itens.forEach(function(it){
+      var d = dia[it.id] || { ok:null, obs:'', fotoNumero:null, hora:null };
+      var box = document.createElement('div'); box.className='chk-item';
+      if (d.ok === true) box.classList.add('chk-ok');
+      else if (d.ok === false) box.classList.add('chk-alerta');
+
+      var topo = document.createElement('div'); topo.className='chk-item-topo';
+      topo.appendChild(el('div','chk-item-nome', it.nome));
+      if (d.hora) {
+        var horaFmt = new Date(d.hora).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+        topo.appendChild(el('div','chk-item-hora', horaFmt));
+      }
+      box.appendChild(topo);
+
+      var btnsRow = document.createElement('div'); btnsRow.className='chk-btns-row';
+      var btnOk = document.createElement('button'); btnOk.className='chk-btn-ok'+(d.ok===true?' ativo':'');
+      btnOk.textContent='✅ OK';
+      btnOk.onclick=function(){ setChecklistItemDia(ds, it.id, {ok:true}); vibe([30]); render(); };
+      var btnAlerta = document.createElement('button'); btnAlerta.className='chk-btn-alerta'+(d.ok===false?' ativo':'');
+      btnAlerta.textContent='⚠️ Alerta';
+      btnAlerta.onclick=function(){ setChecklistItemDia(ds, it.id, {ok:false}); vibe([30]); render(); };
+      btnsRow.appendChild(btnOk); btnsRow.appendChild(btnAlerta);
+      box.appendChild(btnsRow);
+
+      var obsRow = document.createElement('div'); obsRow.className='chk-obs-row';
+      var obsIn = document.createElement('input'); obsIn.type='text'; obsIn.placeholder='Observação (ex: cadeado ok, fechei às 22h)';
+      obsIn.value = d.obs || '';
+      obsIn.onchange=function(){ setChecklistItemDia(ds, it.id, {obs:this.value}); render(); };
+      obsRow.appendChild(obsIn); anexarMicrofone(obsIn);
+      box.appendChild(obsRow);
+
+      var fotoRow = document.createElement('div'); fotoRow.className='chk-foto-row';
+      if (d.fotoNumero) {
+        fotoRow.appendChild(el('div','chk-foto-tag','📷 Foto nº '+d.fotoNumero));
+        var btnNovaFoto = document.createElement('button'); btnNovaFoto.className='chk-btn-foto-mini'; btnNovaFoto.textContent='+ outra foto';
+        btnNovaFoto.onclick=function(){
+          var n = reservarNumeroFoto();
+          setChecklistItemDia(ds, it.id, {fotoNumero:n});
+          vibe([30]); render();
+        };
+        fotoRow.appendChild(btnNovaFoto);
+      } else {
+        var btnFoto = document.createElement('button'); btnFoto.className='chk-btn-foto'; btnFoto.textContent='📷 Reservar número de foto';
+        btnFoto.onclick=function(){
+          var n = reservarNumeroFoto();
+          setChecklistItemDia(ds, it.id, {fotoNumero:n});
+          vibe([30]); render();
+        };
+        fotoRow.appendChild(btnFoto);
+      }
+      box.appendChild(fotoRow);
+
+      card.appendChild(box);
+    });
+  }
+
+  var toggleEditar = document.createElement('div'); toggleEditar.className='toggle-secao';
+  toggleEditar.textContent = (checklistMenuEditarAberto ? '▲' : '▼') + ' ⚙️ Editar itens do checklist';
+  toggleEditar.onclick = function(){ checklistMenuEditarAberto = !checklistMenuEditarAberto; render(); };
+  card.appendChild(toggleEditar);
+
+  if (checklistMenuEditarAberto) {
+    var menuEd = document.createElement('div');
+    itens.forEach(function(it, idx){
+      var linha = document.createElement('div'); linha.className='chk-edit-linha';
+      var nomeIn = document.createElement('input'); nomeIn.type='text'; nomeIn.value=it.nome;
+      nomeIn.onchange=function(){ var arr=getChecklistItens(); arr[idx].nome=this.value; setChecklistItens(arr); render(); };
+      linha.appendChild(nomeIn);
+      var delBtn = document.createElement('button'); delBtn.textContent='🗑️'; delBtn.className='chk-edit-del';
+      delBtn.onclick=function(){ if(confirm('Remover "'+it.nome+'" da lista?')){ var arr=getChecklistItens(); arr.splice(idx,1); setChecklistItens(arr); render(); } };
+      linha.appendChild(delBtn);
+      menuEd.appendChild(linha);
+    });
+    var novoItemRow = document.createElement('div'); novoItemRow.className='chk-edit-linha';
+    var novoItemIn = document.createElement('input'); novoItemIn.type='text'; novoItemIn.id='novoItemChecklist'; novoItemIn.placeholder='Novo item (ex: Cozinha)';
+    novoItemRow.appendChild(novoItemIn);
+    var addBtn = document.createElement('button'); addBtn.textContent='➕'; addBtn.className='chk-edit-del';
+    addBtn.onclick=function(){
+      var nome = document.getElementById('novoItemChecklist').value.trim();
+      if (!nome) return;
+      var arr=getChecklistItens(); arr.push({id:gerarIdItemChecklist(), nome:nome}); setChecklistItens(arr);
+      render();
+    };
+    novoItemRow.appendChild(addBtn);
+    menuEd.appendChild(novoItemRow);
+    card.appendChild(menuEd);
+  }
+
+  main.appendChild(card);
+}
+
+// ══════════════════════════════════════════════════════
+// UI — HISTÓRICO DE PLANTÕES ANTERIORES
+// ══════════════════════════════════════════════════════
+var checklistHistoricoAberto = false;
+var checklistDataEscolhida = null;
+
+function renderChecklistHistorico(main){
+  var card = document.createElement('div'); card.className='card';
+  var toggle = document.createElement('div'); toggle.className='toggle-secao';
+  toggle.textContent = (checklistHistoricoAberto ? '▲' : '▼') + ' 📂 Histórico de plantões anteriores';
+  toggle.onclick = function(){ checklistHistoricoAberto = !checklistHistoricoAberto; render(); };
+  card.appendChild(toggle);
+
+  if (checklistHistoricoAberto) {
+    var dias = getChecklistDias();
+    var datasComRegistro = Object.keys(dias).filter(function(ds){ return ds !== checklistHojeStr(); }).sort().reverse();
+
+    if (datasComRegistro.length === 0) {
+      card.appendChild(el('div','itin-vazio','Nenhum plantão anterior registrado ainda.'));
+    } else {
+      var sel = document.createElement('select'); sel.className='chk-select-data';
+      var optVazia = document.createElement('option'); optVazia.value=''; optVazia.textContent='Escolha uma data...';
+      sel.appendChild(optVazia);
+      datasComRegistro.forEach(function(ds){
+        var opt = document.createElement('option'); opt.value=ds;
+        opt.textContent = new Date(ds+'T00:00:00').toLocaleDateString('pt-BR',{weekday:'long', day:'2-digit', month:'long', year:'numeric'});
+        if (ds===checklistDataEscolhida) opt.selected=true;
+        sel.appendChild(opt);
+      });
+      sel.onchange=function(){ checklistDataEscolhida=this.value||null; render(); };
+      card.appendChild(sel);
+
+      if (checklistDataEscolhida) {
+        var itens = getChecklistItens();
+        var diaEscolhido = dias[checklistDataEscolhida] || {};
+        itens.forEach(function(it){
+          var d = diaEscolhido[it.id];
+          if (!d) return;
+          var box = document.createElement('div'); box.className='chk-item';
+          if (d.ok === true) box.classList.add('chk-ok');
+          else if (d.ok === false) box.classList.add('chk-alerta');
+          var topo = document.createElement('div'); topo.className='chk-item-topo';
+          topo.appendChild(el('div','chk-item-nome', it.nome));
+          if (d.hora) topo.appendChild(el('div','chk-item-hora', new Date(d.hora).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})));
+          box.appendChild(topo);
+          var statusTxt = d.ok===true ? '✅ OK' : d.ok===false ? '⚠️ Alerta' : '— não marcado';
+          box.appendChild(el('div','chk-obs-leitura', statusTxt + (d.obs ? ' — '+d.obs : '')));
+          if (d.fotoNumero) box.appendChild(el('div','chk-foto-tag','📷 Foto nº '+d.fotoNumero));
+          card.appendChild(box);
+        });
+      }
+    }
+  }
+
+  main.appendChild(card);
+}
+
+// ══════════════════════════════════════════════════════
+// RENDER PRINCIPAL
+// ══════════════════════════════════════════════════════
+function render(){
+  var main = document.getElementById('main');
+  main.innerHTML = '';
+  renderChecklistHoje(main);
+  renderChecklistHistorico(main);
+}
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBNKjp7hLNK6mzAX2GK49WEZq-NKgQ9o5Y",
+  authDomain: "williamapp-31dff.firebaseapp.com",
+  projectId: "williamapp-31dff",
+  storageBucket: "williamapp-31dff.firebasestorage.app",
+  messagingSenderId: "171912065024",
+  appId: "1:171912065024:web:9c47f66f4b8e7fc727a8e5"
+};
+const ALLOWED_EMAIL = "marcelodossantosfc@gmail.com";
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
+const docChecklist = doc(db, "william", "checklist_data");
+
+let aplicandoRemoto = false;
+let pushTimer = null;
+let jaMigrou = false;
+
+function setDot(cor){ var d=document.getElementById('syncDot'); if(d) d.style.background=cor; }
+
+function fatiaMotoAtual(){
+  var s = loadState(); var fatia = {};
+  Object.keys(s).forEach(function(k){ if(pertenceAoChecklist(k)) fatia[k]=s[k]; });
+  return fatia;
+}
+function agendarPush(){
+  if(aplicandoRemoto) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(async function(){
+    try{
+      setDot('#d6a24a');
+      var fatia = fatiaMotoAtual();
+      fatia.lastModified = new Date().toISOString();
+      await setDoc(docChecklist, fatia);
+      setDot('#3fae5c');
+    }catch(e){
+      console.error('Erro ao sincronizar Checklist:', e);
+      setDot('#c94f4f');
+    }
+  }, 800);
+}
+function iniciarEscuta(){
+  onSnapshot(docChecklist, function(snap){
+    if(!snap.exists()) return;
+    var remoto = snap.data();
+    var local = loadState();
+    var mudou = false;
+    Object.keys(remoto).forEach(function(k){
+      if(pertenceAoChecklist(k) && JSON.stringify(local[k]) !== JSON.stringify(remoto[k])){
+        local[k] = remoto[k]; mudou = true;
+      }
+    });
+    if(mudou){
+      aplicandoRemoto = true;
+      saveState(local);
+      if(typeof render === 'function') render();
+      aplicandoRemoto = false;
+      setDot('#3fae5c');
+    }
+  }, function(err){
+    console.error('Erro de sincronização (Checklist):', err);
+    setDot('#c94f4f');
+  });
+}
+
+function mostrarLogin(){ document.getElementById('loginOverlay').style.display = 'flex'; }
+function esconderLogin(){ document.getElementById('loginOverlay').style.display = 'none'; }
+
+async function tentarLogin(){
+  var senha = document.getElementById('loginPass').value;
+  var errEl = document.getElementById('loginErro');
+  var btn = document.getElementById('loginBtn');
+  errEl.textContent = '';
+  if(!senha){ errEl.textContent = 'Digite a senha.'; return; }
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  try{
+    await setPersistence(auth, browserLocalPersistence);
+    await signInWithEmailAndPassword(auth, ALLOWED_EMAIL, senha);
+  }catch(e){
+    errEl.textContent = 'Senha incorreta.';
+  }
+  btn.disabled = false; btn.textContent = 'Entrar';
+}
+document.getElementById('loginBtn').addEventListener('click', tentarLogin);
+document.getElementById('loginPass').addEventListener('keydown', function(e){ if(e.key==='Enter') tentarLogin(); });
+
+onAuthStateChanged(auth, async function(user){
+  if(user && user.email === ALLOWED_EMAIL){
+    esconderLogin();
+    if(!jaMigrou){
+      jaMigrou = true;
+      render();
+      iniciarEscuta();
+    }
+  } else {
+    mostrarLogin();
+  }
+});
+
+var saveStateOriginal = window.saveState;
+window.saveState = function(s){
+  saveStateOriginal(s);
+  agendarPush();
+};
+</script>
+
+</body>
+</html>
