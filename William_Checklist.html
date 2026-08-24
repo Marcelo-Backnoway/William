@@ -180,6 +180,107 @@ if ('serviceWorker' in navigator) {
 var KEY = 'william_superapp_v1'; // mesma chave do SuperApp — dados ficam sincronizados
 var server = null; // sem conceito de servidor aqui — Moto é vida real, não jogo
 
+// ══════════════════════════════════════════════════════
+// UPLOAD AUTOMÁTICO DE FOTOS PARA O DRIVE (via Apps Script)
+// ══════════════════════════════════════════════════════
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwzYoTJ5K1Kfo3eWaMomQR-lI5PctlT_rVAg4SF8-z6K7D-JjbGBuxd-jndh0Zk67q-/exec';
+var uploadStatus = {}; // { itemId: {enviando:true, progresso:'2/5'} } — não persiste, só controla a tela
+
+// Nome exato da pasta no Drive pra cada item do checklist (bate com o que já existe em Checklist_BAHIA)
+var PASTA_POR_ITEM = {
+  portao: 'Cadeado',
+  sala1: 'Sala_1',
+  sala2: 'Sala_2',
+  sala3: 'Sala_3',
+  sala4: 'Sala_4',
+  sala5: 'Sala_5',
+  artes: 'Sala_Artes',
+  deficientes: 'Sala_R_Multif_',
+  refeitorio: 'Refeitorio',
+  banheiro_adapt: 'Banheiro_Adaptado',
+  portao_areia: 'Parque_Areia',
+  quadra_chaves: 'Quadra_de_Chaves' // ainda não existe no Drive — o Apps Script cria sozinho na primeira foto
+};
+function nomePastaDoItem(it){
+  return PASTA_POR_ITEM[it.id] || removerAcentos(it.nome).replace(/\s+/g,'_');
+}
+
+function removerAcentos(str){
+  return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+function letraDaSequencia(idx){
+  // 0 -> A, 1 -> B ... 25 -> Z, 26 -> AA, 27 -> AB ...
+  var letras = ''; var n = idx + 1;
+  while (n > 0) {
+    var resto = (n - 1) % 26;
+    letras = String.fromCharCode(65 + resto) + letras;
+    n = Math.floor((n - 1) / 26);
+  }
+  return letras;
+}
+function arquivoParaBase64(file){
+  return new Promise(function(resolve, reject){
+    var reader = new FileReader();
+    reader.onload = function(){ resolve(reader.result.split(',')[1]); };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function subirFotoParaWilliam(pastaNome, nomeArquivo, base64Data, mimeType){
+  // Content-Type text/plain evita o preflight CORS que o Apps Script não trata bem
+  return fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ folderName: pastaNome, fileName: nomeArquivo, base64Data: base64Data, mimeType: mimeType })
+  }).then(function(r){ return r.json(); }).then(function(res){
+    if (!res.sucesso) throw new Error(res.erro || 'erro desconhecido');
+    return res;
+  });
+}
+function abrirCameraParaItem(ds, it){
+  var input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment'; input.multiple = true;
+  input.style.display = 'none';
+  input.addEventListener('change', function(){
+    enviarFotosItem(ds, it, input.files);
+    document.body.removeChild(input);
+  });
+  document.body.appendChild(input);
+  input.click();
+}
+async function enviarFotosItem(ds, it, files){
+  if (!files || files.length === 0) return;
+  var d = getChecklistDia(ds)[it.id] || { ok:null, obs:'', fotoNumero:null, fotosEnviadas:0, hora:null };
+  var numero = d.fotoNumero;
+  if (!numero) { numero = reservarNumeroFoto(); setChecklistItemDia(ds, it.id, {fotoNumero:numero}); }
+  var jaEnviadas = d.fotosEnviadas || 0;
+  var pastaNome = nomePastaDoItem(it);
+
+  uploadStatus[it.id] = { enviando:true, progresso: '0/'+files.length };
+  render();
+
+  var sucesso = 0;
+  for (var i = 0; i < files.length; i++) {
+    uploadStatus[it.id].progresso = (i+1)+'/'+files.length;
+    render();
+    try {
+      var letra = letraDaSequencia(jaEnviadas + sucesso);
+      var nomeArquivo = numero + letra + '_' + pastaNome.replace(/\s+/g,'') + '.jpg';
+      var base64 = await arquivoParaBase64(files[i]);
+      await subirFotoParaWilliam(pastaNome, nomeArquivo, base64, files[i].type || 'image/jpeg');
+      sucesso++;
+    } catch(e) {
+      console.error('Falha ao enviar foto:', e);
+      alert('Falha ao enviar uma foto de "'+it.nome+'". As demais continuam. Erro: '+e.message);
+    }
+  }
+
+  delete uploadStatus[it.id];
+  setChecklistItemDia(ds, it.id, { fotoNumero:numero, fotosEnviadas: jaEnviadas + sucesso });
+  vibe([30]);
+  render();
+}
+
 function loadState() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) { return {}; } }
 function saveState(s) { try { s.lastModified = new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(s)); } catch(e) {} }
 
@@ -309,7 +410,7 @@ function setChecklistItemDia(ds, itemId, dados){
   var s = loadState();
   if (!s.checklistDias) s.checklistDias = {};
   if (!s.checklistDias[ds]) s.checklistDias[ds] = {};
-  var atual = s.checklistDias[ds][itemId] || { ok: null, obs: '', fotoNumero: null, hora: null };
+  var atual = s.checklistDias[ds][itemId] || { ok: null, obs: '', fotoNumero: null, fotosEnviadas: 0, hora: null };
   var novo = Object.assign({}, atual, dados, { hora: new Date().toISOString() });
   s.checklistDias[ds][itemId] = novo;
   saveState(s);
@@ -334,7 +435,7 @@ function renderChecklistHoje(main){
     card.appendChild(el('div','itin-vazio','Nenhum item cadastrado ainda. Abra "⚙️ Editar itens" abaixo pra começar.'));
   } else {
     itens.forEach(function(it){
-      var d = dia[it.id] || { ok:null, obs:'', fotoNumero:null, hora:null };
+      var d = dia[it.id] || { ok:null, obs:'', fotoNumero:null, fotosEnviadas:0, hora:null };
       var box = document.createElement('div'); box.className='chk-item';
       if (d.ok === true) box.classList.add('chk-ok');
       else if (d.ok === false) box.classList.add('chk-alerta');
@@ -365,22 +466,18 @@ function renderChecklistHoje(main){
       box.appendChild(obsRow);
 
       var fotoRow = document.createElement('div'); fotoRow.className='chk-foto-row';
-      if (d.fotoNumero) {
-        fotoRow.appendChild(el('div','chk-foto-tag','📷 Foto nº '+d.fotoNumero));
-        var btnNovaFoto = document.createElement('button'); btnNovaFoto.className='chk-btn-foto-mini'; btnNovaFoto.textContent='+ outra foto';
-        btnNovaFoto.onclick=function(){
-          var n = reservarNumeroFoto();
-          setChecklistItemDia(ds, it.id, {fotoNumero:n});
-          vibe([30]); render();
-        };
+      var statusUp = uploadStatus[it.id];
+      if (statusUp && statusUp.enviando) {
+        fotoRow.appendChild(el('div','chk-foto-tag','⏳ Enviando '+statusUp.progresso+'...'));
+      } else if (d.fotoNumero) {
+        var qtd = d.fotosEnviadas || 0;
+        fotoRow.appendChild(el('div','chk-foto-tag','📷 Nº '+d.fotoNumero+' — '+qtd+' foto(s) no Drive'));
+        var btnNovaFoto = document.createElement('button'); btnNovaFoto.className='chk-btn-foto-mini'; btnNovaFoto.textContent='+ mais fotos';
+        btnNovaFoto.onclick=function(){ abrirCameraParaItem(ds, it); };
         fotoRow.appendChild(btnNovaFoto);
       } else {
-        var btnFoto = document.createElement('button'); btnFoto.className='chk-btn-foto'; btnFoto.textContent='📷 Reservar número de foto';
-        btnFoto.onclick=function(){
-          var n = reservarNumeroFoto();
-          setChecklistItemDia(ds, it.id, {fotoNumero:n});
-          vibe([30]); render();
-        };
+        var btnFoto = document.createElement('button'); btnFoto.className='chk-btn-foto'; btnFoto.textContent='📷 Tirar fotos (envio automático)';
+        btnFoto.onclick=function(){ abrirCameraParaItem(ds, it); };
         fotoRow.appendChild(btnFoto);
       }
       box.appendChild(fotoRow);
@@ -471,7 +568,7 @@ function renderChecklistHistorico(main){
           box.appendChild(topo);
           var statusTxt = d.ok===true ? '✅ OK' : d.ok===false ? '⚠️ Alerta' : '— não marcado';
           box.appendChild(el('div','chk-obs-leitura', statusTxt + (d.obs ? ' — '+d.obs : '')));
-          if (d.fotoNumero) box.appendChild(el('div','chk-foto-tag','📷 Foto nº '+d.fotoNumero));
+          if (d.fotoNumero) box.appendChild(el('div','chk-foto-tag','📷 Foto nº '+d.fotoNumero+(d.fotosEnviadas?' — '+d.fotosEnviadas+' no Drive':'')));
           card.appendChild(box);
         });
       }
