@@ -223,16 +223,35 @@ function anexarMicrofone(inputEl, opts){
 // ══════════════════════════════════════════════════════
 var CHECKLIST_ITENS_DEFAULT = [
   {id:'portao', nome:'Portão'},
-  {id:'sala2', nome:'Sala Console 2'},
+  {id:'sala1', nome:'Sala 1'},
+  {id:'sala2', nome:'Sala 2'},
   {id:'sala3', nome:'Sala 3'},
   {id:'sala4', nome:'Sala 4'},
   {id:'sala5', nome:'Sala 5'},
   {id:'artes', nome:'Sala de Artes'},
-  {id:'deficientes', nome:'Sala de Deficientes'}
+  {id:'deficientes', nome:'Sala Recursos Multif.'},
+  {id:'refeitorio', nome:'Refeitório'},
+  {id:'banheiro_adapt', nome:'Banheiro Adaptado'},
+  {id:'portao_areia', nome:'Portão Parque de Areia'}
 ];
 function getChecklistItens(){
   var s = loadState();
   if (!s.checklistItens) { s.checklistItens = CHECKLIST_ITENS_DEFAULT.slice(); saveState(s); }
+  var mudou = false;
+  s.checklistItens.forEach(function(it){
+    if (it.id === 'deficientes' && it.nome !== 'Sala Recursos Multif.') { it.nome = 'Sala Recursos Multif.'; mudou = true; }
+    if (it.id === 'sala2' && it.nome !== 'Sala 2') { it.nome = 'Sala 2'; mudou = true; }
+  });
+  var ids = s.checklistItens.map(function(it){ return it.id; });
+  [
+    {id:'sala1', nome:'Sala 1'},
+    {id:'refeitorio', nome:'Refeitório'},
+    {id:'banheiro_adapt', nome:'Banheiro Adaptado'},
+    {id:'portao_areia', nome:'Portão Parque de Areia'}
+  ].forEach(function(novo){
+    if (ids.indexOf(novo.id)===-1) { s.checklistItens.push(novo); ids.push(novo.id); mudou = true; }
+  });
+  if (mudou) saveState(s);
   return s.checklistItens;
 }
 function setChecklistItens(itens){ var s=loadState(); s.checklistItens=itens; saveState(s); }
