@@ -232,7 +232,8 @@ var CHECKLIST_ITENS_DEFAULT = [
   {id:'deficientes', nome:'Sala Recursos Multif.'},
   {id:'refeitorio', nome:'Refeitório'},
   {id:'banheiro_adapt', nome:'Banheiro Adaptado'},
-  {id:'portao_areia', nome:'Portão Parque de Areia'}
+  {id:'portao_areia', nome:'Portão Parque de Areia'},
+  {id:'quadra_chaves', nome:'Quadra de Chaves'}
 ];
 function getChecklistItens(){
   var s = loadState();
@@ -247,10 +248,22 @@ function getChecklistItens(){
     {id:'sala1', nome:'Sala 1'},
     {id:'refeitorio', nome:'Refeitório'},
     {id:'banheiro_adapt', nome:'Banheiro Adaptado'},
-    {id:'portao_areia', nome:'Portão Parque de Areia'}
+    {id:'portao_areia', nome:'Portão Parque de Areia'},
+    {id:'quadra_chaves', nome:'Quadra de Chaves'}
   ].forEach(function(novo){
     if (ids.indexOf(novo.id)===-1) { s.checklistItens.push(novo); ids.push(novo.id); mudou = true; }
   });
+
+  // Reordena em ordem cronológica (Sala 1, 2, 3...) seguindo a ordem de referência abaixo
+  var ordemReferencia = ['portao','sala1','sala2','sala3','sala4','sala5','artes','deficientes','refeitorio','banheiro_adapt','portao_areia','quadra_chaves'];
+  var ordemAtual = s.checklistItens.map(function(it){ return it.id; }).join('|');
+  s.checklistItens.sort(function(a,b){
+    var ia = ordemReferencia.indexOf(a.id); if(ia===-1) ia=999;
+    var ib = ordemReferencia.indexOf(b.id); if(ib===-1) ib=999;
+    return ia - ib;
+  });
+  if (s.checklistItens.map(function(it){ return it.id; }).join('|') !== ordemAtual) mudou = true;
+
   if (mudou) saveState(s);
   return s.checklistItens;
 }
