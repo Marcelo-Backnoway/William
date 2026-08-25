@@ -231,7 +231,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('sw-index.js').catch(function(e){
+    navigator.serviceWorker.register('sw-index.js', { scope: './index.html' }).catch(function(e){
       console.warn('Service worker do índice não registrou (não crítico):', e);
     });
   });
