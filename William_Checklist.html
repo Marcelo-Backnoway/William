@@ -332,6 +332,21 @@ function mostrarEscolhaDeAmbiente(blobs){
   overlay.appendChild(caixa);
   document.body.appendChild(overlay);
 }
+function esperar(ms){
+  return new Promise(function(resolve){ setTimeout(resolve, ms); });
+}
+async function subirComRetentativa(pastaCaminho, nomeArquivo, base64, mimeType, tentativas){
+  var ultimoErro;
+  for (var t = 1; t <= tentativas; t++) {
+    try {
+      return await subirFotoParaWilliam(pastaCaminho, nomeArquivo, base64, mimeType);
+    } catch(e) {
+      ultimoErro = e;
+      if (t < tentativas) await esperar(1500 * t); // espera um pouco mais a cada nova tentativa
+    }
+  }
+  throw ultimoErro;
+}
 async function enviarFotosItem(ds, it, files){
   if (!files || files.length === 0) return;
   var d = getChecklistDia(ds)[it.id] || { ok:null, obs:'', fotoNumero:null, fotosEnviadas:0, hora:null, pastaLink:null };
@@ -353,12 +368,12 @@ async function enviarFotosItem(ds, it, files){
       var letra = letraDaSequencia(jaEnviadas + sucesso);
       var nomeArquivo = numero + letra + '_' + nomeAmbiente.replace(/\s+/g,'') + '.jpg';
       var base64 = await arquivoParaBase64(files[i]);
-      var resposta = await subirFotoParaWilliam(caminho, nomeArquivo, base64, files[i].type || 'image/jpeg');
+      var resposta = await subirComRetentativa(caminho, nomeArquivo, base64, files[i].type || 'image/jpeg', 3);
       linkPasta = resposta.pastaLink || linkPasta;
       sucesso++;
     } catch(e) {
-      console.error('Falha ao enviar foto:', e);
-      alert('Falha ao enviar uma foto de "'+it.nome+'". As demais continuam. Erro: '+e.message);
+      console.error('Falha ao enviar foto (após tentativas automáticas):', e);
+      alert('Não consegui enviar uma foto de "'+it.nome+'" mesmo após tentar 3 vezes — parece ser instabilidade de conexão. As demais fotos continuam sendo enviadas; essa aqui você pode reenviar depois compartilhando de novo pra esse ambiente.');
     }
   }
 
