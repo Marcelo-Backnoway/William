@@ -159,6 +159,8 @@
 .chk-escolha-item{background:#1e2140;color:#fff;border:1px solid #333;border-radius:10px;padding:12px;text-align:left;font-size:15px}
 .chk-escolha-item:active{background:#2a2d55}
 .chk-escolha-cancelar{width:100%;margin-top:14px;background:transparent;color:#999;border:1px solid #333;border-radius:10px;padding:10px}
+.chk-link-drive{display:inline-block;margin-top:6px;color:#7fd4a0;font-size:13px;text-decoration:none;border:1px solid #2a6a4a;border-radius:8px;padding:6px 10px}
+.chk-link-drive:active{background:#10241e}
 </style>
 </head>
 <body>
@@ -212,6 +214,19 @@ function nomePastaDoItem(it){
   return PASTA_POR_ITEM[it.id] || removerAcentos(it.nome).replace(/\s+/g,'_');
 }
 
+var MESES_PASTA = ['01_Janeiro','02_Fevereiro','03_Março','04_Abril','05_Maio','06_Junho','07_Julho','08_Agosto','09_Setembro','10_Outubro','11_Novembro','12_Dezembro'];
+function caminhoPastaPorData(dsISO, it){
+  var partes = dsISO.split('-'); // ['2026','08','24']
+  var mesIdx = parseInt(partes[1], 10) - 1;
+  var dia = partes[2];
+  return [ MESES_PASTA[mesIdx], dia, nomePastaDoItem(it) ];
+}
+
+function linkBuscaDrivePasta(it){
+  // fallback só usado em registros antigos que não têm pastaLink salvo
+  return 'https://drive.google.com/drive/search?q=' + encodeURIComponent(nomePastaDoItem(it));
+}
+
 function removerAcentos(str){
   return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 }
@@ -233,12 +248,12 @@ function arquivoParaBase64(file){
     reader.readAsDataURL(file);
   });
 }
-function subirFotoParaWilliam(pastaNome, nomeArquivo, base64Data, mimeType){
+function subirFotoParaWilliam(pastaCaminho, nomeArquivo, base64Data, mimeType){
   // Content-Type text/plain evita o preflight CORS que o Apps Script não trata bem
   return fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ folderName: pastaNome, fileName: nomeArquivo, base64Data: base64Data, mimeType: mimeType })
+    body: JSON.stringify({ pastaCaminho: pastaCaminho, fileName: nomeArquivo, base64Data: base64Data, mimeType: mimeType })
   }).then(function(r){ return r.json(); }).then(function(res){
     if (!res.sucesso) throw new Error(res.erro || 'erro desconhecido');
     return res;
@@ -319,24 +334,27 @@ function mostrarEscolhaDeAmbiente(blobs){
 }
 async function enviarFotosItem(ds, it, files){
   if (!files || files.length === 0) return;
-  var d = getChecklistDia(ds)[it.id] || { ok:null, obs:'', fotoNumero:null, fotosEnviadas:0, hora:null };
+  var d = getChecklistDia(ds)[it.id] || { ok:null, obs:'', fotoNumero:null, fotosEnviadas:0, hora:null, pastaLink:null };
   var numero = d.fotoNumero;
   if (!numero) { numero = reservarNumeroFoto(); setChecklistItemDia(ds, it.id, {fotoNumero:numero}); }
   var jaEnviadas = d.fotosEnviadas || 0;
-  var pastaNome = nomePastaDoItem(it);
+  var nomeAmbiente = nomePastaDoItem(it);
+  var caminho = caminhoPastaPorData(ds, it);
 
   uploadStatus[it.id] = { enviando:true, progresso: '0/'+files.length };
   render();
 
   var sucesso = 0;
+  var linkPasta = d.pastaLink || null;
   for (var i = 0; i < files.length; i++) {
     uploadStatus[it.id].progresso = (i+1)+'/'+files.length;
     render();
     try {
       var letra = letraDaSequencia(jaEnviadas + sucesso);
-      var nomeArquivo = numero + letra + '_' + pastaNome.replace(/\s+/g,'') + '.jpg';
+      var nomeArquivo = numero + letra + '_' + nomeAmbiente.replace(/\s+/g,'') + '.jpg';
       var base64 = await arquivoParaBase64(files[i]);
-      await subirFotoParaWilliam(pastaNome, nomeArquivo, base64, files[i].type || 'image/jpeg');
+      var resposta = await subirFotoParaWilliam(caminho, nomeArquivo, base64, files[i].type || 'image/jpeg');
+      linkPasta = resposta.pastaLink || linkPasta;
       sucesso++;
     } catch(e) {
       console.error('Falha ao enviar foto:', e);
@@ -345,7 +363,7 @@ async function enviarFotosItem(ds, it, files){
   }
 
   delete uploadStatus[it.id];
-  setChecklistItemDia(ds, it.id, { fotoNumero:numero, fotosEnviadas: jaEnviadas + sucesso });
+  setChecklistItemDia(ds, it.id, { fotoNumero:numero, fotosEnviadas: jaEnviadas + sucesso, pastaLink: linkPasta });
   vibe([30]);
   render();
 }
@@ -479,7 +497,7 @@ function setChecklistItemDia(ds, itemId, dados){
   var s = loadState();
   if (!s.checklistDias) s.checklistDias = {};
   if (!s.checklistDias[ds]) s.checklistDias[ds] = {};
-  var atual = s.checklistDias[ds][itemId] || { ok: null, obs: '', fotoNumero: null, fotosEnviadas: 0, hora: null };
+  var atual = s.checklistDias[ds][itemId] || { ok: null, obs: '', fotoNumero: null, fotosEnviadas: 0, hora: null, pastaLink: null };
   var novo = Object.assign({}, atual, dados, { hora: new Date().toISOString() });
   s.checklistDias[ds][itemId] = novo;
   saveState(s);
@@ -504,7 +522,7 @@ function renderChecklistHoje(main){
     card.appendChild(el('div','itin-vazio','Nenhum item cadastrado ainda. Abra "⚙️ Editar itens" abaixo pra começar.'));
   } else {
     itens.forEach(function(it){
-      var d = dia[it.id] || { ok:null, obs:'', fotoNumero:null, fotosEnviadas:0, hora:null };
+      var d = dia[it.id] || { ok:null, obs:'', fotoNumero:null, fotosEnviadas:0, hora:null, pastaLink:null };
       var box = document.createElement('div'); box.className='chk-item';
       if (d.ok === true) box.classList.add('chk-ok');
       else if (d.ok === false) box.classList.add('chk-alerta');
@@ -544,6 +562,8 @@ function renderChecklistHoje(main){
         var btnNovaFoto = document.createElement('button'); btnNovaFoto.className='chk-btn-foto-mini'; btnNovaFoto.textContent='+ mais fotos';
         btnNovaFoto.onclick=function(){ abrirCameraParaItem(ds, it); };
         fotoRow.appendChild(btnNovaFoto);
+        var linkDriveHoje = document.createElement('a'); linkDriveHoje.href = d.pastaLink || linkBuscaDrivePasta(it); linkDriveHoje.target = '_blank'; linkDriveHoje.rel = 'noopener'; linkDriveHoje.className = 'chk-link-drive'; linkDriveHoje.textContent = '📂 Ver no Drive';
+        fotoRow.appendChild(linkDriveHoje);
       } else {
         var btnFoto = document.createElement('button'); btnFoto.className='chk-btn-foto'; btnFoto.textContent='📷 Tirar fotos (envio automático)';
         btnFoto.onclick=function(){ abrirCameraParaItem(ds, it); };
@@ -638,6 +658,13 @@ function renderChecklistHistorico(main){
           var statusTxt = d.ok===true ? '✅ OK' : d.ok===false ? '⚠️ Alerta' : '— não marcado';
           box.appendChild(el('div','chk-obs-leitura', statusTxt + (d.obs ? ' — '+d.obs : '')));
           if (d.fotoNumero) box.appendChild(el('div','chk-foto-tag','📷 Foto nº '+d.fotoNumero+(d.fotosEnviadas?' — '+d.fotosEnviadas+' no Drive':'')));
+          if (d.fotoNumero) {
+            var linkDriveHist = document.createElement('a');
+            linkDriveHist.href = d.pastaLink || linkBuscaDrivePasta(it);
+            linkDriveHist.target = '_blank'; linkDriveHist.rel = 'noopener'; linkDriveHist.className = 'chk-link-drive';
+            linkDriveHist.textContent = d.pastaLink ? '📂 Ver fotos no Drive' : ('📂 Ver no Drive (procure pelo nº '+d.fotoNumero+')');
+            box.appendChild(linkDriveHist);
+          }
           card.appendChild(box);
         });
       }
