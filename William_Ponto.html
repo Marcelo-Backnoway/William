@@ -534,6 +534,7 @@ function gasDiasUsoRemoto(dadosAgenda){
 
 // ---------- Moto — km rodados desde a última troca, registrados manualmente no odômetro (Agenda) ----------
 var KM_INTERVALO_MOTO = 2800;
+var DIAS_LEMBRETE_PONTO = 3; // dias sem bater ponto até o app cobrar
 var MOTO_PLANTAO_INICIO = new Date(2026,6,2);
 var MOTO_FERIAS_INICIO='2026-09-28', MOTO_FERIAS_FIM='2026-10-28', MOTO_FOLGA_ESP='2026-11-19', MOTO_ANIVERSARIO='2026-11-22';
 function motoIsWorkDayRemoto(date){
@@ -642,6 +643,16 @@ function limparAdiamento(){
   localStorage.removeItem(ALERTA_SNOOZE_KEY);
 }
 
+// ---------- Ponto: dias desde o último registro (entrada ou saída), dado local deste app ----------
+function diasDesdeUltimoPonto(){
+  var d = window.__pontoGetData ? window.__pontoGetData() : null;
+  if (!d || !d.plantoes || !d.plantoes.length) return null;
+  var ultimo = d.plantoes[d.plantoes.length - 1];
+  var iso = ultimo.saida ? ultimo.saida.iso : ultimo.entrada.iso;
+  var dataUltimo = iso.split('T')[0];
+  return diasEntreGlobal(dataUltimo, new Date().toISOString().split('T')[0]);
+}
+
 async function verificarDataCriticaGlobal(){
   var dot = document.getElementById('syncDot');
   if (!dot) return;
@@ -711,6 +722,16 @@ async function verificarDataCriticaGlobal(){
         textosCriticos.push('🏍️ Moto: ' + motoStatus.diff.toFixed(1) + ' km rodados, hora de trocar o óleo!');
       } else if (motoStatus.diff >= KM_INTERVALO_MOTO - 200) {
         textosAmarelos.push('🏍️ Moto: ' + motoStatus.diff.toFixed(1) + ' km rodados, troca em breve');
+      }
+    }
+
+    // Ponto: lembrete de atividade — só cobra se passou do intervalo sem bater ponto
+    var diasSemPonto = diasDesdeUltimoPonto();
+    if (diasSemPonto !== null) {
+      if (diasSemPonto >= DIAS_LEMBRETE_PONTO) {
+        textosCriticos.push('🕐 Ponto: ' + diasSemPonto + ' dias sem bater ponto!');
+      } else if (diasSemPonto === DIAS_LEMBRETE_PONTO - 1) {
+        textosAmarelos.push('🕐 Ponto: sem bater ponto há ' + diasSemPonto + ' dia(s)');
       }
     }
 
