@@ -226,6 +226,7 @@ function diaEhTrabalho(ds){
 // TROCA DE ÓLEO E FILTRO
 // ══════════════════════════════════════════════════════
 var KM_INTERVALO = 2800;
+var DIAS_LEMBRETE_ODOMETRO = 3; // dias sem bater o odômetro até o app cobrar
 function getMoto(){
   var s=loadState(); var m=s.moto_oleo||[]; var mudou=false;
   for (var i=0;i<m.length;i++){
@@ -263,6 +264,11 @@ function getMotoKmStatus(){
   var estimado = getMotoKmAcumuladoEstimado();
   var kmEfetivo = atual.km + estimado;
   return { diff: kmEfetivo - historico[0].km, kmAtual: kmEfetivo, kmReal: atual.km, kmTroca: historico[0].km, atualizadoEm: atual.atualizadoEm, estimado: estimado };
+}
+function diasDesdeUltimaLeituraOdometro(){
+  var atual = getMotoKmAtual();
+  if (!atual) return null;
+  return diasEntre(atual.atualizadoEm, motoHojeStr());
 }
 function getMotoConferencias(){ var s=loadState(); return s.motoConferencias || []; }
 function setMotoConferencias(c){ var s=loadState(); s.motoConferencias=c; saveState(s); }
@@ -1192,6 +1198,16 @@ async function verificarDataCriticaGlobal(){
         textosCriticos.push('🏍️ Moto: ' + motoStatus.diff.toFixed(1) + ' km rodados, hora de trocar o óleo!');
       } else if (motoStatus.diff >= KM_INTERVALO - 200) {
         textosAmarelos.push('🏍️ Moto: ' + motoStatus.diff.toFixed(1) + ' km rodados, troca em breve');
+      }
+    }
+
+    // Moto: lembrete de odômetro — só cobra se passou do intervalo sem leitura nova
+    var diasSemLeitura = diasDesdeUltimaLeituraOdometro();
+    if (diasSemLeitura !== null) {
+      if (diasSemLeitura >= DIAS_LEMBRETE_ODOMETRO) {
+        textosCriticos.push('🏍️ Moto: ' + diasSemLeitura + ' dias sem bater o odômetro!');
+      } else if (diasSemLeitura === DIAS_LEMBRETE_ODOMETRO - 1) {
+        textosAmarelos.push('🏍️ Moto: odômetro sem atualizar há ' + diasSemLeitura + ' dia(s)');
       }
     }
 
