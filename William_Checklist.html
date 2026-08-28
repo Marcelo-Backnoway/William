@@ -134,6 +134,9 @@
   .chk-item { background: #0f0f1e; border: 2px solid #2a2a3a; border-radius: 14px; padding: 14px; margin-bottom: 10px; }
   .chk-item.chk-ok { border-color: #2d6a4f; background: #0f1a14; }
   .chk-item.chk-alerta { border-color: #ff5555; background: #1a0f0f; }
+  .chk-item.chk-sem-foto { border-style: dashed; border-color: #c8a96e; }
+  .chk-selo-verificado { display: inline-block; margin-left: 8px; font-size: 11px; font-weight: 700; color: #7fd4a0; background: #10241e; border: 1px solid #2a6a4a; border-radius: 6px; padding: 2px 7px; }
+  .chk-selo-sem-foto { display: inline-block; margin-left: 8px; font-size: 11px; font-weight: 700; color: #e8c96e; background: #241d10; border: 1px solid #c8a96e; border-radius: 6px; padding: 2px 7px; }
   .chk-item-topo { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
   .chk-item-nome { font-size: 16px; font-weight: 700; color: #e8e8e8; }
   .chk-item-hora { font-size: 12px; color: #888; }
@@ -541,9 +544,18 @@ function renderChecklistHoje(main){
       var box = document.createElement('div'); box.className='chk-item';
       if (d.ok === true) box.classList.add('chk-ok');
       else if (d.ok === false) box.classList.add('chk-alerta');
+      var marcado = (d.ok === true || d.ok === false);
+      var temFoto = !!d.fotoNumero;
+      if (marcado && !temFoto) box.classList.add('chk-sem-foto');
 
       var topo = document.createElement('div'); topo.className='chk-item-topo';
-      topo.appendChild(el('div','chk-item-nome', it.nome));
+      var nomeWrap = document.createElement('div');
+      nomeWrap.appendChild(el('div','chk-item-nome', it.nome));
+      if (marcado) {
+        if (temFoto) nomeWrap.appendChild(el('span','chk-selo-verificado','✔ verificado com foto'));
+        else nomeWrap.appendChild(el('span','chk-selo-sem-foto','📷 sem foto'));
+      }
+      topo.appendChild(nomeWrap);
       if (d.hora) {
         var horaFmt = new Date(d.hora).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
         topo.appendChild(el('div','chk-item-hora', horaFmt));
@@ -572,8 +584,7 @@ function renderChecklistHoje(main){
       if (statusUp && statusUp.enviando) {
         fotoRow.appendChild(el('div','chk-foto-tag','⏳ Enviando '+statusUp.progresso+'...'));
       } else if (d.fotoNumero) {
-        var qtd = d.fotosEnviadas || 0;
-        fotoRow.appendChild(el('div','chk-foto-tag','📷 Nº '+d.fotoNumero+' — '+qtd+' foto(s) no Drive'));
+        fotoRow.appendChild(el('div','chk-foto-tag','📷 Fotos enviadas'));
         var btnNovaFoto = document.createElement('button'); btnNovaFoto.className='chk-btn-foto-mini'; btnNovaFoto.textContent='+ mais fotos';
         btnNovaFoto.onclick=function(){ abrirCameraParaItem(ds, it); };
         fotoRow.appendChild(btnNovaFoto);
@@ -661,23 +672,32 @@ function renderChecklistHistorico(main){
         var itens = getChecklistItens();
         var diaEscolhido = dias[checklistDataEscolhida] || {};
         itens.forEach(function(it){
-          var d = diaEscolhido[it.id];
-          if (!d) return;
+          var d = diaEscolhido[it.id] || { ok:null, obs:'', fotoNumero:null, hora:null, pastaLink:null };
           var box = document.createElement('div'); box.className='chk-item';
           if (d.ok === true) box.classList.add('chk-ok');
           else if (d.ok === false) box.classList.add('chk-alerta');
+          var marcado = (d.ok === true || d.ok === false);
+          var temFoto = !!d.fotoNumero;
+          if (marcado && !temFoto) box.classList.add('chk-sem-foto');
+
           var topo = document.createElement('div'); topo.className='chk-item-topo';
-          topo.appendChild(el('div','chk-item-nome', it.nome));
+          var nomeWrap = document.createElement('div');
+          nomeWrap.appendChild(el('div','chk-item-nome', it.nome));
+          if (marcado) {
+            if (temFoto) nomeWrap.appendChild(el('span','chk-selo-verificado','✔ verificado com foto'));
+            else nomeWrap.appendChild(el('span','chk-selo-sem-foto','📷 sem foto'));
+          }
+          topo.appendChild(nomeWrap);
           if (d.hora) topo.appendChild(el('div','chk-item-hora', new Date(d.hora).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})));
           box.appendChild(topo);
-          var statusTxt = d.ok===true ? '✅ OK' : d.ok===false ? '⚠️ Alerta' : '— não marcado';
+          var statusTxt = d.ok===true ? '✅ OK' : d.ok===false ? '⚠️ Alerta' : '— não marcado nesse dia';
           box.appendChild(el('div','chk-obs-leitura', statusTxt + (d.obs ? ' — '+d.obs : '')));
-          if (d.fotoNumero) box.appendChild(el('div','chk-foto-tag','📷 Foto nº '+d.fotoNumero+(d.fotosEnviadas?' — '+d.fotosEnviadas+' no Drive':'')));
+          if (d.fotoNumero) box.appendChild(el('div','chk-foto-tag','📷 Fotos enviadas'));
           if (d.fotoNumero) {
             var linkDriveHist = document.createElement('a');
             linkDriveHist.href = d.pastaLink || linkBuscaDrivePasta(it);
             linkDriveHist.target = '_blank'; linkDriveHist.rel = 'noopener'; linkDriveHist.className = 'chk-link-drive';
-            linkDriveHist.textContent = d.pastaLink ? '📂 Ver fotos no Drive' : ('📂 Ver no Drive (procure pelo nº '+d.fotoNumero+')');
+            linkDriveHist.textContent = '📂 Ver fotos no Drive';
             box.appendChild(linkDriveHist);
           }
           card.appendChild(box);
