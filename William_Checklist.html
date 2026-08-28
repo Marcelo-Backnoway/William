@@ -150,6 +150,7 @@
   .chk-btn-foto { flex: 1; background: #2a2a55; border: none; border-radius: 10px; padding: 12px; font-size: 13px; font-weight: 700; color: #b7a6ff; cursor: pointer; font-family: inherit; }
   .chk-foto-tag { background: #241d10; border: 1px solid #c8a96e; border-radius: 8px; padding: 8px 12px; font-size: 13px; font-weight: 700; color: #e8c96e; }
   .chk-btn-foto-mini { background: none; border: none; color: #888; font-size: 11px; text-decoration: underline; cursor: pointer; font-family: inherit; }
+  .chk-foto-dica { font-size: 12px; color: #666; font-style: italic; }
   .chk-obs-leitura { font-size: 13px; color: #ccc; margin-bottom: 6px; }
   .chk-edit-linha { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
   .chk-edit-linha input { flex: 1; background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 9px; font-size: 13px; color: #e8e8e8; outline: none; font-family: inherit; }
@@ -345,7 +346,7 @@ async function subirComRetentativa(pastaCaminho, nomeArquivo, base64, mimeType, 
       return await subirFotoParaWilliam(pastaCaminho, nomeArquivo, base64, mimeType);
     } catch(e) {
       ultimoErro = e;
-      if (t < tentativas) await esperar(1500 * t); // espera um pouco mais a cada nova tentativa
+      if (t < tentativas) await esperar(Math.min(1500 * t, 6000)); // espera mais a cada nova tentativa, até um teto de 6s
     }
   }
   throw ultimoErro;
@@ -371,12 +372,12 @@ async function enviarFotosItem(ds, it, files){
       var letra = letraDaSequencia(jaEnviadas + sucesso);
       var nomeArquivo = numero + letra + '_' + nomeAmbiente.replace(/\s+/g,'') + '.jpg';
       var base64 = await arquivoParaBase64(files[i]);
-      var resposta = await subirComRetentativa(caminho, nomeArquivo, base64, files[i].type || 'image/jpeg', 3);
+      var resposta = await subirComRetentativa(caminho, nomeArquivo, base64, files[i].type || 'image/jpeg', 5);
       linkPasta = resposta.pastaLink || linkPasta;
       sucesso++;
     } catch(e) {
       console.error('Falha ao enviar foto (após tentativas automáticas):', e);
-      alert('Não consegui enviar uma foto de "'+it.nome+'" mesmo após tentar 3 vezes — parece ser instabilidade de conexão. As demais fotos continuam sendo enviadas; essa aqui você pode reenviar depois compartilhando de novo pra esse ambiente.');
+      alert('Não consegui enviar uma foto de "'+it.nome+'" mesmo após tentar 5 vezes — parece ser instabilidade de conexão. As demais fotos continuam sendo enviadas; essa aqui você pode reenviar depois compartilhando de novo pra esse ambiente.');
     }
   }
 
@@ -585,15 +586,10 @@ function renderChecklistHoje(main){
         fotoRow.appendChild(el('div','chk-foto-tag','⏳ Enviando '+statusUp.progresso+'...'));
       } else if (d.fotoNumero) {
         fotoRow.appendChild(el('div','chk-foto-tag','📷 Fotos enviadas'));
-        var btnNovaFoto = document.createElement('button'); btnNovaFoto.className='chk-btn-foto-mini'; btnNovaFoto.textContent='+ mais fotos';
-        btnNovaFoto.onclick=function(){ abrirCameraParaItem(ds, it); };
-        fotoRow.appendChild(btnNovaFoto);
         var linkDriveHoje = document.createElement('a'); linkDriveHoje.href = d.pastaLink || linkBuscaDrivePasta(it); linkDriveHoje.target = '_blank'; linkDriveHoje.rel = 'noopener'; linkDriveHoje.className = 'chk-link-drive'; linkDriveHoje.textContent = '📂 Ver no Drive';
         fotoRow.appendChild(linkDriveHoje);
       } else {
-        var btnFoto = document.createElement('button'); btnFoto.className='chk-btn-foto'; btnFoto.textContent='📷 Tirar fotos (envio automático)';
-        btnFoto.onclick=function(){ abrirCameraParaItem(ds, it); };
-        fotoRow.appendChild(btnFoto);
+        fotoRow.appendChild(el('div','chk-foto-dica','Envie fotos compartilhando da Galeria pra cá'));
       }
       box.appendChild(fotoRow);
 
