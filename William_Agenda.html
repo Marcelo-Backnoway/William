@@ -1101,6 +1101,7 @@ function limparAdiamento(){
 
 // ---------- Moto — agora mora no William_Moto.html; aqui só lemos remoto pro Pulso ----------
 var KM_INTERVALO_MOTO = 2800;
+var DIAS_LEMBRETE_ODOMETRO = 3; // dias sem atualizar o odômetro até o app cobrar (mesmo alerta do Moto)
 var MOTO_PLANTAO_INICIO = new Date(2026,6,2);
 var MOTO_FERIAS_INICIO='2026-09-28', MOTO_FERIAS_FIM='2026-10-28', MOTO_FOLGA_ESP='2026-11-19', MOTO_ANIVERSARIO='2026-11-22';
 function motoIsWorkDayRemoto(date){
@@ -1148,6 +1149,11 @@ function motoKmStatusRemoto(dadosMoto){
   Object.keys(diario).forEach(function(ds){ if(ds>atual.atualizadoEm){ estimado += motoKmDoDiaRemoto(ds, dadosMoto); } });
   return { diff: (atual.km+estimado) - historico[0].km };
 }
+function motoDiasSemLeituraRemoto(dadosMoto){
+  var atual = dadosMoto.motoKmAtual;
+  if (!atual) return null;
+  return diasEntre(atual.atualizadoEm, new Date().toISOString().split('T')[0]);
+}
 
 async function verificarDataCriticaGlobal(){
   var dot = document.getElementById('syncDot');
@@ -1170,9 +1176,14 @@ async function verificarDataCriticaGlobal(){
     var textosContas = getContasVencendoCriticas();
     // Moto: agora mora em William_Moto.html — busca remoto pro alerta
     var motoStatus = null;
+    var motoDiasSemLeitura = null;
     try {
       var snapMoto = await getDoc(doc(db, "william", "moto_data"));
-      if (snapMoto.exists()) motoStatus = motoKmStatusRemoto(snapMoto.data());
+      if (snapMoto.exists()) {
+        var dadosMoto = snapMoto.data();
+        motoStatus = motoKmStatusRemoto(dadosMoto);
+        motoDiasSemLeitura = motoDiasSemLeituraRemoto(dadosMoto);
+      }
     } catch(e) {}
 
     dot.classList.remove('dot-critico', 'dot-adiado', 'dot-perto-laranja', 'dot-perto-amarelo');
@@ -1213,6 +1224,15 @@ async function verificarDataCriticaGlobal(){
         textosCriticos.push('🏍️ Moto: ' + motoStatus.diff.toFixed(1) + ' km rodados, hora de trocar o óleo!');
       } else if (motoStatus.diff >= KM_INTERVALO_MOTO - 200) {
         textosAmarelos.push('🏍️ Moto: ' + motoStatus.diff.toFixed(1) + ' km rodados, troca em breve');
+      }
+    }
+
+    // Moto: lembrete de odômetro — mesmo alerta que aparece no próprio Moto
+    if (motoDiasSemLeitura !== null) {
+      if (motoDiasSemLeitura >= DIAS_LEMBRETE_ODOMETRO) {
+        textosCriticos.push('🏍️ Moto: ' + motoDiasSemLeitura + ' dias sem bater o odômetro!');
+      } else if (motoDiasSemLeitura === DIAS_LEMBRETE_ODOMETRO - 1) {
+        textosAmarelos.push('🏍️ Moto: odômetro sem atualizar há ' + motoDiasSemLeitura + ' dia(s)');
       }
     }
 
