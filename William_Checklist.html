@@ -134,6 +134,9 @@
   .chk-item { background: #0f0f1e; border: 2px solid #2a2a3a; border-radius: 14px; padding: 14px; margin-bottom: 10px; }
   .chk-item.chk-ok { border-color: #2d6a4f; background: #0f1a14; }
   .chk-item.chk-alerta { border-color: #ff5555; background: #1a0f0f; }
+  .chk-item.chk-sem-foto { border-style: dashed; border-color: #c8a96e; }
+  .chk-selo-verificado { display: inline-block; margin-left: 8px; font-size: 11px; font-weight: 700; color: #7fd4a0; background: #10241e; border: 1px solid #2a6a4a; border-radius: 6px; padding: 2px 7px; }
+  .chk-selo-sem-foto { display: inline-block; margin-left: 8px; font-size: 11px; font-weight: 700; color: #e8c96e; background: #241d10; border: 1px solid #c8a96e; border-radius: 6px; padding: 2px 7px; }
   .chk-item-topo { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
   .chk-item-nome { font-size: 16px; font-weight: 700; color: #e8e8e8; }
   .chk-item-hora { font-size: 12px; color: #888; }
@@ -152,6 +155,16 @@
   .chk-edit-linha input { flex: 1; background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 9px; font-size: 13px; color: #e8e8e8; outline: none; font-family: inherit; }
   .chk-edit-del { background: none; border: none; font-size: 16px; cursor: pointer; padding: 4px 8px; }
   .chk-select-data { width: 100%; background: #1a1a2e; border: 1px solid #333; border-radius: 10px; padding: 11px; font-size: 13px; color: #e8e8e8; outline: none; font-family: inherit; margin-bottom: 12px; }
+  .chk-foto-dica { font-size: 12px; color: #666; font-style: italic; }
+.chk-link-drive{display:inline-block;margin-top:6px;color:#7fd4a0;font-size:13px;text-decoration:none;border:1px solid #2a6a4a;border-radius:8px;padding:6px 10px}
+.chk-link-drive:active{background:#10241e}
+.chk-overlay-escolha{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}
+.chk-caixa-escolha{background:#141428;border-radius:14px;padding:20px;max-width:420px;width:100%;max-height:80vh;overflow-y:auto}
+.chk-escolha-titulo{font-size:16px;font-weight:600;margin-bottom:14px;color:#fff}
+.chk-escolha-lista{display:flex;flex-direction:column;gap:8px}
+.chk-escolha-item{background:#1e2140;color:#fff;border:1px solid #333;border-radius:10px;padding:12px;text-align:left;font-size:15px}
+.chk-escolha-item:active{background:#2a2d55}
+.chk-escolha-cancelar{width:100%;margin-top:14px;background:transparent;color:#999;border:1px solid #333;border-radius:10px;padding:10px}
 </style>
 </head>
 <body>
@@ -179,6 +192,200 @@ if ('serviceWorker' in navigator) {
 
 var KEY = 'william_superapp_v1'; // mesma chave do SuperApp — dados ficam sincronizados
 var server = null; // sem conceito de servidor aqui — Moto é vida real, não jogo
+
+// ══════════════════════════════════════════════════════
+// UPLOAD AUTOMÁTICO DE FOTOS PARA O DRIVE (via Apps Script)
+// ══════════════════════════════════════════════════════
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwzYoTJ5K1Kfo3eWaMomQR-lI5PctlT_rVAg4SF8-z6K7D-JjbGBuxd-jndh0Zk67q-/exec';
+var uploadStatus = {}; // { itemId: {enviando:true, progresso:'2/5'} } — não persiste, só controla a tela
+
+// Nome exato da pasta no Drive pra cada item do checklist (bate com o que já existe em Checklist_BAHIA)
+var PASTA_POR_ITEM = {
+  portao: 'Cadeado',
+  sala1: 'Sala_1',
+  sala2: 'Sala_2',
+  sala3: 'Sala_3',
+  sala4: 'Sala_4',
+  sala5: 'Sala_5',
+  artes: 'Sala_Artes',
+  deficientes: 'Sala_R_Multif_',
+  refeitorio: 'Refeitorio',
+  banheiro_adapt: 'Banheiro_Adaptado',
+  portao_areia: 'Parque_Areia',
+  quadra_chaves: 'Quadra_de_Chaves' // ainda não existe no Drive — o Apps Script cria sozinho na primeira foto
+};
+function nomePastaDoItem(it){
+  return PASTA_POR_ITEM[it.id] || removerAcentos(it.nome).replace(/\s+/g,'_');
+}
+
+var MESES_PASTA = ['01_Janeiro','02_Fevereiro','03_Março','04_Abril','05_Maio','06_Junho','07_Julho','08_Agosto','09_Setembro','10_Outubro','11_Novembro','12_Dezembro'];
+function caminhoPastaPorData(dsISO, it){
+  var partes = dsISO.split('-'); // ['2026','08','24']
+  var mesIdx = parseInt(partes[1], 10) - 1;
+  var dia = partes[2];
+  return [ MESES_PASTA[mesIdx], dia, nomePastaDoItem(it) ];
+}
+
+function linkBuscaDrivePasta(it){
+  // fallback só usado em registros antigos que não têm pastaLink salvo
+  return 'https://drive.google.com/drive/search?q=' + encodeURIComponent(nomePastaDoItem(it));
+}
+
+function removerAcentos(str){
+  return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+function letraDaSequencia(idx){
+  // 0 -> A, 1 -> B ... 25 -> Z, 26 -> AA, 27 -> AB ...
+  var letras = ''; var n = idx + 1;
+  while (n > 0) {
+    var resto = (n - 1) % 26;
+    letras = String.fromCharCode(65 + resto) + letras;
+    n = Math.floor((n - 1) / 26);
+  }
+  return letras;
+}
+function arquivoParaBase64(file){
+  return new Promise(function(resolve, reject){
+    var reader = new FileReader();
+    reader.onload = function(){ resolve(reader.result.split(',')[1]); };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function subirFotoParaWilliam(pastaCaminho, nomeArquivo, base64Data, mimeType){
+  // Content-Type text/plain evita o preflight CORS que o Apps Script não trata bem
+  return fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ pastaCaminho: pastaCaminho, fileName: nomeArquivo, base64Data: base64Data, mimeType: mimeType })
+  }).then(function(r){ return r.json(); }).then(function(res){
+    if (!res.sucesso) throw new Error(res.erro || 'erro desconhecido');
+    return res;
+  });
+}
+function abrirCameraParaItem(ds, it){
+  var input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment'; input.multiple = true;
+  input.style.display = 'none';
+  input.addEventListener('change', function(){
+    enviarFotosItem(ds, it, input.files);
+    document.body.removeChild(input);
+  });
+  document.body.appendChild(input);
+  input.click();
+}
+
+// ══════════════════════════════════════════════════════
+// RECEBER FOTOS COMPARTILHADAS DA GALERIA (Web Share Target)
+// ══════════════════════════════════════════════════════
+function verificarFotosCompartilhadas(){
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('compartilhado') !== '1') return;
+
+  // limpa o parâmetro da URL pra não repetir se a pessoa atualizar a página
+  window.history.replaceState({}, '', window.location.pathname);
+
+  if (!('caches' in window)) return;
+
+  caches.open('checklist-compartilhado').then(function(cache){
+    return cache.keys().then(function(chaves){
+      var chavesFotos = chaves.filter(function(req){ return req.url.indexOf('__compartilhado-foto-') !== -1; });
+      if (chavesFotos.length === 0) return;
+
+      Promise.all(chavesFotos.map(function(req){
+        return cache.match(req).then(function(resp){ return resp.blob(); });
+      })).then(function(blobs){
+        chavesFotos.forEach(function(req){ cache.delete(req); });
+        mostrarEscolhaDeAmbiente(blobs);
+      });
+    });
+  });
+}
+
+function mostrarEscolhaDeAmbiente(blobs){
+  var itens = getChecklistItens();
+  var ds = checklistHojeStr();
+
+  var overlay = document.createElement('div');
+  overlay.className = 'chk-overlay-escolha';
+
+  var caixa = document.createElement('div');
+  caixa.className = 'chk-caixa-escolha';
+  caixa.appendChild(el('div','chk-escolha-titulo', '📷 '+blobs.length+' foto(s) recebida(s) — de qual ambiente?'));
+
+  var lista = document.createElement('div');
+  lista.className = 'chk-escolha-lista';
+  itens.forEach(function(it){
+    var btn = document.createElement('button');
+    btn.className = 'chk-escolha-item';
+    btn.textContent = it.nome;
+    btn.onclick = function(){
+      document.body.removeChild(overlay);
+      enviarFotosItem(ds, it, blobs);
+    };
+    lista.appendChild(btn);
+  });
+  caixa.appendChild(lista);
+
+  var btnCancelar = document.createElement('button');
+  btnCancelar.className = 'chk-escolha-cancelar';
+  btnCancelar.textContent = 'Cancelar';
+  btnCancelar.onclick = function(){ document.body.removeChild(overlay); };
+  caixa.appendChild(btnCancelar);
+
+  overlay.appendChild(caixa);
+  document.body.appendChild(overlay);
+}
+function esperar(ms){
+  return new Promise(function(resolve){ setTimeout(resolve, ms); });
+}
+async function subirComRetentativa(pastaCaminho, nomeArquivo, base64, mimeType, tentativas){
+  var ultimoErro;
+  for (var t = 1; t <= tentativas; t++) {
+    try {
+      return await subirFotoParaWilliam(pastaCaminho, nomeArquivo, base64, mimeType);
+    } catch(e) {
+      ultimoErro = e;
+      if (t < tentativas) await esperar(Math.min(1500 * t, 6000)); // espera mais a cada nova tentativa, até um teto de 6s
+    }
+  }
+  throw ultimoErro;
+}
+async function enviarFotosItem(ds, it, files){
+  if (!files || files.length === 0) return;
+  var d = getChecklistDia(ds)[it.id] || { ok:null, obs:'', fotoNumero:null, fotosEnviadas:0, hora:null, pastaLink:null };
+  var numero = d.fotoNumero;
+  if (!numero) { numero = reservarNumeroFoto(); setChecklistItemDia(ds, it.id, {fotoNumero:numero}); }
+  var jaEnviadas = d.fotosEnviadas || 0;
+  var nomeAmbiente = nomePastaDoItem(it);
+  var caminho = caminhoPastaPorData(ds, it);
+
+  uploadStatus[it.id] = { enviando:true, progresso: '0/'+files.length };
+  render();
+
+  var sucesso = 0;
+  var linkPasta = d.pastaLink || null;
+  for (var i = 0; i < files.length; i++) {
+    uploadStatus[it.id].progresso = (i+1)+'/'+files.length;
+    render();
+    try {
+      var letra = letraDaSequencia(jaEnviadas + sucesso);
+      var nomeArquivo = numero + letra + '_' + nomeAmbiente.replace(/\s+/g,'') + '.jpg';
+      var base64 = await arquivoParaBase64(files[i]);
+      var resposta = await subirComRetentativa(caminho, nomeArquivo, base64, files[i].type || 'image/jpeg', 5);
+      linkPasta = resposta.pastaLink || linkPasta;
+      sucesso++;
+    } catch(e) {
+      console.error('Falha ao enviar foto (após tentativas automáticas):', e);
+      alert('Não consegui enviar uma foto de "'+it.nome+'" mesmo após tentar 5 vezes — parece ser instabilidade de conexão. As demais fotos continuam sendo enviadas; essa aqui você pode reenviar depois compartilhando de novo pra esse ambiente.');
+    }
+  }
+
+  delete uploadStatus[it.id];
+  setChecklistItemDia(ds, it.id, { fotoNumero:numero, fotosEnviadas: jaEnviadas + sucesso, pastaLink: linkPasta });
+  vibe([30]);
+  render();
+}
 
 function loadState() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) { return {}; } }
 function saveState(s) { try { s.lastModified = new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(s)); } catch(e) {} }
@@ -309,7 +516,7 @@ function setChecklistItemDia(ds, itemId, dados){
   var s = loadState();
   if (!s.checklistDias) s.checklistDias = {};
   if (!s.checklistDias[ds]) s.checklistDias[ds] = {};
-  var atual = s.checklistDias[ds][itemId] || { ok: null, obs: '', fotoNumero: null, hora: null };
+  var atual = s.checklistDias[ds][itemId] || { ok: null, obs: '', fotoNumero: null, fotosEnviadas: 0, hora: null, pastaLink: null };
   var novo = Object.assign({}, atual, dados, { hora: new Date().toISOString() });
   s.checklistDias[ds][itemId] = novo;
   saveState(s);
@@ -334,13 +541,22 @@ function renderChecklistHoje(main){
     card.appendChild(el('div','itin-vazio','Nenhum item cadastrado ainda. Abra "⚙️ Editar itens" abaixo pra começar.'));
   } else {
     itens.forEach(function(it){
-      var d = dia[it.id] || { ok:null, obs:'', fotoNumero:null, hora:null };
+      var d = dia[it.id] || { ok:null, obs:'', fotoNumero:null, fotosEnviadas:0, hora:null, pastaLink:null };
       var box = document.createElement('div'); box.className='chk-item';
       if (d.ok === true) box.classList.add('chk-ok');
       else if (d.ok === false) box.classList.add('chk-alerta');
+      var marcado = (d.ok === true || d.ok === false);
+      var temFoto = !!d.fotoNumero;
+      if (marcado && !temFoto) box.classList.add('chk-sem-foto');
 
       var topo = document.createElement('div'); topo.className='chk-item-topo';
-      topo.appendChild(el('div','chk-item-nome', it.nome));
+      var nomeWrap = document.createElement('div');
+      nomeWrap.appendChild(el('div','chk-item-nome', it.nome));
+      if (marcado) {
+        if (temFoto) nomeWrap.appendChild(el('span','chk-selo-verificado','✔ verificado com foto'));
+        else nomeWrap.appendChild(el('span','chk-selo-sem-foto','📷 sem foto'));
+      }
+      topo.appendChild(nomeWrap);
       if (d.hora) {
         var horaFmt = new Date(d.hora).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
         topo.appendChild(el('div','chk-item-hora', horaFmt));
@@ -365,23 +581,15 @@ function renderChecklistHoje(main){
       box.appendChild(obsRow);
 
       var fotoRow = document.createElement('div'); fotoRow.className='chk-foto-row';
-      if (d.fotoNumero) {
-        fotoRow.appendChild(el('div','chk-foto-tag','📷 Foto nº '+d.fotoNumero));
-        var btnNovaFoto = document.createElement('button'); btnNovaFoto.className='chk-btn-foto-mini'; btnNovaFoto.textContent='+ outra foto';
-        btnNovaFoto.onclick=function(){
-          var n = reservarNumeroFoto();
-          setChecklistItemDia(ds, it.id, {fotoNumero:n});
-          vibe([30]); render();
-        };
-        fotoRow.appendChild(btnNovaFoto);
+      var statusUp = uploadStatus[it.id];
+      if (statusUp && statusUp.enviando) {
+        fotoRow.appendChild(el('div','chk-foto-tag','⏳ Enviando '+statusUp.progresso+'...'));
+      } else if (d.fotoNumero) {
+        fotoRow.appendChild(el('div','chk-foto-tag','📷 Fotos enviadas'));
+        var linkDriveHoje = document.createElement('a'); linkDriveHoje.href = d.pastaLink || linkBuscaDrivePasta(it); linkDriveHoje.target = '_blank'; linkDriveHoje.rel = 'noopener'; linkDriveHoje.className = 'chk-link-drive'; linkDriveHoje.textContent = '📂 Ver no Drive';
+        fotoRow.appendChild(linkDriveHoje);
       } else {
-        var btnFoto = document.createElement('button'); btnFoto.className='chk-btn-foto'; btnFoto.textContent='📷 Reservar número de foto';
-        btnFoto.onclick=function(){
-          var n = reservarNumeroFoto();
-          setChecklistItemDia(ds, it.id, {fotoNumero:n});
-          vibe([30]); render();
-        };
-        fotoRow.appendChild(btnFoto);
+        fotoRow.appendChild(el('div','chk-foto-dica','Envie fotos compartilhando da Galeria pra cá'));
       }
       box.appendChild(fotoRow);
 
@@ -460,18 +668,34 @@ function renderChecklistHistorico(main){
         var itens = getChecklistItens();
         var diaEscolhido = dias[checklistDataEscolhida] || {};
         itens.forEach(function(it){
-          var d = diaEscolhido[it.id];
-          if (!d) return;
+          var d = diaEscolhido[it.id] || { ok:null, obs:'', fotoNumero:null, hora:null, pastaLink:null };
           var box = document.createElement('div'); box.className='chk-item';
           if (d.ok === true) box.classList.add('chk-ok');
           else if (d.ok === false) box.classList.add('chk-alerta');
+          var marcado = (d.ok === true || d.ok === false);
+          var temFoto = !!d.fotoNumero;
+          if (marcado && !temFoto) box.classList.add('chk-sem-foto');
+
           var topo = document.createElement('div'); topo.className='chk-item-topo';
-          topo.appendChild(el('div','chk-item-nome', it.nome));
+          var nomeWrap = document.createElement('div');
+          nomeWrap.appendChild(el('div','chk-item-nome', it.nome));
+          if (marcado) {
+            if (temFoto) nomeWrap.appendChild(el('span','chk-selo-verificado','✔ verificado com foto'));
+            else nomeWrap.appendChild(el('span','chk-selo-sem-foto','📷 sem foto'));
+          }
+          topo.appendChild(nomeWrap);
           if (d.hora) topo.appendChild(el('div','chk-item-hora', new Date(d.hora).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})));
           box.appendChild(topo);
           var statusTxt = d.ok===true ? '✅ OK' : d.ok===false ? '⚠️ Alerta' : '— não marcado';
           box.appendChild(el('div','chk-obs-leitura', statusTxt + (d.obs ? ' — '+d.obs : '')));
-          if (d.fotoNumero) box.appendChild(el('div','chk-foto-tag','📷 Foto nº '+d.fotoNumero));
+          if (d.fotoNumero) box.appendChild(el('div','chk-foto-tag','📷 Fotos enviadas'));
+          if (d.fotoNumero) {
+            var linkDriveHist = document.createElement('a');
+            linkDriveHist.href = d.pastaLink || linkBuscaDrivePasta(it);
+            linkDriveHist.target = '_blank'; linkDriveHist.rel = 'noopener'; linkDriveHist.className = 'chk-link-drive';
+            linkDriveHist.textContent = '📂 Ver fotos no Drive';
+            box.appendChild(linkDriveHist);
+          }
           card.appendChild(box);
         });
       }
@@ -886,6 +1110,7 @@ onAuthStateChanged(auth, async function(user){
       render();
       iniciarEscuta();
       iniciarChecagemDataCritica();
+      verificarFotosCompartilhadas();
     }
   } else {
     mostrarLogin();
