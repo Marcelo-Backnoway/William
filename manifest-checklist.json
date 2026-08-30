@@ -2,7 +2,7 @@
   "name": "William Checklist",
   "short_name": "W. Checklist",
   "start_url": "William_Checklist.html",
-  "scope": "William_Checklist",
+  "scope": "./William_Checklist",
   "display": "standalone",
   "background_color": "#0a0a14",
   "theme_color": "#0a0a14",
