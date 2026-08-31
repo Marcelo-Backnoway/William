@@ -2,6 +2,7 @@
   "name": "Onde Está",
   "short_name": "Onde Está",
   "start_url": "./William_OndeEsta.html",
+  "scope": "./William_OndeEsta",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#12141c",
@@ -9,5 +10,15 @@
   "icons": [
     { "src": "icon-ondeesta-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icon-ondeesta-512.png", "sizes": "512x512", "type": "image/png" }
-  ]
+  ],
+  "share_target": {
+    "action": "William_OndeEsta.html",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        { "name": "photos", "accept": ["image/*"] }
+      ]
+    }
+  }
 }

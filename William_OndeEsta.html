@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Onde Está</title>
+<link rel="manifest" href="manifest-ondeesta.json">
 <style>
   :root{
     --ink:#12141c; --ink-2:#1b1f2b; --ink-3:#242938; --paper:#e9e6dd;
@@ -370,7 +371,7 @@ function saveState(s){
     return false;
   }
 }
-function pertenceAoOndeEsta(k){ return k === 'onde_esta_registros'; }
+function pertenceAoOndeEsta(k){ return k === 'onde_esta_registros' || k === 'onde_esta_proximo_numero_foto'; }
 
 const Storage = {
   async getAll(){
@@ -407,6 +408,211 @@ function toast(msg){
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2200);
 }
+
+/* ============================================================
+   FOTOS COMPARTILHADAS DA GALERIA → UPLOAD AUTOMÁTICO PRO DRIVE
+   Mesmo Apps Script já usado pelo Checklist (genérico: recebe um
+   caminho de pastas + arquivo, cria as pastas sozinho se precisar).
+   As fotos do Onde Está ficam num galho próprio dentro do mesmo
+   Drive raiz: OndeEsta / <título do registro> / fotos.
+   ============================================================ */
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwzYoTJ5K1Kfo3eWaMomQR-lI5PctlT_rVAg4SF8-z6K7D-JjbGBuxd-jndh0Zk67q-/exec';
+
+function removerAcentos(str){
+  return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+function nomePastaRegistro(entry){
+  var base = removerAcentos(getPergunta(entry) || 'sem_titulo').trim();
+  base = base.replace(/[^\w\s-]/g,'').replace(/\s+/g,'_');
+  return (base || 'registro').slice(0, 60);
+}
+function caminhoPastaRegistro(entry){
+  return ['OndeEsta', nomePastaRegistro(entry)];
+}
+function letraDaSequencia(idx){
+  var letras = ''; var n = idx + 1;
+  while (n > 0) {
+    var resto = (n - 1) % 26;
+    letras = String.fromCharCode(65 + resto) + letras;
+    n = Math.floor((n - 1) / 26);
+  }
+  return letras;
+}
+function arquivoParaBase64(file){
+  return new Promise(function(resolve, reject){
+    var reader = new FileReader();
+    reader.onload = function(){ resolve(reader.result.split(',')[1]); };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function subirFotoParaWilliam(pastaCaminho, nomeArquivo, base64Data, mimeType){
+  return fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ pastaCaminho: pastaCaminho, fileName: nomeArquivo, base64Data: base64Data, mimeType: mimeType })
+  }).then(function(r){ return r.json(); }).then(function(res){
+    if (!res.sucesso) throw new Error(res.erro || 'erro desconhecido');
+    return res;
+  });
+}
+function esperar(ms){
+  return new Promise(function(resolve){ setTimeout(resolve, ms); });
+}
+async function subirComRetentativa(pastaCaminho, nomeArquivo, base64, mimeType, tentativas){
+  var ultimoErro;
+  for (var t = 1; t <= tentativas; t++) {
+    try {
+      return await subirFotoParaWilliam(pastaCaminho, nomeArquivo, base64, mimeType);
+    } catch(e) {
+      ultimoErro = e;
+      if (t < tentativas) await esperar(Math.min(1500 * t, 6000));
+    }
+  }
+  throw ultimoErro;
+}
+
+// Contador global de fotos — mesma ideia do "[📷 foto N]" que já existia,
+// guardado junto do resto do estado do Onde Está (sincroniza como tudo mais).
+function reservarNumeroFoto(){
+  const s = loadState();
+  const proximo = (s.onde_esta_proximo_numero_foto || 0) + 1;
+  s.onde_esta_proximo_numero_foto = proximo;
+  saveState(s);
+  if(window.agendarPush) window.agendarPush();
+  return proximo;
+}
+
+async function enviarFotosParaRegistro(entry, files){
+  if (!files || files.length === 0) return;
+  var caminho = caminhoPastaRegistro(entry);
+  var nomeBase = nomePastaRegistro(entry);
+  var numero = reservarNumeroFoto();
+
+  toast('📤 Enviando ' + files.length + ' foto(s)...');
+
+  var sucesso = 0;
+  var tags = [];
+  for (var i = 0; i < files.length; i++) {
+    try {
+      var letra = files.length > 1 ? letraDaSequencia(i) : '';
+      var nomeArquivo = numero + letra + '_' + nomeBase + '.jpg';
+      var base64 = await arquivoParaBase64(files[i]);
+      await subirComRetentativa(caminho, nomeArquivo, base64, files[i].type || 'image/jpeg', 5);
+      tags.push('[📷 foto ' + numero + (letra || '') + ']');
+      sucesso++;
+    } catch(e) {
+      console.error('Falha ao enviar foto (após tentativas automáticas):', e);
+    }
+  }
+
+  if (sucesso > 0) {
+    var items = await Storage.getAll();
+    var atual = items.find(function(i){ return i.id === entry.id; });
+    if (atual) {
+      var respostaAtual = getResposta(atual);
+      atual.resposta = (respostaAtual ? respostaAtual + '\n' : '') + tags.join(' ');
+      atual.atualizadoEm = new Date().toISOString();
+      await Storage.save(atual);
+    }
+    vibe([30]);
+    render();
+  }
+
+  if (sucesso < files.length) {
+    alert('Não consegui enviar ' + (files.length - sucesso) + ' de ' + files.length + ' foto(s), mesmo após tentar várias vezes — parece instabilidade de conexão. Pode compartilhar de novo pra esse mesmo registro depois.');
+  } else {
+    toast('✅ Foto(s) guardada(s) em "' + getPergunta(entry) + '"');
+  }
+}
+
+/* ============================================================
+   RECEBER FOTOS COMPARTILHADAS DA GALERIA (Web Share Target)
+   ============================================================ */
+function verificarFotosCompartilhadas(){
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('compartilhado') !== '1') return;
+
+  window.history.replaceState({}, '', window.location.pathname);
+  if (!('caches' in window)) return;
+
+  caches.open('ondeesta-compartilhado').then(function(cache){
+    return cache.keys().then(function(chaves){
+      var chavesFotos = chaves.filter(function(req){ return req.url.indexOf('__compartilhado-foto-') !== -1; });
+      if (chavesFotos.length === 0) return;
+
+      Promise.all(chavesFotos.map(function(req){
+        return cache.match(req).then(function(resp){ return resp.blob(); });
+      })).then(function(blobs){
+        chavesFotos.forEach(function(req){ cache.delete(req); });
+        mostrarEscolhaDeRegistro(blobs);
+      });
+    });
+  });
+}
+
+async function mostrarEscolhaDeRegistro(blobs){
+  var todos = await Storage.getAll();
+
+  var overlay = document.createElement('div');
+  overlay.className = 'overlay show';
+
+  var caixa = document.createElement('div');
+  caixa.className = 'modal';
+  caixa.innerHTML =
+    '<h2 class="ui">📷 ' + blobs.length + ' foto(s) recebida(s)</h2>' +
+    '<div class="sub">De qual registro é essa foto? Ou crie um novo.</div>' +
+    '<div class="search-box" style="margin-bottom:14px;">' +
+      '<input type="text" id="escolhaNovaPergunta" placeholder="+ Criar novo registro (digite o título)">' +
+    '</div>' +
+    '<button class="add-fab" id="btnEscolhaCriarNovo" style="position:static;width:100%;border-radius:10px;height:44px;font-size:14px;font-weight:600;margin-bottom:16px;">Criar e usar esse título</button>' +
+    '<div class="section-title">OU ESCOLHA UM JÁ EXISTENTE</div>' +
+    '<div id="escolhaLista" style="max-height:40vh;overflow-y:auto;"></div>' +
+    '<button class="ui" id="btnEscolhaCancelar" style="width:100%;background:var(--ink-3);border:1px solid var(--line);color:var(--paper);border-radius:10px;padding:12px;margin-top:14px;font-size:14px;cursor:pointer;">Cancelar</button>';
+
+  var lista = caixa.querySelector('#escolhaLista');
+  if(todos.length === 0){
+    lista.innerHTML = '<div class="empty-state">Nenhum registro ainda — crie um novo acima.</div>';
+  } else {
+    todos.forEach(function(it){
+      var div = document.createElement('div');
+      div.className = 'item';
+      div.innerHTML = '<div class="item-texto">' + escapeHtml(getPergunta(it)) + '</div>';
+      div.onclick = function(){
+        document.body.removeChild(overlay);
+        enviarFotosParaRegistro(it, blobs);
+      };
+      lista.appendChild(div);
+    });
+  }
+
+  caixa.querySelector('#btnEscolhaCriarNovo').onclick = async function(){
+    var titulo = caixa.querySelector('#escolhaNovaPergunta').value.trim();
+    if(!titulo){ alert('Digite um título pro novo registro.'); return; }
+    var now = new Date().toISOString();
+    var novoEntry = {
+      id: 'reg_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      pergunta: titulo,
+      resposta: '',
+      apelidos: [],
+      tipo: 'prática',
+      isSenha: false,
+      criadoEm: now,
+      atualizadoEm: now,
+      historico: []
+    };
+    await Storage.save(novoEntry);
+    document.body.removeChild(overlay);
+    enviarFotosParaRegistro(novoEntry, blobs);
+  };
+  caixa.querySelector('#btnEscolhaCancelar').onclick = function(){
+    document.body.removeChild(overlay);
+  };
+
+  overlay.appendChild(caixa);
+  document.body.appendChild(overlay);
+}
+function vibe(p){ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){} }
 
 /* ============================================================
    MODELO DE DADOS — compatibilidade com registros antigos
@@ -1094,6 +1300,7 @@ onAuthStateChanged(auth, async function(user){
       jaIniciou = true;
       iniciarEscuta();
       iniciarChecagemDataCritica();
+      verificarFotosCompartilhadas();
     }
   } else {
     mostrarLogin();
@@ -1144,6 +1351,7 @@ function gasDiasUsoRemoto(dadosAgenda){
 
 // ---------- Moto — km rodados desde a última troca, registrados manualmente no odômetro (Agenda) ----------
 var KM_INTERVALO_MOTO = 2800;
+var DIAS_LEMBRETE_ODOMETRO = 3; // dias sem atualizar o odômetro até o app cobrar (mesmo alerta do Moto)
 var MOTO_PLANTAO_INICIO = new Date(2026,6,2);
 var MOTO_FERIAS_INICIO='2026-09-28', MOTO_FERIAS_FIM='2026-10-28', MOTO_FOLGA_ESP='2026-11-19', MOTO_ANIVERSARIO='2026-11-22';
 function motoIsWorkDayRemoto(date){
@@ -1190,6 +1398,11 @@ function motoKmStatusRemoto(dadosAgenda){
   var estimado = 0;
   Object.keys(diario).forEach(function(ds){ if(ds>atual.atualizadoEm){ estimado += motoKmDoDiaRemoto(ds, dadosAgenda); } });
   return { diff: (atual.km+estimado) - historico[0].km };
+}
+function motoDiasSemLeituraRemoto(dadosMoto){
+  var atual = dadosMoto.motoKmAtual;
+  if (!atual) return null;
+  return diasEntreGlobal(atual.atualizadoEm, new Date().toISOString().split('T')[0]);
 }
 
 // ---------- Contas — checa vencimento do mês real de hoje, comparando com o campo "pago" ----------
@@ -1280,7 +1493,11 @@ async function verificarDataCriticaGlobal(){
     } catch(e) {}
     try {
       var snapMoto = await getDoc(doc(db, "william", "moto_data"));
-      if (snapMoto.exists()) motoStatus = motoKmStatusRemoto(snapMoto.data());
+      if (snapMoto.exists()) {
+        var dadosMoto = snapMoto.data();
+        motoStatus = motoKmStatusRemoto(dadosMoto);
+        var motoDiasSemLeitura = motoDiasSemLeituraRemoto(dadosMoto);
+      }
     } catch(e) {}
 
     dot.classList.remove('dot-critico', 'dot-adiado', 'dot-perto-laranja', 'dot-perto-amarelo');
@@ -1321,6 +1538,15 @@ async function verificarDataCriticaGlobal(){
         textosCriticos.push('🏍️ Moto: ' + motoStatus.diff.toFixed(1) + ' km rodados, hora de trocar o óleo!');
       } else if (motoStatus.diff >= KM_INTERVALO_MOTO - 200) {
         textosAmarelos.push('🏍️ Moto: ' + motoStatus.diff.toFixed(1) + ' km rodados, troca em breve');
+      }
+    }
+
+    // Moto: lembrete de odômetro — mesmo alerta que aparece no próprio Moto
+    if (motoDiasSemLeitura !== null && motoDiasSemLeitura !== undefined) {
+      if (motoDiasSemLeitura >= DIAS_LEMBRETE_ODOMETRO) {
+        textosCriticos.push('🏍️ Moto: ' + motoDiasSemLeitura + ' dias sem bater o odômetro!');
+      } else if (motoDiasSemLeitura === DIAS_LEMBRETE_ODOMETRO - 1) {
+        textosAmarelos.push('🏍️ Moto: odômetro sem atualizar há ' + motoDiasSemLeitura + ' dia(s)');
       }
     }
 
@@ -1368,6 +1594,13 @@ function iniciarChecagemDataCritica(){
   setInterval(verificarDataCriticaGlobal, 30000);
   document.addEventListener('visibilitychange', function(){
     if (!document.hidden) verificarDataCriticaGlobal();
+  });
+}
+</script>
+<script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw-ondeesta.js', { scope: './William_OndeEsta' }).catch(function(e){
+    console.warn('Service worker do Onde Está não registrou:', e);
   });
 }
 </script>
