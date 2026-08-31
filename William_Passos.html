@@ -129,6 +129,20 @@ button.ghost { border: 1px solid #c8a96e; color: #c8a96e; background: transparen
     <div id="historicoLista"><div class="hist-empty">Nenhum dia registrado ainda.</div></div>
   </div>
 
+  <div class="card">
+    <div class="card-title">Adicionar dia anterior</div>
+    <div class="sub" style="font-size:12px;color:#888;margin-bottom:10px;">Pra corrigir um dia que passou sem o app ter avisado (ex: primeira instalação, cache limpo).</div>
+    <div class="config-row" style="margin-bottom:10px;">
+      <label>Data</label>
+      <input type="date" id="manualData">
+    </div>
+    <div class="display-panel" style="margin-bottom:10px;">
+      <div class="display-label">passos daquele dia</div>
+      <input id="manualInput" type="text" inputmode="numeric" placeholder="0000" maxlength="6" />
+    </div>
+    <button class="primary" id="btnManualRegistrar">Salvar esse dia</button>
+  </div>
+
 </div>
 
 <div class="lembrete-bg" id="lembreteBg">
@@ -352,6 +366,48 @@ function renderHistorico(){
       '<div class="hist-diff">' + sinal + r.diferenca.toLocaleString('pt-BR') + ' (' + sinal + r.percentual + '%)</div></div>';
   }).join('');
 }
+
+// ══════════════════════════════════════════════════════
+// ADICIONAR DIA ANTERIOR — correção manual pra qualquer
+// data passada (útil logo após instalar, ou depois de um
+// cache limpo, quando ainda não existe histórico pra
+// detectar a virada sozinha).
+// ══════════════════════════════════════════════════════
+var manualData = document.getElementById('manualData');
+var manualInput = document.getElementById('manualInput');
+
+manualData.max = hojeStr(); // não deixa escolher hoje nem o futuro — hoje usa o registro normal
+
+manualInput.addEventListener('input', function(){
+  var somenteDigitos = manualInput.value.replace(/\D/g,'').slice(0,6);
+  manualInput.value = somenteDigitos === '' ? '' : Number(somenteDigitos).toLocaleString('pt-BR');
+});
+
+document.getElementById('btnManualRegistrar').addEventListener('click', function(){
+  var ds = manualData.value;
+  if(!ds){ alert('Escolhe a data daquele dia.'); return; }
+  if(ds >= hojeStr()){ alert('Pra hoje, usa o campo de registro normal ali em cima.'); return; }
+  var valor = valorNumerico(manualInput.value);
+  if(!valor || valor <= 0){ alert('Digite um número de passos válido.'); return; }
+
+  var jaExiste = dados.registros.find(function(r){ return r.data === ds; });
+  if(jaExiste){
+    var confirmaSubstituir = confirm('Já existe um registro pra ' + formatarDataCurta(ds) + '. Substituir?');
+    if(!confirmaSubstituir) return;
+    dados.registros = dados.registros.filter(function(r){ return r.data !== ds; });
+  }
+
+  var meta = dados.meta;
+  var diferenca = valor - meta;
+  var percentual = Math.round((diferenca/meta)*1000)/10;
+  dados.registros.push({ data: ds, passos: valor, meta: meta, diferenca: diferenca, percentual: percentual });
+  ordenarRegistros();
+  dados.pendencias = dados.pendencias.filter(function(p){ return p !== ds; });
+  saveState(dados);
+  push();
+  manualInput.value = '';
+  renderTudo();
+});
 
 // ══════════════════════════════════════════════════════
 // CATCH-UP — dia(s) que passaram sem registro
