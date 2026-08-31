@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🚶 William Passos</title>
+<link rel="manifest" href="manifest-passos.json">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a14; color: #e8e8e8; min-height: 100vh; }
+
+.topbar { background: #111122; border-bottom: 1px solid #2a2a3a; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.topbar h1 { font-size: 12px; color: #c8a96e; letter-spacing: 1px; font-weight: 700; }
+
+.container { padding: 10px; max-width: 480px; margin: 0 auto; padding-bottom: 50px; }
+
+.card { background: #141424; border: 1px solid #2a2a3a; border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+.card-title { font-size: 11px; font-weight: 700; color: #c8a96e; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
+
+/* meta */
+.meta-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+.meta-btn { border: 1px solid #333; background: #1a1a2e; color: #e8e8e8; border-radius: 10px; padding: 10px 4px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.meta-btn.active { background: #c8a96e; border-color: #c8a96e; color: #111; }
+
+/* configuração do horário */
+.config-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.config-row label { font-size: 12px; color: #888; }
+.config-row input[type=time] { background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 8px 10px; font-size: 14px; color: #e8e8e8; outline: none; font-family: inherit; }
+.config-row input[type=time]:focus { border-color: #c8a96e; }
+
+/* display digital */
+.display-panel { background: #0d1712; border: 1px solid #1d3a2c; border-radius: 12px; padding: 18px 14px; text-align: center; margin-bottom: 12px; }
+.display-label { color: #5FA98A; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px; }
+input#passosInput { width: 100%; background: transparent; border: none; outline: none; color: #7CF2B0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 44px; font-weight: 700; letter-spacing: .03em; text-align: center; font-variant-numeric: tabular-nums; }
+input#passosInput::placeholder { color: #2E4F3E; font-size: 22px; letter-spacing: normal; }
+input#passosInput:disabled { color: #3F6350; }
+
+button.primary { width: 100%; background: #c8a96e; color: #111; border: none; border-radius: 12px; padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; }
+button.primary:disabled { background: #3a3a44; color: #777; cursor: not-allowed; }
+button.primary:active:not(:disabled) { transform: scale(0.98); }
+button.ghost { border: 1px solid #c8a96e; color: #c8a96e; background: transparent; border-radius: 10px; padding: 10px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+.ja-registrado { text-align: center; font-size: 12px; color: #888; margin-top: 10px; }
+
+/* feedback */
+.feedback { border-radius: 10px; padding: 12px; font-size: 13px; line-height: 1.45; margin-top: 10px; }
+.feedback.acima { background: #0f1a14; color: #74c69d; border: 1px solid #2d6a4f; }
+.feedback.abaixo { background: #1a1608; color: #e8c547; border: 1px solid #4a3a10; }
+
+/* histórico */
+.hist-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #0f0f1e; border-radius: 10px; margin-bottom: 7px; border: 1px solid #2a2a3a; border-left: 4px solid #2a2a3a; }
+.hist-item.acima { border-left-color: #2d6a4f; }
+.hist-item.abaixo { border-left-color: #e8c547; }
+.hist-item.semreg { border-left-color: #555; }
+.hist-left { display: flex; align-items: center; gap: 10px; }
+.hist-date { font-size: 12px; color: #888; min-width: 42px; }
+.hist-steps { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hist-diff { font-size: 12px; color: #888; font-variant-numeric: tabular-nums; }
+.hist-empty { font-size: 13px; color: #666; text-align: center; padding: 10px 0; }
+
+/* catch-up */
+.catchup-card { border: 1px solid #4a3a10; background: #1a1608; }
+.catchup-text { font-size: 13px; color: #e8c547; margin-bottom: 12px; }
+.catchup-row { display: flex; gap: 8px; }
+.catchup-row button { flex: 1; }
+
+/* lembrete overlay */
+.lembrete-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: none; align-items: center; justify-content: center; z-index: 500; padding: 20px; }
+.lembrete-bg.show { display: flex; }
+.lembrete-box { background: #141420; border: 1px solid #333; border-radius: 16px; padding: 22px 20px; width: 100%; max-width: 320px; text-align: center; }
+.lembrete-box .icone { font-size: 30px; margin-bottom: 10px; }
+.lembrete-box h3 { font-size: 15px; margin-bottom: 6px; }
+.lembrete-box .sub { font-size: 12px; color: #888; margin-bottom: 18px; line-height: 1.4; }
+.lembrete-row { display: flex; flex-direction: column; gap: 8px; }
+.lembrete-dispensar { background: none; border: 1px solid #444; color: #999; border-radius: 10px; padding: 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+/* login (mesmo padrão do resto do ecossistema) */
+#loginOverlay { display:none; position:fixed; inset:0; background:#0a0a14; z-index:999; align-items:center; justify-content:center; padding:20px; }
+
+#syncDot { position: fixed; bottom: 14px; right: 14px; z-index: 998; width: 10px; height: 10px; border-radius: 50%; background: #555; transition: all 0.25s ease; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>🚶 WILLIAM — PASSOS</h1>
+</div>
+
+<div class="container" id="main">
+
+  <div class="card catchup-card" id="catchupCard" style="display:none;">
+    <div class="card-title">Dia sem registro</div>
+    <div class="catchup-text" id="catchupText"></div>
+    <div class="display-panel" style="margin-bottom:10px;">
+      <div class="display-label">passos daquele dia</div>
+      <input id="catchupInput" type="text" inputmode="numeric" placeholder="0000" maxlength="6" />
+    </div>
+    <div class="catchup-row">
+      <button class="primary" id="btnCatchupRegistrar">Registrar esse dia</button>
+      <button class="ghost" id="btnCatchupSemRegistro">Sem registro</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Meta atual</div>
+    <div class="meta-grid" id="metaGrid"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Lembrete perto da meia-noite</div>
+    <div class="config-row">
+      <label>Horário do lembrete</label>
+      <input type="time" id="horarioLembreteInput">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Registrar passos do dia</div>
+    <div class="display-panel">
+      <div class="display-label">passos de hoje</div>
+      <input id="passosInput" type="text" inputmode="numeric" placeholder="0000" maxlength="6" />
+    </div>
+    <button class="primary" id="btnRegistrar">Registrar</button>
+    <div class="ja-registrado" id="jaRegistradoMsg" style="display:none;">Já registrado hoje.</div>
+    <div id="feedbackArea"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Histórico</div>
+    <div id="historicoLista"><div class="hist-empty">Nenhum dia registrado ainda.</div></div>
+  </div>
+
+</div>
+
+<div class="lembrete-bg" id="lembreteBg">
+  <div class="lembrete-box">
+    <div class="icone">🔔</div>
+    <h3>Passos de hoje ainda não registrados</h3>
+    <div class="sub">Confere o total no contador do celular e digita aqui no William Passos.</div>
+    <div class="lembrete-row">
+      <button class="primary" id="btnLembreteRegistrar">Registrar agora</button>
+      <button class="lembrete-dispensar" id="btnLembreteDispensar">Agora não</button>
+    </div>
+  </div>
+</div>
+
+<div id="loginOverlay">
+  <div style="width:100%;max-width:320px;text-align:center;">
+    <h2 style="font-size:16px;color:#c8a96e;letter-spacing:1px;margin-bottom:6px;">⚔ WILLIAM</h2>
+    <p style="font-size:12px;color:#666;margin-bottom:18px;">Entrar neste aparelho (só uma vez)</p>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <input type="text" id="codigoAcesso" name="entrada_codigo" placeholder="Código de acesso" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+        style="flex:1;background:#141424;border:1px solid #333;border-radius:10px;padding:12px;font-size:14px;color:#e8e8e8;outline:none;font-family:inherit;-webkit-text-security:disc;text-security:disc;">
+    </div>
+    <button id="loginBtn" style="width:100%;background:#c8a96e;color:#111;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Entrar</button>
+    <div id="loginErr" style="font-size:11px;color:#ff6666;margin-top:10px;min-height:14px;"></div>
+  </div>
+</div>
+
+<div id="syncDot" title="Sincronizado"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// ESTADO LOCAL — mesmo padrão do resto do ecossistema
+// ══════════════════════════════════════════════════════
+var KEY = 'william_passos_v1';
+var METAS = [4000,4500,5000,5500,6000,6500,7000,7500,8000,8500,9000,9500,10000];
+var LEMBRETE_REPETE_MS = 3 * 60 * 1000; // fixo — NÃO é o soneca de 30min dos outros alertas
+var LEMBRETE_SNOOZE_KEY = 'william_passos_lembrete_proxima';
+
+function hojeStr(){ return new Date().toISOString().slice(0,10); }
+function horaAtualStr(){ var d = new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+function formatarDataCurta(ds){ var p = ds.split('-'); return p[2]+'/'+p[1]; }
+
+function loadState(){
+  try{
+    var s = JSON.parse(localStorage.getItem(KEY));
+    if(!s) throw 0;
+    if(!s.registros) s.registros = [];
+    if(!s.pendencias) s.pendencias = [];
+    if(!s.meta) s.meta = 4000;
+    if(!s.horarioLembrete) s.horarioLembrete = '23:55';
+    if(!s.ultimaChecagemDia) s.ultimaChecagemDia = hojeStr();
+    return s;
+  }catch(e){
+    return { meta: 4000, registros: [], pendencias: [], horarioLembrete: '23:55', ultimaChecagemDia: hojeStr() };
+  }
+}
+function saveState(s){
+  s.lastModified = new Date().toISOString();
+  localStorage.setItem(KEY, JSON.stringify(s));
+}
+
+var dados = loadState();
+
+function push(){ if(typeof window.agendarPush === 'function') window.agendarPush(); }
+
+function valorNumerico(texto){ return parseInt(String(texto).replace(/\D/g,''), 10); }
+
+function ordenarRegistros(){
+  dados.registros.sort(function(a,b){ return new Date(a.data) - new Date(b.data); });
+}
+
+// ══════════════════════════════════════════════════════
+// VIRADA DE DIA — detecta dias que passaram sem registro
+// desde a última vez que o app foi aberto/checado, e
+// enfileira pra pergunta de catch-up (nunca fica em branco
+// silenciosamente).
+// ══════════════════════════════════════════════════════
+function processarVirada(){
+  var hoje = hojeStr();
+  var ultimo = dados.ultimaChecagemDia || hoje;
+  if(ultimo === hoje) return false;
+  var cursor = new Date(ultimo + 'T00:00:00');
+  var fim = new Date(hoje + 'T00:00:00');
+  while(cursor < fim){
+    var ds = cursor.toISOString().slice(0,10);
+    var jaTem = dados.registros.some(function(r){ return r.data === ds; });
+    if(!jaTem && dados.pendencias.indexOf(ds) === -1){
+      dados.pendencias.push(ds);
+    }
+    cursor.setDate(cursor.getDate()+1);
+  }
+  dados.ultimaChecagemDia = hoje;
+  return true; // o dia rolou — ultimaChecagemDia mudou e precisa ser salvo, mesmo sem novas pendências
+}
+
+function diaRegistradoHoje(){
+  var hoje = hojeStr();
+  return dados.registros.some(function(r){ return r.data === hoje && typeof r.passos === 'number'; });
+}
+
+// ══════════════════════════════════════════════════════
+// UI — meta
+// ══════════════════════════════════════════════════════
+var metaGrid = document.getElementById('metaGrid');
+function renderMetaGrid(){
+  metaGrid.innerHTML = '';
+  METAS.forEach(function(m){
+    var b = document.createElement('button');
+    b.className = 'meta-btn' + (m === dados.meta ? ' active' : '');
+    b.textContent = m.toLocaleString('pt-BR');
+    b.addEventListener('click', function(){
+      dados.meta = m;
+      saveState(dados);
+      push();
+      renderMetaGrid();
+    });
+    metaGrid.appendChild(b);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// UI — horário do lembrete
+// ══════════════════════════════════════════════════════
+var horarioInput = document.getElementById('horarioLembreteInput');
+horarioInput.addEventListener('change', function(){
+  if(!horarioInput.value) return;
+  dados.horarioLembrete = horarioInput.value;
+  saveState(dados);
+  push();
+});
+
+// ══════════════════════════════════════════════════════
+// UI — registro do dia
+// ══════════════════════════════════════════════════════
+var passosInput = document.getElementById('passosInput');
+var btnRegistrar = document.getElementById('btnRegistrar');
+var jaRegistradoMsg = document.getElementById('jaRegistradoMsg');
+var feedbackArea = document.getElementById('feedbackArea');
+
+passosInput.addEventListener('input', function(){
+  var somenteDigitos = passosInput.value.replace(/\D/g,'').slice(0,6);
+  passosInput.value = somenteDigitos === '' ? '' : Number(somenteDigitos).toLocaleString('pt-BR');
+});
+
+function renderControlesRegistro(){
+  if(diaRegistradoHoje()){
+    passosInput.disabled = true;
+    btnRegistrar.disabled = true;
+    jaRegistradoMsg.style.display = 'block';
+    var reg = dados.registros.slice().reverse().find(function(r){ return r.data === hojeStr(); });
+    if(reg && typeof reg.passos === 'number'){
+      passosInput.value = reg.passos.toLocaleString('pt-BR');
+      mostrarFeedback(reg);
+    }
+  } else {
+    passosInput.disabled = false;
+    btnRegistrar.disabled = false;
+    jaRegistradoMsg.style.display = 'none';
+  }
+}
+
+btnRegistrar.addEventListener('click', function(){
+  if(diaRegistradoHoje()) return;
+  var valor = valorNumerico(passosInput.value);
+  if(!valor || valor <= 0){
+    feedbackArea.innerHTML = '<div class="feedback abaixo">Digite um número de passos válido.</div>';
+    return;
+  }
+  var meta = dados.meta;
+  var diferenca = valor - meta;
+  var percentual = Math.round((diferenca/meta)*1000)/10;
+  var registro = { data: hojeStr(), passos: valor, meta: meta, diferenca: diferenca, percentual: percentual };
+  dados.registros.push(registro);
+  ordenarRegistros();
+  saveState(dados);
+  push();
+  pararLembrete();
+  mostrarFeedback(registro);
+  renderControlesRegistro();
+  renderHistorico();
+});
+
+function mostrarFeedback(registro){
+  if(registro.diferenca >= 0){
+    var extra = registro.diferenca > 0
+      ? ' ' + registro.diferenca.toLocaleString('pt-BR') + ' passos acima da meta (+' + registro.percentual + '%).'
+      : ' Bateu a meta certinha.';
+    feedbackArea.innerHTML = '<div class="feedback acima">Hoje você se superou.' + extra + '</div>';
+    return;
+  }
+  var registrados = dados.registros.filter(function(r){ return typeof r.passos === 'number'; });
+  var idx = registrados.indexOf(registro);
+  var ultimos3 = registrados.slice(Math.max(0, idx-2), idx+1);
+  var media = ultimos3.reduce(function(s,r){ return s+r.passos; }, 0) / ultimos3.length;
+  var diffMedia = media - registro.meta;
+  var percMedia = Math.round((diffMedia/registro.meta)*1000)/10;
+  var msg = 'Hoje ficou ' + Math.abs(registro.diferenca).toLocaleString('pt-BR') + ' passos abaixo da meta (' + registro.percentual + '%). ' +
+    'Média dos últimos ' + ultimos3.length + ' dia' + (ultimos3.length>1?'s':'') + ': ' + Math.round(media).toLocaleString('pt-BR') + ' passos — ' +
+    percMedia + '% em relação à meta de ' + registro.meta.toLocaleString('pt-BR') + '.';
+  feedbackArea.innerHTML = '<div class="feedback abaixo">' + msg + '</div>';
+}
+
+// ══════════════════════════════════════════════════════
+// UI — histórico
+// ══════════════════════════════════════════════════════
+function renderHistorico(){
+  var lista = document.getElementById('historicoLista');
+  if(dados.registros.length === 0){
+    lista.innerHTML = '<div class="hist-empty">Nenhum dia registrado ainda.</div>';
+    return;
+  }
+  lista.innerHTML = dados.registros.slice().reverse().map(function(r){
+    if(r.semRegistro){
+      return '<div class="hist-item semreg"><div class="hist-left"><span class="hist-date">' + formatarDataCurta(r.data) + '</span>' +
+        '<span class="hist-steps" style="color:#777;font-weight:400;">sem registro</span></div></div>';
+    }
+    var classe = r.diferenca >= 0 ? 'acima' : 'abaixo';
+    var sinal = r.diferenca >= 0 ? '+' : '';
+    return '<div class="hist-item ' + classe + '"><div class="hist-left"><span class="hist-date">' + formatarDataCurta(r.data) + '</span>' +
+      '<span class="hist-steps">' + r.passos.toLocaleString('pt-BR') + '</span></div>' +
+      '<div class="hist-diff">' + sinal + r.diferenca.toLocaleString('pt-BR') + ' (' + sinal + r.percentual + '%)</div></div>';
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════
+// CATCH-UP — dia(s) que passaram sem registro
+// ══════════════════════════════════════════════════════
+var catchupCard = document.getElementById('catchupCard');
+var catchupText = document.getElementById('catchupText');
+var catchupInput = document.getElementById('catchupInput');
+
+catchupInput.addEventListener('input', function(){
+  var somenteDigitos = catchupInput.value.replace(/\D/g,'').slice(0,6);
+  catchupInput.value = somenteDigitos === '' ? '' : Number(somenteDigitos).toLocaleString('pt-BR');
+});
+
+function renderCatchup(){
+  if(dados.pendencias.length === 0){
+    catchupCard.style.display = 'none';
+    return;
+  }
+  var ds = dados.pendencias[0];
+  catchupCard.style.display = 'block';
+  catchupText.textContent = formatarDataCurta(ds) + ' passou sem registro. Quer digitar o total daquele dia agora, ou marcar como sem registro?';
+  catchupInput.value = '';
+}
+
+document.getElementById('btnCatchupRegistrar').addEventListener('click', function(){
+  var ds = dados.pendencias[0];
+  var valor = valorNumerico(catchupInput.value);
+  if(!valor || valor <= 0){ alert('Digite um número de passos válido pra esse dia.'); return; }
+  var meta = dados.meta;
+  var diferenca = valor - meta;
+  var percentual = Math.round((diferenca/meta)*1000)/10;
+  dados.registros.push({ data: ds, passos: valor, meta: meta, diferenca: diferenca, percentual: percentual });
+  ordenarRegistros();
+  dados.pendencias.shift();
+  saveState(dados);
+  push();
+  renderTudo();
+});
+
+document.getElementById('btnCatchupSemRegistro').addEventListener('click', function(){
+  var ds = dados.pendencias[0];
+  dados.registros.push({ data: ds, semRegistro: true });
+  ordenarRegistros();
+  dados.pendencias.shift();
+  saveState(dados);
+  push();
+  renderTudo();
+});
+
+// ══════════════════════════════════════════════════════
+// LEMBRETE — dispara perto do horário configurado; se
+// dispensado, volta em ~3min (fixo, NÃO usa o soneca de
+// 30min compartilhado dos outros alertas do ecossistema).
+// Só para quando o valor de hoje é efetivamente salvo.
+// ══════════════════════════════════════════════════════
+var lembreteBg = document.getElementById('lembreteBg');
+
+function podeMostrarLembreteAgora(){
+  var raw = localStorage.getItem(LEMBRETE_SNOOZE_KEY);
+  if(!raw) return true;
+  return Date.now() >= parseInt(raw, 10);
+}
+function adiarLembrete(){
+  localStorage.setItem(LEMBRETE_SNOOZE_KEY, String(Date.now() + LEMBRETE_REPETE_MS));
+}
+function limparAdiamentoLembrete(){
+  localStorage.removeItem(LEMBRETE_SNOOZE_KEY);
+}
+function mostrarLembrete(){ lembreteBg.classList.add('show'); }
+function pararLembrete(){
+  lembreteBg.classList.remove('show');
+  limparAdiamentoLembrete();
+}
+
+document.getElementById('btnLembreteRegistrar').addEventListener('click', function(){
+  lembreteBg.classList.remove('show');
+  passosInput.scrollIntoView({behavior:'smooth', block:'center'});
+  passosInput.focus();
+});
+document.getElementById('btnLembreteDispensar').addEventListener('click', function(){
+  lembreteBg.classList.remove('show');
+  adiarLembrete();
+});
+
+function verificarLembrete(){
+  var mudouVirada = processarVirada();
+  if(mudouVirada){ saveState(dados); push(); renderTudo(); }
+
+  if(diaRegistradoHoje()){
+    if(lembreteBg.classList.contains('show')) pararLembrete();
+    return;
+  }
+  if(horaAtualStr() >= (dados.horarioLembrete || '23:55') && podeMostrarLembreteAgora()){
+    mostrarLembrete();
+  }
+}
+
+setInterval(verificarLembrete, 30000);
+document.addEventListener('visibilitychange', function(){ if(!document.hidden) verificarLembrete(); });
+
+// ══════════════════════════════════════════════════════
+function renderTudo(){
+  renderMetaGrid();
+  horarioInput.value = dados.horarioLembrete;
+  renderControlesRegistro();
+  renderHistorico();
+  renderCatchup();
+}
+window.aplicarEstadoRemoto = function(remoto){
+  dados = remoto;
+  if(!dados.registros) dados.registros = [];
+  if(!dados.pendencias) dados.pendencias = [];
+  if(!dados.meta) dados.meta = 4000;
+  if(!dados.horarioLembrete) dados.horarioLembrete = '23:55';
+  if(!dados.ultimaChecagemDia) dados.ultimaChecagemDia = hojeStr();
+  saveState(dados);
+};
+window.renderTudo = renderTudo;
+window.verificarLembrete = verificarLembrete;
+window.loadState = loadState;
+window.saveState = saveState;
+renderTudo();
+verificarLembrete();
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw-passos.js', { scope: './William_Passos' }).catch(function(e){
+    console.warn('Service worker do Passos não registrou:', e);
+  });
+}
+</script>
+
+<script type="module">
+// ══════════════════════════════════════════════════════
+// SINCRONIZAÇÃO — mesmo padrão do resto do ecossistema:
+// documento próprio (william/passos_data), tempo real,
+// login persistente, retrato local de segurança.
+// ══════════════════════════════════════════════════════
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBNKjp7hLNK6mzAX2GK49WEZq-NKgQ9o5Y",
+  authDomain: "williamapp-31dff.firebaseapp.com",
+  projectId: "williamapp-31dff",
+  storageBucket: "williamapp-31dff.firebasestorage.app",
+  messagingSenderId: "171912065024",
+  appId: "1:171912065024:web:9c47f66f4b8e7fc727a8e5"
+};
+const ALLOWED_EMAIL = "marcelodossantosfc@gmail.com";
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
+const docPassos = doc(db, "william", "passos_data");
+
+let aplicandoRemoto = false;
+let pushTimer = null;
+
+function setDot(cor){ var d = document.getElementById('syncDot'); if(d) d.style.background = cor; }
+
+function abrirRetratoDB(){
+  return new Promise(function(resolve, reject){
+    var req = indexedDB.open('william_retratos', 1);
+    req.onupgradeneeded = function(){ req.result.createObjectStore('retratos'); };
+    req.onsuccess = function(){ resolve(req.result); };
+    req.onerror = function(){ reject(req.error); };
+  });
+}
+async function salvarRetratoLocal(fatia){
+  try{
+    var db2 = await abrirRetratoDB();
+    var hoje = new Date().toISOString().slice(0,10);
+    var chave = 'passos_' + hoje;
+    var tx = db2.transaction('retratos','readwrite');
+    tx.objectStore('retratos').put({ data: hoje, savedAt: new Date().toISOString(), conteudo: fatia }, chave);
+    var getAllReq = tx.objectStore('retratos').getAllKeys();
+    getAllReq.onsuccess = function(){
+      var limite = new Date(); limite.setDate(limite.getDate()-30);
+      getAllReq.result.forEach(function(k){
+        if(typeof k==='string' && k.indexOf('passos_')===0){
+          var dataK = new Date(k.replace('passos_',''));
+          if(dataK < limite) tx.objectStore('retratos').delete(k);
+        }
+      });
+    };
+  }catch(e){ console.warn('Retrato local falhou (não crítico):', e); }
+}
+
+window.agendarPush = function(){
+  if(aplicandoRemoto) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(async function(){
+    try{
+      setDot('#d6a24a');
+      var fatia = window.loadState();
+      fatia.lastModified = new Date().toISOString();
+      await setDoc(docPassos, fatia);
+      await salvarRetratoLocal(fatia);
+      setDot('#3fae5c');
+    }catch(e){
+      console.error('Erro ao sincronizar Passos:', e);
+      setDot('#c94f4f');
+    }
+  }, 800);
+};
+
+function iniciarEscuta(){
+  onSnapshot(docPassos, function(snap){
+    if(!snap.exists()) return;
+    var remoto = snap.data();
+    var local = window.loadState();
+    if(JSON.stringify(remoto) !== JSON.stringify(local)){
+      aplicandoRemoto = true;
+      window.aplicarEstadoRemoto(remoto);
+      salvarRetratoLocal(remoto);
+      if(typeof window.renderTudo === 'function') window.renderTudo();
+      if(typeof window.verificarLembrete === 'function') window.verificarLembrete();
+      aplicandoRemoto = false;
+      setDot('#3fae5c');
+    }
+  }, function(err){
+    console.error('Erro de sincronização (Passos):', err);
+    setDot('#c94f4f');
+  });
+}
+
+function mostrarLogin(){ document.getElementById('loginOverlay').style.display = 'flex'; }
+function esconderLogin(){ document.getElementById('loginOverlay').style.display = 'none'; }
+
+async function tentarLogin(){
+  var senha = document.getElementById('codigoAcesso').value;
+  var errEl = document.getElementById('loginErr');
+  var btn = document.getElementById('loginBtn');
+  errEl.textContent = '';
+  if(!senha){ errEl.textContent = 'Digite a senha.'; return; }
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  try{
+    await setPersistence(auth, browserLocalPersistence);
+    await signInWithEmailAndPassword(auth, ALLOWED_EMAIL, senha);
+  }catch(e){
+    errEl.textContent = 'Senha incorreta.';
+  }
+  btn.disabled = false; btn.textContent = 'Entrar';
+}
+document.getElementById('loginBtn').addEventListener('click', tentarLogin);
+document.getElementById('codigoAcesso').addEventListener('keydown', function(e){ if(e.key==='Enter') tentarLogin(); });
+
+let jaIniciou = false;
+onAuthStateChanged(auth, async function(user){
+  if(user && user.email === ALLOWED_EMAIL){
+    esconderLogin();
+    if(!jaIniciou){
+      jaIniciou = true;
+      iniciarEscuta();
+    }
+  } else {
+    mostrarLogin();
+  }
+});
+</script>
+
+</body>
+</html>
