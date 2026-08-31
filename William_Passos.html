@@ -65,19 +65,30 @@ button.ghost { border: 1px solid #c8a96e; color: #c8a96e; background: transparen
 .catchup-row button { flex: 1; }
 
 /* lembrete overlay */
-.lembrete-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: none; align-items: center; justify-content: center; z-index: 500; padding: 20px; }
-.lembrete-bg.show { display: flex; }
-.lembrete-box { background: #141420; border: 1px solid #333; border-radius: 16px; padding: 22px 20px; width: 100%; max-width: 320px; text-align: center; }
-.lembrete-box .icone { font-size: 30px; margin-bottom: 10px; }
-.lembrete-box h3 { font-size: 15px; margin-bottom: 6px; }
-.lembrete-box .sub { font-size: 12px; color: #888; margin-bottom: 18px; line-height: 1.4; }
-.lembrete-row { display: flex; flex-direction: column; gap: 8px; }
-.lembrete-dispensar { background: none; border: 1px solid #444; color: #999; border-radius: 10px; padding: 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
 
 /* login (mesmo padrão do resto do ecossistema) */
 #loginOverlay { display:none; position:fixed; inset:0; background:#0a0a14; z-index:999; align-items:center; justify-content:center; padding:20px; }
 
 #syncDot { position: fixed; bottom: 14px; right: 14px; z-index: 998; width: 10px; height: 10px; border-radius: 50%; background: #555; transition: all 0.25s ease; }
+@keyframes pulsoCriticoGrande {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,34,34,0.85), 0 0 22px 6px rgba(255,34,34,0.9); transform: translate(-50%, -50%) scale(1); }
+  50% { box-shadow: 0 0 0 18px rgba(255,34,34,0), 0 0 32px 10px rgba(255,34,34,0.55); transform: translate(-50%, -50%) scale(1.035); }
+}
+#syncDot.dot-critico {
+  position: fixed; top: 50%; left: 50%; right: auto; bottom: auto;
+  transform: translate(-50%, -50%);
+  width: auto; height: auto; min-width: 260px; max-width: calc(100vw - 40px);
+  border-radius: 16px; background: #ff2222 !important;
+  padding: 18px 26px; z-index: 9999; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; font-weight: 800; color: #fff; text-align: center;
+  line-height: 1.3; white-space: normal;
+  animation: pulsoCriticoGrande 1s ease-in-out infinite;
+}
+#syncDot.dot-adiado {
+  box-shadow: 0 0 0 4px rgba(150,150,190,0.55);
+  cursor: pointer;
+}
 </style>
 </head>
 <body>
@@ -143,18 +154,6 @@ button.ghost { border: 1px solid #c8a96e; color: #c8a96e; background: transparen
     <button class="primary" id="btnManualRegistrar">Salvar esse dia</button>
   </div>
 
-</div>
-
-<div class="lembrete-bg" id="lembreteBg">
-  <div class="lembrete-box">
-    <div class="icone">🔔</div>
-    <h3 id="lembreteTitulo">Passos de hoje ainda não registrados</h3>
-    <div class="sub" id="lembreteSub">Confere o total no contador do celular e digita aqui no William Passos.</div>
-    <div class="lembrete-row">
-      <button class="primary" id="btnLembreteRegistrar">Registrar agora</button>
-      <button class="lembrete-dispensar" id="btnLembreteDispensar">Agora não</button>
-    </div>
-  </div>
 </div>
 
 <div id="loginOverlay">
@@ -319,7 +318,7 @@ btnRegistrar.addEventListener('click', function(){
   ordenarRegistros();
   saveState(dados);
   push();
-  pararLembrete();
+  pararLembreteTotal();
   mostrarFeedback(registro);
   renderControlesRegistro();
   renderHistorico();
@@ -458,20 +457,21 @@ document.getElementById('btnCatchupSemRegistro').addEventListener('click', funct
 });
 
 // ══════════════════════════════════════════════════════
-// LEMBRETE — duas situações, cada uma com sua mensagem:
-// 1) Dia(s) anterior(es) sem registro (pendências) — isso
-//    tem prioridade e independe do relógio: continua
-//    pulsando mesmo depois da meia-noite, até resolver.
+// LEMBRETE — mesma "força" do Pulso usado no resto do
+// ecossistema: o #syncDot vira a barra vermelha pulsante
+// central, e só some quando você toca nela (não sozinha).
+// Diferença proposital em relação aos outros alertas: o
+// toque aqui NÃO adia 30min — adia só ~3min (fixo), e o
+// texto tem duas situações possíveis:
+// 1) Dia(s) anterior(es) sem registro (pendências) — tem
+//    prioridade e independe do relógio, continua pulsando
+//    mesmo depois da meia-noite, até resolver.
 // 2) Hoje ainda sem registro e já passou do horário
 //    configurado (perto da meia-noite).
-// Em ambos: dispensar NÃO silencia por 30min como os outros
-// alertas do ecossistema — volta em ~3min, só para quando o
-// valor é efetivamente salvo (ou a pendência resolvida).
+// Em ambos, só para de verdade quando o valor é salvo (ou
+// a pendência resolvida) — tocar só adia por pouco tempo.
 // ══════════════════════════════════════════════════════
-var lembreteBg = document.getElementById('lembreteBg');
-var lembreteTitulo = document.getElementById('lembreteTitulo');
-var lembreteSub = document.getElementById('lembreteSub');
-var lembreteModo = null; // 'pendencia' | 'hoje'
+var syncDot = document.getElementById('syncDot');
 
 function formatarDataCompleta(ds){ var p = ds.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
 
@@ -486,58 +486,54 @@ function adiarLembrete(){
 function limparAdiamentoLembrete(){
   localStorage.removeItem(LEMBRETE_SNOOZE_KEY);
 }
-function mostrarLembrete(modo, dataPendente){
-  lembreteModo = modo;
-  if(modo === 'pendencia'){
-    lembreteTitulo.textContent = 'Você ainda não informou os passos de ' + formatarDataCompleta(dataPendente);
-    lembreteSub.textContent = 'Isso fica em aberto até você registrar aquele dia ou marcar como sem registro.';
-  } else {
-    lembreteTitulo.textContent = 'Passos de hoje ainda não registrados';
-    lembreteSub.textContent = 'Confere o total no contador do celular e digita aqui no William Passos.';
-  }
-  lembreteBg.classList.add('show');
+function mostrarLembreteCritico(texto){
+  syncDot.classList.remove('dot-adiado');
+  syncDot.classList.add('dot-critico');
+  syncDot.textContent = texto;
+  syncDot.title = texto + ' (toque para adiar ~3min)';
 }
-function pararLembrete(){
-  lembreteModo = null;
-  lembreteBg.classList.remove('show');
+function mostrarLembreteAdiado(texto){
+  syncDot.classList.remove('dot-critico');
+  syncDot.classList.add('dot-adiado');
+  syncDot.textContent = '';
+  syncDot.title = 'Adiado — ainda ativo: ' + texto + ' (toque para reativar agora)';
+}
+function pararLembreteTotal(){
+  syncDot.classList.remove('dot-critico', 'dot-adiado');
+  syncDot.textContent = '';
+  syncDot.title = 'Sincronizado';
   limparAdiamentoLembrete();
 }
 
-document.getElementById('btnLembreteRegistrar').addEventListener('click', function(){
-  var modo = lembreteModo;
-  lembreteBg.classList.remove('show');
-  if(modo === 'pendencia'){
-    catchupCard.scrollIntoView({behavior:'smooth', block:'center'});
-    catchupInput.focus();
-  } else {
-    passosInput.scrollIntoView({behavior:'smooth', block:'center'});
-    passosInput.focus();
+syncDot.onclick = function(){
+  if(syncDot.classList.contains('dot-critico')){
+    adiarLembrete();
+    verificarLembrete();
+  } else if(syncDot.classList.contains('dot-adiado')){
+    limparAdiamentoLembrete();
+    verificarLembrete();
   }
-});
-document.getElementById('btnLembreteDispensar').addEventListener('click', function(){
-  lembreteBg.classList.remove('show');
-  adiarLembrete();
-});
+};
 
 function verificarLembrete(){
   var mudouVirada = processarVirada();
   if(mudouVirada){ saveState(dados); push(); renderTudo(); }
 
-  // Prioridade 1: dia(s) anterior(es) pendentes — independe do relógio
+  var texto = null;
   if(dados.pendencias.length > 0){
-    if(podeMostrarLembreteAgora()) mostrarLembrete('pendencia', dados.pendencias[0]);
-    return;
+    texto = 'Você ainda não informou os passos de ' + formatarDataCompleta(dados.pendencias[0]);
+  } else if(!diaRegistradoHoje() && horaAtualStr() >= (dados.horarioLembrete || '23:55')){
+    texto = 'Passos de hoje ainda não registrados';
   }
 
-  // Prioridade 2: hoje ainda não registrado e já passou do horário configurado
-  if(diaRegistradoHoje()){
-    if(lembreteBg.classList.contains('show')) pararLembrete();
+  if(!texto){
+    pararLembreteTotal();
     return;
   }
-  if(horaAtualStr() >= (dados.horarioLembrete || '23:55') && podeMostrarLembreteAgora()){
-    mostrarLembrete('hoje');
-  } else if(lembreteBg.classList.contains('show')){
-    pararLembrete();
+  if(podeMostrarLembreteAgora()){
+    mostrarLembreteCritico('🔔 ' + texto);
+  } else {
+    mostrarLembreteAdiado(texto);
   }
 }
 
