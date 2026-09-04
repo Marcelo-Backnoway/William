@@ -145,6 +145,21 @@ input[type=file]{ display:none; }
 #syncDot.dot-adiado {
   box-shadow: 0 0 0 4px rgba(150,150,190,0.55);
 }
+@keyframes pulsoTranquiloGrande {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(46,204,113,0.75), 0 0 22px 6px rgba(46,204,113,0.75); transform: translate(-50%, -50%) scale(1); }
+  50% { box-shadow: 0 0 0 18px rgba(46,204,113,0), 0 0 32px 10px rgba(46,204,113,0.45); transform: translate(-50%, -50%) scale(1.035); }
+}
+#syncDot.dot-tranquilo {
+  position: fixed; top: 50%; left: 50%; right: auto; bottom: auto;
+  transform: translate(-50%, -50%);
+  width: auto; height: auto; min-width: 260px; max-width: calc(100vw - 40px);
+  border-radius: 16px; background: #2ecc71 !important;
+  padding: 18px 26px; z-index: 9999; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; font-weight: 800; color: #fff; text-align: center;
+  line-height: 1.3; white-space: normal;
+  animation: pulsoTranquiloGrande 1s ease-in-out infinite;
+}
 </style>
 </head>
 <body>
@@ -186,12 +201,12 @@ var contasAno = new Date().getFullYear();
 
 var CONTAS_DEFAULT = [
   {id:'star',  nome:'🏍️ Star Monitoramento', valor:'', venc:'até dia 09', diaVenc:10},
-  {id:'iptu',  nome:'🏠 IPTU',               valor:'', venc:'vence 30 / paga até 06', diaVenc:5},
+  {id:'iptu',  nome:'🏠 IPTU',               valor:'', venc:'vence 30 / paga até 06', diaVenc:9},
   {id:'agua',  nome:'💧 Água',               valor:'', venc:'até dia 09', diaVenc:10},
   {id:'cpfl',  nome:'⚡ CPFL (Luz)',          valor:'', venc:'até dia 15', diaVenc:17},
   {id:'vivo',  nome:'📱 Vivo Controle',       valor:'', venc:'vence 26 / paga até 22', diaVenc:24},
   {id:'sant',  nome:'🏦 Santander',           valor:'', venc:'vence dia 27', diaVenc:27},
-  {id:'bignet',nome:'🌐 BigNet',             valor:'', venc:'vence dia 30', diaVenc:29},
+  {id:'bignet',nome:'🌐 BigNet',             valor:'', venc:'vence dia 30', diaVenc:30},
   {id:'loteria',nome:'🎰 Loterias da Caixa', valor:'', venc:'até dia 30'},
 ];
 
@@ -1099,6 +1114,29 @@ function limparAdiamento(){
   localStorage.removeItem(ALERTA_SNOOZE_KEY);
 }
 
+// ---------- Pulso calmo: "contas do mês em dia" (dia 25 até dia 30, se tudo pago) ----------
+// Reaparece a cada 6h; tocar nele soneca só até a próxima janela de 6h, só neste aparelho.
+var TRANQUILO_SNOOZE_KEY = 'william_pulse_tranquilo_dismiss_ate';
+function contasTodasPagasTranquilo(){
+  var hoje = new Date();
+  var dia = hoje.getDate();
+  if (dia < 25 || dia > 30) return false; // janela: 25 até 30 do mês corrente
+  var contas = getContas(hoje.getMonth(), hoje.getFullYear());
+  if (!contas.length) return false;
+  return contas.every(function(c){ return !!c.pago; });
+}
+function tranquiloEstaAdiado(){
+  try{
+    var raw = localStorage.getItem(TRANQUILO_SNOOZE_KEY);
+    if(!raw) return false;
+    var ate = parseInt(raw, 10);
+    return Date.now() < ate;
+  }catch(e){ return false; }
+}
+function adiarTranquilo(){
+  localStorage.setItem(TRANQUILO_SNOOZE_KEY, String(Date.now() + 6*60*60*1000));
+}
+
 // ---------- Moto — agora mora no William_Moto.html; aqui só lemos remoto pro Pulso ----------
 var KM_INTERVALO_MOTO = 2800;
 var DIAS_LEMBRETE_ODOMETRO = 3; // dias sem atualizar o odômetro até o app cobrar (mesmo alerta do Moto)
@@ -1186,7 +1224,7 @@ async function verificarDataCriticaGlobal(){
       }
     } catch(e) {}
 
-    dot.classList.remove('dot-critico', 'dot-adiado', 'dot-perto-laranja', 'dot-perto-amarelo');
+    dot.classList.remove('dot-critico', 'dot-adiado', 'dot-perto-laranja', 'dot-perto-amarelo', 'dot-tranquilo');
     dot.textContent = '';
 
     var criticos = comDias.filter(function(item){ return item.dias <= 1; }).sort(function(a,b){ return a.dias - b.dias; });
@@ -1256,6 +1294,11 @@ async function verificarDataCriticaGlobal(){
       dot.classList.add('dot-perto-amarelo');
       dot.title = textosAmarelos.join(' • ');
       _criticoTextos = [];
+    } else if (contasTodasPagasTranquilo() && !tranquiloEstaAdiado()){
+      dot.classList.add('dot-tranquilo');
+      dot.textContent = '✅ Contas do mês em dia';
+      dot.title = 'Contas do mês em dia (toque pra dispensar por 6h)';
+      _criticoTextos = [];
     } else {
       dot.title = 'Sincronizado';
       _criticoTextos = [];
@@ -1272,6 +1315,9 @@ function iniciarChecagemDataCritica(){
         verificarDataCriticaGlobal();
       } else if (dot.classList.contains('dot-adiado')){
         limparAdiamento();
+        verificarDataCriticaGlobal();
+      } else if (dot.classList.contains('dot-tranquilo')){
+        adiarTranquilo();
         verificarDataCriticaGlobal();
       }
     };

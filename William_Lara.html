@@ -29,7 +29,7 @@
     color: var(--ink);
     display:flex;
     flex-direction:column;
-    height:100vh;
+    height: calc(var(--vh, 1vh) * 100);
     overflow:hidden;
   }
 
@@ -239,9 +239,27 @@
   #sendBtn:disabled{ opacity: 0.4; cursor:default; }
 
   #fileImport{ display:none; }
+
+  /* login (mesmo padrão do resto do ecossistema) */
+  #loginOverlay { display:none; position:fixed; inset:0; background:#0a0a14; z-index:999; align-items:center; justify-content:center; padding:20px; }
+  #syncDot { position: fixed; bottom: 14px; right: 14px; z-index: 998; width: 10px; height: 10px; border-radius: 50%; background: #555; transition: all 0.25s ease; }
 </style>
 </head>
 <body>
+
+  <div id="loginOverlay">
+    <div style="width:100%;max-width:320px;text-align:center;">
+      <h2 style="font-size:16px;color:#c8a96e;letter-spacing:1px;margin-bottom:6px;">⚔ WILLIAM</h2>
+      <p style="font-size:12px;color:#888;margin-bottom:18px;">Entrar neste aparelho (só uma vez)</p>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <input type="text" id="codigoAcesso" name="entrada_codigo" placeholder="Código de acesso" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+          style="flex:1;background:#141424;border:1px solid #333;border-radius:10px;padding:12px;font-size:14px;color:#e8e8e8;outline:none;font-family:inherit;-webkit-text-security:disc;text-security:disc;">
+      </div>
+      <button id="loginBtn" style="width:100%;background:#c8a96e;color:#111;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Entrar</button>
+      <div id="loginErr" style="font-size:11px;color:#ff6666;margin-top:10px;min-height:14px;"></div>
+    </div>
+  </div>
+  <div id="syncDot" title="Sincronizado"></div>
 
   <!-- SETUP SCREEN -->
   <div id="setup">
@@ -286,6 +304,15 @@
 
 <script>
 (function(){
+  // Corrige a altura real da tela em navegadores mobile (a barra do navegador
+  // some/aparece e o 100vh do CSS não acompanha isso direito).
+  function ajustarAlturaReal(){
+    document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
+  }
+  ajustarAlturaReal();
+  window.addEventListener('resize', ajustarAlturaReal);
+  window.addEventListener('orientationchange', ajustarAlturaReal);
+
   const STORAGE_KEY = "lara_conversation_v1";
   const API_KEY_STORAGE = "lara_api_key_v1";
   const MODEL = "claude-sonnet-4-5";
@@ -325,7 +352,16 @@ Responda sempre em português do Brasil, em texto corrido, tom próximo e direto
   }
   function saveConversation(){
     localStorage.setItem(STORAGE_KEY, JSON.stringify(conversation));
+    if(window.agendarPush) window.agendarPush();
   }
+
+  // Pontos de conexão usados pelo módulo de sincronização (Firebase), no fim do arquivo.
+  window.loadState = function(){ return { conversation: conversation }; };
+  window.aplicarEstadoRemoto = function(remoto){
+    conversation = (remoto && remoto.conversation) || [];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(conversation));
+  };
+  window.renderTudo = function(){ renderAll(); };
 
   function init(){
     if(apiKey){
@@ -555,6 +591,137 @@ Responda sempre em português do Brasil, em texto corrido, tom próximo e direto
     });
   }
 })();
+</script>
+
+<script type="module">
+// ══════════════════════════════════════════════════════
+// Sincronização entre aparelhos — mesmo Firebase do resto do
+// ecossistema William. Guarda a conversa da Lara em
+// william/lara_data, com login persistente e retrato local
+// de segurança, igual aos outros apps.
+// ══════════════════════════════════════════════════════
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBNKjp7hLNK6mzAX2GK49WEZq-NKgQ9o5Y",
+  authDomain: "williamapp-31dff.firebaseapp.com",
+  projectId: "williamapp-31dff",
+  storageBucket: "williamapp-31dff.firebasestorage.app",
+  messagingSenderId: "171912065024",
+  appId: "1:171912065024:web:9c47f66f4b8e7fc727a8e5"
+};
+const ALLOWED_EMAIL = "marcelodossantosfc@gmail.com";
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
+const docLara = doc(db, "william", "lara_data");
+
+let aplicandoRemoto = false;
+let pushTimer = null;
+
+function setDot(cor){ var d = document.getElementById('syncDot'); if(d) d.style.background = cor; }
+
+function abrirRetratoDB(){
+  return new Promise(function(resolve, reject){
+    var req = indexedDB.open('william_retratos', 1);
+    req.onupgradeneeded = function(){ req.result.createObjectStore('retratos'); };
+    req.onsuccess = function(){ resolve(req.result); };
+    req.onerror = function(){ reject(req.error); };
+  });
+}
+async function salvarRetratoLocal(fatia){
+  try{
+    var db2 = await abrirRetratoDB();
+    var hoje = new Date().toISOString().slice(0,10);
+    var chave = 'lara_' + hoje;
+    var tx = db2.transaction('retratos','readwrite');
+    tx.objectStore('retratos').put({ data: hoje, savedAt: new Date().toISOString(), conteudo: fatia }, chave);
+    var getAllReq = tx.objectStore('retratos').getAllKeys();
+    getAllReq.onsuccess = function(){
+      var limite = new Date(); limite.setDate(limite.getDate()-30);
+      getAllReq.result.forEach(function(k){
+        if(typeof k==='string' && k.indexOf('lara_')===0){
+          var dataK = new Date(k.replace('lara_',''));
+          if(dataK < limite) tx.objectStore('retratos').delete(k);
+        }
+      });
+    };
+  }catch(e){ console.warn('Retrato local falhou (não crítico):', e); }
+}
+
+window.agendarPush = function(){
+  if(aplicandoRemoto) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(async function(){
+    try{
+      setDot('#d6a24a');
+      var fatia = window.loadState();
+      fatia.lastModified = new Date().toISOString();
+      await setDoc(docLara, fatia);
+      await salvarRetratoLocal(fatia);
+      setDot('#3fae5c');
+    }catch(e){
+      console.error('Erro ao sincronizar Lara:', e);
+      setDot('#c94f4f');
+    }
+  }, 800);
+};
+
+function iniciarEscuta(){
+  onSnapshot(docLara, function(snap){
+    if(!snap.exists()) return;
+    var remoto = snap.data();
+    var local = window.loadState();
+    if(JSON.stringify(remoto.conversation||[]) !== JSON.stringify(local.conversation||[])){
+      aplicandoRemoto = true;
+      window.aplicarEstadoRemoto(remoto);
+      salvarRetratoLocal(remoto);
+      if(typeof window.renderTudo === 'function') window.renderTudo();
+      aplicandoRemoto = false;
+      setDot('#3fae5c');
+    }
+  }, function(err){
+    console.error('Erro de sincronização (Lara):', err);
+    setDot('#c94f4f');
+  });
+}
+
+function mostrarLogin(){ document.getElementById('loginOverlay').style.display = 'flex'; }
+function esconderLogin(){ document.getElementById('loginOverlay').style.display = 'none'; }
+
+async function tentarLogin(){
+  var senha = document.getElementById('codigoAcesso').value;
+  var errEl = document.getElementById('loginErr');
+  var btn = document.getElementById('loginBtn');
+  errEl.textContent = '';
+  if(!senha){ errEl.textContent = 'Digite a senha.'; return; }
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  try{
+    await setPersistence(auth, browserLocalPersistence);
+    await signInWithEmailAndPassword(auth, ALLOWED_EMAIL, senha);
+  }catch(e){
+    errEl.textContent = 'Senha incorreta.';
+  }
+  btn.disabled = false; btn.textContent = 'Entrar';
+}
+document.getElementById('loginBtn').addEventListener('click', tentarLogin);
+document.getElementById('codigoAcesso').addEventListener('keydown', function(e){ if(e.key==='Enter') tentarLogin(); });
+
+let jaIniciou = false;
+onAuthStateChanged(auth, async function(user){
+  if(user && user.email === ALLOWED_EMAIL){
+    esconderLogin();
+    if(!jaIniciou){
+      jaIniciou = true;
+      iniciarEscuta();
+    }
+  } else {
+    mostrarLogin();
+  }
+});
 </script>
 </body>
 </html>
