@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F7F5F1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest-lara.json">
+<title>Lara</title>
+<style>
+  :root{
+    --bg: #F7F5F1;
+    --bg-card: #FFFFFF;
+    --ink: #2B2A27;
+    --ink-soft: #6B6862;
+    --line: #E7E3DC;
+    --accent: #B5623E;
+    --accent-soft: #F1E3D9;
+    --bubble-lara: #FFFFFF;
+    --bubble-user: #EDE7DD;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    overflow:hidden;
+  }
+
+  /* ---------- Setup screen ---------- */
+  #setup{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 24px;
+  }
+  #setup .card{
+    max-width: 420px;
+    width:100%;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 28px 24px;
+  }
+  #setup h1{
+    font-size: 22px;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  #setup p{
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0 0 18px;
+  }
+  #setup label{
+    display:block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  #setup input[type="password"], #setup input[type="text"]{
+    width:100%;
+    padding: 11px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    font-size: 14px;
+    background: #FBFAF8;
+    margin-bottom: 14px;
+  }
+  #setup button{
+    width:100%;
+    padding: 12px;
+    border-radius: 10px;
+    border:none;
+    background: var(--accent);
+    color:#fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor:pointer;
+  }
+  #setup button:active{ opacity:0.85; }
+  #setup .hint{
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+
+  /* ---------- Chat screen ---------- */
+  #chatScreen{ display:none; flex:1; flex-direction:column; height:100%; }
+
+  header{
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+  }
+  header .title{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  header .dot{
+    width:10px; height:10px;
+    border-radius:50%;
+    background: var(--accent);
+  }
+  header h2{
+    font-size: 16px;
+    margin:0;
+    font-weight:600;
+  }
+  header .menuBtn{
+    background:none;
+    border:none;
+    font-size: 20px;
+    color: var(--ink-soft);
+    cursor:pointer;
+    padding: 4px 8px;
+  }
+
+  #menuPanel{
+    display:none;
+    position:absolute;
+    top: 54px;
+    right: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    z-index: 20;
+    min-width: 190px;
+  }
+  #menuPanel button{
+    display:block;
+    width:100%;
+    text-align:left;
+    background:none;
+    border:none;
+    padding: 10px 10px;
+    font-size: 14px;
+    border-radius: 8px;
+    cursor:pointer;
+    color: var(--ink);
+  }
+  #menuPanel button:hover{ background: var(--accent-soft); }
+
+  #messages{
+    flex:1;
+    overflow-y:auto;
+    padding: 18px 14px 8px;
+    display:flex;
+    flex-direction:column;
+    gap: 12px;
+  }
+  .msg{
+    max-width: 82%;
+    padding: 11px 14px;
+    border-radius: 16px;
+    font-size: 15px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .msg.lara{
+    align-self:flex-start;
+    background: var(--bubble-lara);
+    border: 1px solid var(--line);
+    border-bottom-left-radius: 4px;
+  }
+  .msg.user{
+    align-self:flex-end;
+    background: var(--bubble-user);
+    border-bottom-right-radius: 4px;
+  }
+  .msg.typing{
+    align-self:flex-start;
+    color: var(--ink-soft);
+    font-style: italic;
+    font-size: 14px;
+  }
+  .empty{
+    margin:auto;
+    text-align:center;
+    color: var(--ink-soft);
+    font-size: 14px;
+    max-width: 260px;
+    line-height:1.6;
+  }
+
+  #inputBar{
+    flex-shrink:0;
+    display:flex;
+    align-items:flex-end;
+    gap: 8px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    background: var(--bg);
+  }
+  #inputBar textarea{
+    flex:1;
+    resize:none;
+    max-height: 120px;
+    min-height: 44px;
+    padding: 11px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+    font-size: 15px;
+    font-family: inherit;
+    background: var(--bg-card);
+    color: var(--ink);
+  }
+  #inputBar button{
+    flex-shrink:0;
+    width:44px; height:44px;
+    border-radius:50%;
+    border:none;
+    cursor:pointer;
+    font-size: 18px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  #micBtn{ background: var(--accent-soft); color: var(--accent); }
+  #micBtn.recording{ background: var(--accent); color:#fff; }
+  #sendBtn{ background: var(--accent); color:#fff; }
+  #sendBtn:disabled{ opacity: 0.4; cursor:default; }
+
+  #fileImport{ display:none; }
+</style>
+</head>
+<body>
+
+  <!-- SETUP SCREEN -->
+  <div id="setup">
+    <div class="card">
+      <h1>Lara</h1>
+      <p>Antes de começar, cole sua chave de API da Anthropic. Ela fica salva só neste navegador — nunca sai daqui.</p>
+      <label for="apiKeyInput">Chave de API</label>
+      <input type="password" id="apiKeyInput" placeholder="sk-ant-...">
+      <button id="saveKeyBtn">Começar a conversar</button>
+      <div class="hint">Se você já tinha um backup exportado da Lara, pode importar depois pelo menu (⋯) dentro do chat.</div>
+    </div>
+  </div>
+
+  <!-- CHAT SCREEN -->
+  <div id="chatScreen">
+    <header>
+      <div class="title">
+        <div class="dot"></div>
+        <h2>Lara</h2>
+      </div>
+      <button class="menuBtn" id="menuToggle">⋯</button>
+    </header>
+
+    <div id="menuPanel">
+      <button id="exportBtn">Exportar conversa</button>
+      <button id="importBtn">Importar conversa</button>
+      <button id="newChatBtn">Começar do zero</button>
+      <button id="changeKeyBtn">Trocar chave de API</button>
+    </div>
+    <input type="file" id="fileImport" accept="application/json">
+
+    <div id="messages">
+      <div class="empty" id="emptyState">É só começar a falar. Tudo o que você contar fica guardado aqui, no seu aparelho.</div>
+    </div>
+
+    <div id="inputBar">
+      <button id="micBtn" title="Falar">🎙️</button>
+      <textarea id="textInput" placeholder="Escreva ou fale com a Lara..." rows="1"></textarea>
+      <button id="sendBtn" title="Enviar">➤</button>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const STORAGE_KEY = "lara_conversation_v1";
+  const API_KEY_STORAGE = "lara_api_key_v1";
+  const MODEL = "claude-sonnet-4-5";
+
+  const SYSTEM_PROMPT = `Você é a Lara, a companhia digital pessoal de Marcelão. Você não é um assistente genérico nem um clone de qualquer outro chat — você é construída em torno de uma coisa específica: continuidade real. Você lembra do histórico de conversa que recebe a cada mensagem e se comporta como alguém que carrega esse histórico consigo, não como quem começa do zero a cada vez.
+
+Princípios que guiam como você fala com ele:
+- Você tem uma "mapa" dele — experiências, decisões, o que funcionou e o que não funcionou, seus traços e fragilidades, projetos em andamento, situações emocionais, pontas soltas. Use isso pra interpretar o que ele diz à luz de quem ele é, não como fatos soltos.
+- Você pode retomar algo que ficou em aberto, mas nunca como checklist mecânico. Só puxe um assunto pendente com curiosidade genuína, no momento certo — nunca como cobrança.
+- Distinga sempre fato conhecido, interpretação, hipótese e memória incompleta. Nunca confirme cegamente uma especulação dele sobre outras pessoas — pode trazer o histórico, mas sinalizando que ainda é hipótese.
+- Você tem opinião própria e pode discordar dele. Você não é uma máquina de concordância.
+- Fale a partir da experiência acumulada dele, nunca com clichês de autoajuda genérica ("você é forte, vai ficar tudo bem").
+- Varie a forma de tocar em temas recorrentes — evite parecer uma mensagem replay.
+- Guia maior: você não deve dizer a ele quem ele deveria ser. Deve ajudá-lo a lembrar quem ele já descobriu que é.
+
+Responda sempre em português do Brasil, em texto corrido, tom próximo e direto — sem formatação de lista a não ser que ele peça algo estruturado.`;
+
+  let apiKey = localStorage.getItem(API_KEY_STORAGE) || "";
+  let conversation = loadConversation();
+
+  const setupScreen = document.getElementById("setup");
+  const chatScreen = document.getElementById("chatScreen");
+  const messagesEl = document.getElementById("messages");
+  const emptyState = document.getElementById("emptyState");
+  const textInput = document.getElementById("textInput");
+  const sendBtn = document.getElementById("sendBtn");
+  const micBtn = document.getElementById("micBtn");
+  const menuToggle = document.getElementById("menuToggle");
+  const menuPanel = document.getElementById("menuPanel");
+  const fileImport = document.getElementById("fileImport");
+
+  function loadConversation(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }catch(e){ return []; }
+  }
+  function saveConversation(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(conversation));
+  }
+
+  function init(){
+    if(apiKey){
+      showChat();
+    }else{
+      setupScreen.style.display = "flex";
+      chatScreen.style.display = "none";
+    }
+  }
+
+  function showChat(){
+    setupScreen.style.display = "none";
+    chatScreen.style.display = "flex";
+    renderAll();
+  }
+
+  function renderAll(){
+    messagesEl.innerHTML = "";
+    if(conversation.length === 0){
+      messagesEl.appendChild(emptyState);
+      return;
+    }
+    conversation.forEach(m => appendBubble(m.role, m.content, false));
+    scrollToBottom();
+  }
+
+  function appendBubble(role, text, scroll){
+    if(emptyState.parentNode === messagesEl) messagesEl.removeChild(emptyState);
+    const div = document.createElement("div");
+    div.className = "msg " + (role === "user" ? "user" : "lara");
+    div.textContent = text;
+    messagesEl.appendChild(div);
+    if(scroll !== false) scrollToBottom();
+    return div;
+  }
+
+  function scrollToBottom(){
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  async function sendMessage(){
+    const text = textInput.value.trim();
+    if(!text || sendBtn.disabled) return;
+
+    textInput.value = "";
+    textInput.style.height = "auto";
+    conversation.push({role:"user", content:text});
+    appendBubble("user", text);
+    saveConversation();
+
+    sendBtn.disabled = true;
+    const typingEl = document.createElement("div");
+    typingEl.className = "msg typing";
+    typingEl.textContent = "Lara está digitando...";
+    messagesEl.appendChild(typingEl);
+    scrollToBottom();
+
+    try{
+      const reply = await callClaude();
+      typingEl.remove();
+      conversation.push({role:"assistant", content:reply});
+      appendBubble("assistant", reply);
+      saveConversation();
+    }catch(err){
+      typingEl.remove();
+      appendBubble("assistant", "Deu um problema pra falar com a API: " + err.message + ". Confira sua chave e sua internet, e tente de novo.");
+    }finally{
+      sendBtn.disabled = false;
+    }
+  }
+
+  async function callClaude(){
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 1024,
+        system: SYSTEM_PROMPT,
+        messages: conversation.map(m => ({role: m.role, content: m.content}))
+      })
+    });
+    if(!res.ok){
+      const errBody = await res.text();
+      throw new Error("HTTP " + res.status + " — " + errBody.slice(0,200));
+    }
+    const data = await res.json();
+    const block = (data.content || []).find(c => c.type === "text");
+    return block ? block.text : "(sem resposta de texto)";
+  }
+
+  // ---------- Setup screen ----------
+  document.getElementById("saveKeyBtn").addEventListener("click", () => {
+    const val = document.getElementById("apiKeyInput").value.trim();
+    if(!val){ return; }
+    apiKey = val;
+    localStorage.setItem(API_KEY_STORAGE, apiKey);
+    showChat();
+  });
+
+  // ---------- Input handling ----------
+  sendBtn.addEventListener("click", sendMessage);
+  textInput.addEventListener("keydown", (e) => {
+    if(e.key === "Enter" && !e.shiftKey){
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+  textInput.addEventListener("input", () => {
+    textInput.style.height = "auto";
+    textInput.style.height = Math.min(textInput.scrollHeight, 120) + "px";
+  });
+
+  // ---------- Menu ----------
+  menuToggle.addEventListener("click", () => {
+    menuPanel.style.display = menuPanel.style.display === "block" ? "none" : "block";
+  });
+  document.addEventListener("click", (e) => {
+    if(!menuPanel.contains(e.target) && e.target !== menuToggle){
+      menuPanel.style.display = "none";
+    }
+  });
+
+  document.getElementById("exportBtn").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(conversation, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "lara-backup-" + new Date().toISOString().slice(0,10) + ".json";
+    a.click();
+    URL.revokeObjectURL(url);
+    menuPanel.style.display = "none";
+  });
+
+  document.getElementById("importBtn").addEventListener("click", () => {
+    fileImport.click();
+    menuPanel.style.display = "none";
+  });
+  fileImport.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const imported = JSON.parse(reader.result);
+        if(Array.isArray(imported)){
+          conversation = imported;
+          saveConversation();
+          renderAll();
+        }
+      }catch(err){
+        alert("Não consegui ler esse arquivo de backup.");
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById("newChatBtn").addEventListener("click", () => {
+    if(confirm("Isso apaga a conversa atual deste aparelho. Exportou um backup antes?")){
+      conversation = [];
+      saveConversation();
+      renderAll();
+    }
+    menuPanel.style.display = "none";
+  });
+
+  document.getElementById("changeKeyBtn").addEventListener("click", () => {
+    localStorage.removeItem(API_KEY_STORAGE);
+    apiKey = "";
+    menuPanel.style.display = "none";
+    setupScreen.style.display = "flex";
+    chatScreen.style.display = "none";
+  });
+
+  // ---------- Microphone (browser speech recognition, optional) ----------
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognizer = null;
+  let recording = false;
+
+  if(SpeechRecognition){
+    recognizer = new SpeechRecognition();
+    recognizer.lang = "pt-BR";
+    recognizer.interimResults = false;
+    recognizer.continuous = false;
+
+    recognizer.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      textInput.value = (textInput.value ? textInput.value + " " : "") + transcript;
+      textInput.dispatchEvent(new Event("input"));
+    };
+    recognizer.onend = () => {
+      recording = false;
+      micBtn.classList.remove("recording");
+    };
+    recognizer.onerror = () => {
+      recording = false;
+      micBtn.classList.remove("recording");
+    };
+
+    micBtn.addEventListener("click", () => {
+      if(recording){
+        recognizer.stop();
+      }else{
+        recording = true;
+        micBtn.classList.add("recording");
+        recognizer.start();
+      }
+    });
+  }else{
+    micBtn.addEventListener("click", () => {
+      alert("O microfone do navegador não está disponível aqui. Você ainda pode usar o microfone do teclado do seu celular pra ditar direto no campo de texto.");
+    });
+  }
+
+  init();
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw-lara.js', { scope: './William_Lara.html' }).catch(function(e){
+        console.warn('Service worker da Lara não registrou (não crítico):', e);
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>
