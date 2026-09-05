@@ -1062,6 +1062,12 @@ function iniciarEscuta(){
     if(!snap.exists()) return;
     var remoto = snap.data();
     var local = loadState();
+    // Trava de segurança: se a versão da nuvem for mais velha que a que já
+    // está neste aparelho, ela é ignorada — evita que uma sincronização
+    // atrasada apague marcações recentes ainda não enviadas.
+    if(local.lastModified && remoto.lastModified && remoto.lastModified <= local.lastModified){
+      return;
+    }
     var mudou = false;
     Object.keys(remoto).forEach(function(k){
       if(pertenceAoChecklist(k) && JSON.stringify(local[k]) !== JSON.stringify(remoto[k])){
