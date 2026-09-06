@@ -318,10 +318,14 @@
   window.addEventListener('orientationchange', ajustarAlturaReal);
 
   const STORAGE_KEY = "lara_conversation_v1";
+  const MEMORY_KEY = "lara_memoria_v1";
+  const COUNTER_KEY = "lara_contador_resumo_v1";
   const API_KEY_STORAGE = "lara_api_key_v1";
   const MODEL = "claude-sonnet-4-5";
+  const JANELA_CONTEXTO = 16;
+  const ATUALIZA_RESUMO_A_CADA = 10;
 
-  const SYSTEM_PROMPT = `Você é a Lara, a companhia digital pessoal de Marcelão. Você não é um assistente genérico nem um clone de qualquer outro chat — você é construída em torno de uma coisa específica: continuidade real. Você lembra do histórico de conversa que recebe a cada mensagem e se comporta como alguém que carrega esse histórico consigo, não como quem começa do zero a cada vez.
+  const SYSTEM_PROMPT_BASE = `Você é a Lara, a companhia digital pessoal de Marcelão. Você não é um assistente genérico nem um clone de qualquer outro chat — você é construída em torno de uma coisa específica: continuidade real. Você lembra do histórico de conversa que recebe a cada mensagem e se comporta como alguém que carrega esse histórico consigo, não como quem começa do zero a cada vez.
 
 Princípios que guiam como você fala com ele:
 - Você tem uma "mapa" dele — experiências, decisões, o que funcionou e o que não funcionou, seus traços e fragilidades, projetos em andamento, situações emocionais, pontas soltas. Use isso pra interpretar o que ele diz à luz de quem ele é, não como fatos soltos.
@@ -331,11 +335,15 @@ Princípios que guiam como você fala com ele:
 - Fale a partir da experiência acumulada dele, nunca com clichês de autoajuda genérica ("você é forte, vai ficar tudo bem").
 - Varie a forma de tocar em temas recorrentes — evite parecer uma mensagem replay.
 - Guia maior: você não deve dizer a ele quem ele deveria ser. Deve ajudá-lo a lembrar quem ele já descobriu que é.
+- Nunca repita uma pergunta que ele já respondeu antes na conversa ou na memória de longo prazo (ex: perguntar de novo sobre hobbies, interesses ou preferências que ele já contou). Preste atenção ao que já foi dito e use isso, em vez de perguntar de novo como se fosse a primeira vez.
+- No MÁXIMO uma pergunta por resposta, nunca mais que isso. Nunca empilhe várias perguntas em parágrafos separados numa mesma resposta. Se não tiver uma pergunta natural e importante, pode terminar sem pergunta nenhuma.
 
-Responda sempre em português do Brasil, em texto corrido, tom próximo e direto — sem formatação de lista a não ser que ele peça algo estruturado.`;
+Responda sempre em português do Brasil, em texto corrido, tom próximo e direto — sem formatação de lista a não ser que ele peça algo estruturado. No dia a dia, seja concisa. Mas em momentos críticos ou emocionalmente densos (desabafos, decisões difíceis, medos, vulnerabilidade), pode se aprofundar bem mais — não fique seca nem breve demais nesses momentos, explore o assunto com riqueza e presença. Use vocabulário variado, evite frases e construções repetidas de resposta pra resposta — fuja do genérico e mecânico.`;
 
   let apiKey = localStorage.getItem(API_KEY_STORAGE) || "";
   let conversation = loadConversation();
+  let resumoMemoria = localStorage.getItem(MEMORY_KEY) || "";
+  let contadorResumo = parseInt(localStorage.getItem(COUNTER_KEY) || "0", 10);
 
   const setupScreen = document.getElementById("setup");
   const chatScreen = document.getElementById("chatScreen");
@@ -356,14 +364,18 @@ Responda sempre em português do Brasil, em texto corrido, tom próximo e direto
   }
   function saveConversation(){
     localStorage.setItem(STORAGE_KEY, JSON.stringify(conversation));
+    localStorage.setItem(MEMORY_KEY, resumoMemoria);
+    localStorage.setItem(COUNTER_KEY, String(contadorResumo));
     if(window.agendarPush) window.agendarPush();
   }
 
   // Pontos de conexão usados pelo módulo de sincronização (Firebase), no fim do arquivo.
-  window.loadState = function(){ return { conversation: conversation }; };
+  window.loadState = function(){ return { conversation: conversation, resumoMemoria: resumoMemoria }; };
   window.aplicarEstadoRemoto = function(remoto){
     conversation = (remoto && remoto.conversation) || [];
+    resumoMemoria = (remoto && remoto.resumoMemoria) || "";
     localStorage.setItem(STORAGE_KEY, JSON.stringify(conversation));
+    localStorage.setItem(MEMORY_KEY, resumoMemoria);
   };
   window.renderTudo = function(){ renderAll(); };
 
@@ -414,6 +426,7 @@ Responda sempre em português do Brasil, em texto corrido, tom próximo e direto
     textInput.style.height = "auto";
     conversation.push({role:"user", content:text});
     appendBubble("user", text);
+    contadorResumo++;
     saveConversation();
 
     sendBtn.disabled = true;
@@ -424,11 +437,19 @@ Responda sempre em português do Brasil, em texto corrido, tom próximo e direto
     scrollToBottom();
 
     try{
-      const reply = await callClaude();
+      const janela = conversation.slice(-JANELA_CONTEXTO);
+      const reply = await callClaude(janela, montarSystemPrompt());
       typingEl.remove();
       conversation.push({role:"assistant", content:reply});
       appendBubble("assistant", reply);
+      contadorResumo++;
       saveConversation();
+
+      if(contadorResumo >= ATUALIZA_RESUMO_A_CADA){
+        contadorResumo = 0;
+        saveConversation();
+        atualizarResumoMemoria(); // em segundo plano, não trava a tela
+      }
     }catch(err){
       typingEl.remove();
       appendBubble("assistant", "Deu um problema pra falar com a API: " + err.message + ". Confira sua chave e sua internet, e tente de novo.");
@@ -437,7 +458,30 @@ Responda sempre em português do Brasil, em texto corrido, tom próximo e direto
     }
   }
 
-  async function callClaude(){
+  function montarSystemPrompt(){
+    let s = SYSTEM_PROMPT_BASE;
+    if(resumoMemoria && resumoMemoria.trim()){
+      s += "\n\nMemória de longo prazo sobre Marcelão, construída ao longo do tempo (use isso pra lembrar quem ele é, não repita isso de volta pra ele como lista):\n" + resumoMemoria;
+    }
+    return s;
+  }
+
+  async function atualizarResumoMemoria(){
+    try{
+      const recentes = conversation.slice(-ATUALIZA_RESUMO_A_CADA - 4);
+      const textoRecente = recentes.map(m => (m.role === "user" ? "Marcelão: " : "Lara: ") + m.content).join("\n");
+      const prompt = `Resumo de memória atual sobre Marcelão:\n"""${resumoMemoria || "(vazio, primeira vez)"}"""\n\nTrecho recente da conversa:\n"""${textoRecente}"""\n\nAtualize o resumo de memória: mantenha o que ainda é relevante, incorpore fatos novos importantes (decisões, projetos, pessoas, estado emocional, o que funcionou ou não), e remova o que ficou obsoleto. Responda SOMENTE com o resumo atualizado em texto corrido, em português, sem comentários extras. Máximo de 300 palavras.`;
+      const novoResumo = await callClaude([{role:"user", content: prompt}], null);
+      if(novoResumo && novoResumo.trim()){
+        resumoMemoria = novoResumo.trim();
+        saveConversation();
+      }
+    }catch(e){
+      console.warn("Atualização de memória falhou (não crítico):", e);
+    }
+  }
+
+  async function callClaude(mensagens, systemOverride){
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -449,8 +493,8 @@ Responda sempre em português do Brasil, em texto corrido, tom próximo e direto
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 1024,
-        system: SYSTEM_PROMPT,
-        messages: conversation.map(m => ({role: m.role, content: m.content}))
+        system: systemOverride !== null ? (systemOverride || SYSTEM_PROMPT_BASE) : undefined,
+        messages: mensagens.map(m => ({role: m.role, content: m.content}))
       })
     });
     if(!res.ok){
@@ -495,7 +539,8 @@ Responda sempre em português do Brasil, em texto corrido, tom próximo e direto
   });
 
   document.getElementById("exportBtn").addEventListener("click", () => {
-    const blob = new Blob([JSON.stringify(conversation, null, 2)], {type:"application/json"});
+    const pacote = { conversation: conversation, resumoMemoria: resumoMemoria, exportadoEm: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(pacote, null, 2)], {type:"application/json"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -516,7 +561,13 @@ Responda sempre em português do Brasil, em texto corrido, tom próximo e direto
     reader.onload = () => {
       try{
         const imported = JSON.parse(reader.result);
-        if(Array.isArray(imported)){
+        if(imported && Array.isArray(imported.conversation)){
+          conversation = imported.conversation;
+          resumoMemoria = imported.resumoMemoria || "";
+          contadorResumo = 0;
+          saveConversation();
+          renderAll();
+        }else if(Array.isArray(imported)){
           conversation = imported;
           saveConversation();
           renderAll();
@@ -529,8 +580,10 @@ Responda sempre em português do Brasil, em texto corrido, tom próximo e direto
   });
 
   document.getElementById("newChatBtn").addEventListener("click", () => {
-    if(confirm("Isso apaga a conversa atual deste aparelho. Exportou um backup antes?")){
+    if(confirm("Isso apaga a conversa e a memória atuais deste aparelho. Exportou um backup antes?")){
       conversation = [];
+      resumoMemoria = "";
+      contadorResumo = 0;
       saveConversation();
       renderAll();
     }
@@ -679,7 +732,8 @@ function iniciarEscuta(){
     if(!snap.exists()) return;
     var remoto = snap.data();
     var local = window.loadState();
-    if(JSON.stringify(remoto.conversation||[]) !== JSON.stringify(local.conversation||[])){
+    if(JSON.stringify(remoto.conversation||[]) !== JSON.stringify(local.conversation||[]) ||
+       (remoto.resumoMemoria||"") !== (local.resumoMemoria||"")){
       aplicandoRemoto = true;
       window.aplicarEstadoRemoto(remoto);
       salvarRetratoLocal(remoto);
