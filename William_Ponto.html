@@ -650,6 +650,36 @@ function motoDiasSemLeituraRemoto(dadosMoto){
   return diasEntreGlobal(atual.atualizadoEm, new Date().toISOString().split('T')[0]);
 }
 
+function hojeStrGlobal(){
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function ontemStrGlobal(){
+  var d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function horaAtualStrGlobal(){
+  var d = new Date();
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+function passosRevisaoSemanalRemoto(dadosPassos){
+  // Só verifica aos domingos — revisão semanal, não cutucão diário.
+  // Olha os últimos 7 dias (sem contar hoje) procurando dias sem registro.
+  var hoje = new Date();
+  if (hoje.getDay() !== 0) return null;
+  var registros = dadosPassos.registros || [];
+  var faltando = [];
+  for (var i = 1; i <= 7; i++){
+    var d = new Date();
+    d.setDate(d.getDate() - i);
+    var dataStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    var achou = registros.some(function(r){ return r.data === dataStr; });
+    if (!achou) faltando.push(dataStr);
+  }
+  return faltando.length ? faltando : null;
+}
+
 async function verificarDataCriticaGlobal(){
   var dot = document.getElementById('syncDot');
   if (!dot) return;
@@ -667,6 +697,7 @@ async function verificarDataCriticaGlobal(){
     var gasDias = null;
     var motoStatus = null;
     var textosContas = [];
+    var passosFaltandoSemana = null;
     try {
       var snapAg = await getDoc(doc(db, "william", "agenda_data"));
       if (snapAg.exists()) {
@@ -682,6 +713,13 @@ async function verificarDataCriticaGlobal(){
         var dadosMoto = snapMoto.data();
         motoStatus = motoKmStatusRemoto(dadosMoto);
         var motoDiasSemLeitura = motoDiasSemLeituraRemoto(dadosMoto);
+      }
+    } catch(e) {}
+    try {
+      var snapPassos = await getDoc(doc(db, "william", "passos_data"));
+      if (snapPassos.exists()) {
+        var dadosPassos = snapPassos.data();
+        passosFaltandoSemana = passosRevisaoSemanalRemoto(dadosPassos);
       }
     } catch(e) {}
 
@@ -733,6 +771,11 @@ async function verificarDataCriticaGlobal(){
       } else if (motoDiasSemLeitura === DIAS_LEMBRETE_ODOMETRO - 1) {
         textosAmarelos.push('🏍️ Moto: odômetro sem atualizar há ' + motoDiasSemLeitura + ' dia(s)');
       }
+    }
+
+    // Passos: revisão semanal (só aos domingos) — dias sem registro na semana
+    if (passosFaltandoSemana && passosFaltandoSemana.length) {
+      textosAmarelos.push('🚶 Passos: ' + passosFaltandoSemana.length + ' dia(s) sem registro essa semana');
     }
 
 
