@@ -143,7 +143,7 @@ function renderNotas(main) {
     if(!texto){alert('Digite o texto da nota!');return;}
     var now=new Date();
     var ns=getNotas();
-    ns.unshift({titulo:titulo, texto:texto, data:now.toLocaleDateString('pt-BR'), hora:now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})});
+    ns.unshift({titulo:titulo, texto:texto, data:now.toLocaleDateString('pt-BR'), hora:now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}), marcados:{}});
     setNotas(ns); vibe([30]); window._notaAberta=0; render();
   };
   card.appendChild(addBtn);
@@ -259,6 +259,13 @@ function renderNotas(main) {
           var ns=getNotas();
           ns[idx].titulo = novoTitulo;
           ns[idx].texto = novoTexto;
+          // Poda marcados: mantém marcado só quem ainda existe igual no texto novo
+          // (editar a linha "desmarca" ela — é o preço de deixar a escrita 100% livre)
+          var linhasNovas = novoTexto.split('\n').map(function(l){return l.trim();});
+          var marcadosAntigos = ns[idx].marcados || {};
+          var marcadosNovos = {};
+          linhasNovas.forEach(function(l){ if(l && marcadosAntigos[l]) marcadosNovos[l]=true; });
+          ns[idx].marcados = marcadosNovos;
           setNotas(ns);
           window._notaEditando = null;
           vibe([30]); render();
@@ -276,9 +283,43 @@ function renderNotas(main) {
         body.style.cssText='padding:0 12px 12px;border-top:1px solid #2a2a3a;';
         var stamp2 = el('div','','📅 '+n.data+' às '+n.hora);
         stamp2.style.cssText='font-size:10px;color:#555;padding:8px 0 6px;';
-        var txt = el('div','',n.texto);
-        txt.style.cssText='font-size:13px;color:#e8e8e8;line-height:1.7;white-space:pre-wrap;';
-        body.appendChild(stamp2); body.appendChild(txt);
+        body.appendChild(stamp2);
+
+        // Texto continua livre pra escrever — só na hora de LER que cada
+        // linha não-vazia vira um item marcável. Marcado é guardado pelo
+        // texto exato da linha (não pelo índice), pra sobreviver a você
+        // adicionar/reordenar linhas sem bagunçar o que já tava marcado;
+        // o preço é que editar o TEXTO de uma linha já marcada desmarca ela.
+        var marcados = n.marcados || {};
+        var linhas = (n.texto||'').split('\n');
+        var lista = document.createElement('div');
+        lista.style.cssText='display:flex;flex-direction:column;';
+        linhas.forEach(function(linha){
+          var linhaTrim = linha.trim();
+          if(!linhaTrim){
+            var espaco = document.createElement('div'); espaco.style.cssText='height:6px;';
+            lista.appendChild(espaco);
+            return;
+          }
+          var checked = !!marcados[linhaTrim];
+          var itemRow = document.createElement('label');
+          itemRow.style.cssText='display:flex;align-items:flex-start;gap:9px;padding:4px 0;cursor:pointer;';
+          var chk = document.createElement('input');
+          chk.type='checkbox'; chk.checked=checked;
+          chk.style.cssText='margin-top:3px;width:17px;height:17px;flex-shrink:0;accent-color:#c8a96e;';
+          chk.onchange=(function(idx, texto){ return function(){
+            var ns=getNotas();
+            if(!ns[idx].marcados) ns[idx].marcados={};
+            if(ns[idx].marcados[texto]) delete ns[idx].marcados[texto];
+            else ns[idx].marcados[texto]=true;
+            setNotas(ns); vibe([15]); render();
+          };})(i, linhaTrim);
+          var lbl = el('span','',linhaTrim);
+          lbl.style.cssText='font-size:13px;line-height:1.6;white-space:pre-wrap;'+(checked?'color:#666;text-decoration:line-through;':'color:#e8e8e8;');
+          itemRow.appendChild(chk); itemRow.appendChild(lbl);
+          lista.appendChild(itemRow);
+        });
+        body.appendChild(lista);
         row.appendChild(body);
       }
       card.appendChild(row);
