@@ -1,0 +1,508 @@
+<title>Escada da Lara</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#EEF0F2;
+    --surface:#FFFFFF;
+    --surface-2:#E1E6E9;
+    --ink:#182126;
+    --ink-soft:#4E5A62;
+    --line:#CCD3D7;
+    --accent:#166F6A;
+    --accent-soft:#DCEBE9;
+    --good:#4B7A34;
+    --good-soft:#E6EEDE;
+    --warn:#9A6B1E;
+    --warn-soft:#F2E7D2;
+    --crit:#A2452C;
+    --crit-soft:#F3DFD8;
+    --font-display:'Big Shoulders Display', system-ui, sans-serif;
+    --font-body:'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    --font-mono:'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#12181B;
+      --surface:#1A2226;
+      --surface-2:#232D31;
+      --ink:#E9EEEC;
+      --ink-soft:#A7B4B8;
+      --line:#334046;
+      --accent:#57C2B8;
+      --accent-soft:#1E3634;
+      --good:#95C36E;
+      --good-soft:#233421;
+      --warn:#E4B25A;
+      --warn-soft:#3A2E17;
+      --crit:#E38A6C;
+      --crit-soft:#3B2620;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#12181B;
+    --surface:#1A2226;
+    --surface-2:#232D31;
+    --ink:#E9EEEC;
+    --ink-soft:#A7B4B8;
+    --line:#334046;
+    --accent:#57C2B8;
+    --accent-soft:#1E3634;
+    --good:#95C36E;
+    --good-soft:#233421;
+    --warn:#E4B25A;
+    --warn-soft:#3A2E17;
+    --crit:#E38A6C;
+    --crit-soft:#3B2620;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    font-size:16px;
+    line-height:1.6;
+    padding-inline:20px;
+    padding-block:40px 80px;
+  }
+  .wrap{max-width:740px;margin:0 auto;}
+
+  h1,h2,h3{font-family:var(--font-display);font-weight:800;letter-spacing:0.01em;text-wrap:balance;color:var(--ink);}
+  p{max-width:65ch;}
+  a{color:var(--accent);}
+
+  /* ---------- header ---------- */
+  header.top{margin-bottom:36px;}
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin-bottom:10px;
+  }
+  h1{font-size:clamp(34px,7vw,52px);line-height:0.98;margin:0 0 12px;}
+  .subtitle{color:var(--ink-soft);font-size:17px;max-width:56ch;margin:0;}
+
+  .callout{
+    margin-top:24px;
+    border:1px solid var(--line);
+    background:var(--surface);
+    border-left:4px solid var(--accent);
+    border-radius:6px;
+    padding:16px 18px;
+  }
+  .callout h3{font-size:15px;font-family:var(--font-body);font-weight:700;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.04em;color:var(--accent);}
+  .callout p{margin:0 0 8px;font-size:14.5px;color:var(--ink-soft);}
+  .callout p:last-child{margin-bottom:0;}
+  .callout ul{margin:8px 0 0;padding-left:18px;font-size:14.5px;color:var(--ink-soft);}
+  .callout li{margin-bottom:4px;}
+
+  /* ---------- table of contents ---------- */
+  nav.toc{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin:28px 0 44px;
+  }
+  nav.toc a{
+    font-family:var(--font-mono);
+    font-size:13px;
+    text-decoration:none;
+    color:var(--ink);
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:7px 14px;
+  }
+  nav.toc a:hover{border-color:var(--accent);color:var(--accent);}
+
+  /* ---------- the staircase ---------- */
+  .escada{position:relative;}
+  .escada::before{
+    content:"";
+    position:absolute;
+    left:31px;
+    top:8px;
+    bottom:8px;
+    width:2px;
+    background:var(--line);
+  }
+  .step{
+    position:relative;
+    display:grid;
+    grid-template-columns:64px 1fr;
+    gap:18px;
+    margin-bottom:56px;
+    scroll-margin-top:16px;
+  }
+  .step:last-child{margin-bottom:0;}
+  .badge{
+    position:relative;
+    z-index:1;
+    width:64px;height:64px;
+    border-radius:10px;
+    background:var(--surface);
+    border:2px solid var(--accent);
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-display);
+    font-size:26px;
+    color:var(--accent);
+  }
+  .step h2{font-size:clamp(22px,4.4vw,28px);margin:2px 0 4px;}
+  .step .tagline{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px;}
+  .step p{font-size:15px;}
+
+  .analogia{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:12px 16px;
+    font-size:14px;
+    color:var(--ink-soft);
+    margin:16px 0;
+  }
+  .analogia b{color:var(--ink);}
+
+  /* ---------- code blocks ---------- */
+  .code{
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:14px 16px;
+    margin:16px 0;
+    overflow-x:auto;
+    font-family:var(--font-mono);
+    font-size:13.5px;
+    line-height:1.75;
+    white-space:pre;
+  }
+  .code .kw{color:var(--accent);font-weight:600;}
+  .code .blank{height:8px;}
+
+  .rotulo{
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--ink-soft);
+    margin:18px 0 -6px;
+  }
+
+  /* ---------- exercise / gabarito ---------- */
+  .exercicio{
+    background:var(--accent-soft);
+    border:1px solid var(--accent);
+    border-radius:8px;
+    padding:16px 18px;
+    margin-top:18px;
+  }
+  .exercicio h4{margin:0 0 6px;font-family:var(--font-body);font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;color:var(--accent);}
+  .exercicio p{font-size:14.5px;margin:0 0 4px;}
+  details{margin-top:12px;}
+  summary{
+    cursor:pointer;
+    font-family:var(--font-mono);
+    font-size:13px;
+    color:var(--ink);
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:8px 12px;
+    display:inline-block;
+    user-select:none;
+  }
+  summary:hover{border-color:var(--accent);}
+  details[open] summary{margin-bottom:10px;}
+
+  .checa{
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+    background:var(--good-soft);
+    border:1px solid var(--good);
+    border-radius:6px;
+    padding:10px 14px;
+    font-size:14px;
+    margin-top:10px;
+  }
+  .checa b{color:var(--good);}
+
+  .fyi{
+    background:var(--warn-soft);
+    border:1px solid var(--warn);
+    border-radius:8px;
+    padding:16px 18px;
+    margin-top:16px;
+    font-size:14.5px;
+  }
+  .fyi b{color:var(--warn);}
+
+  /* ---------- glossary ---------- */
+  .glossario{margin-top:64px;}
+  .glossario h2{font-size:clamp(24px,4.6vw,30px);margin-bottom:6px;}
+  .glossario .tagline{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:18px;}
+  table{
+    width:100%;
+    border-collapse:collapse;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:8px;
+    overflow:hidden;
+    font-size:14px;
+  }
+  thead th{
+    text-align:left;
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--ink-soft);
+    background:var(--surface-2);
+    padding:10px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  tbody td{
+    padding:10px 12px;
+    border-bottom:1px solid var(--line);
+    vertical-align:top;
+  }
+  tbody tr:last-child td{border-bottom:none;}
+  td.cmd{font-family:var(--font-mono);color:var(--accent);white-space:nowrap;font-size:13px;}
+  .tabela-wrap{overflow-x:auto;}
+
+  footer.fim{
+    margin-top:64px;
+    padding-top:24px;
+    border-top:1px solid var(--line);
+    color:var(--ink-soft);
+    font-size:14.5px;
+  }
+
+  @media (max-width:480px){
+    .step{grid-template-columns:48px 1fr;gap:12px;}
+    .badge{width:48px;height:48px;font-size:19px;border-radius:8px;}
+    .escada::before{left:23px;}
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <div class="eyebrow">Projeto William · Lara / Conversar</div>
+    <h1>Escada da Lara</h1>
+    <p class="subtitle">Curso autoguiado pra você dominar CONTEXTO, SE CONTÉM, SENÃO, SUBPERGUNTA e PERGUNTA SEGUINTE sem precisar ficar voltando pro chat a cada passo.</p>
+
+    <div class="callout">
+      <h3>Como usar esse curso</h3>
+      <p>Você chega rápido no limite de uso e tem dificuldade de começar — então esse curso foi feito pra ser lido e praticado <b>fora</b> do chat, no seu tempo, com o celular no seu canto.</p>
+      <ul>
+        <li>Um degrau por sessão de estudo. Não tenta engolir tudo de uma vez.</li>
+        <li>Todo exemplo aqui usa o mesmo mundo bobo (fruta) do seu contexto <b>"Treino - Escala"</b> — cola exatamente o que tiver em "cole isso" e testa lá no app, sem gastar Claude nenhum.</li>
+        <li>Cada exercício tem um "Ver gabarito" escondido. Tenta sozinho ANTES de abrir — é aí que fica na sua cabeça de verdade.</li>
+        <li>Só volta pro chat comigo quando o que você testou não bater com o gabarito. Nesse caso sim, vale a pena gastar uma mensagem me mostrando o print.</li>
+      </ul>
+    </div>
+
+    <nav class="toc">
+      <a href="#nivel1">1 · SE CONTÉM / SENÃO</a>
+      <a href="#nivel2">2 · Abrir uma gaveta</a>
+      <a href="#nivel3">3 · Dois tipos de resposta</a>
+      <a href="#nivel4">4 · Funil compartilhado</a>
+      <a href="#nivel5">5 · O que já vem pronto</a>
+      <a href="#glossario">Glossário</a>
+    </nav>
+  </header>
+
+  <div class="escada">
+
+    <section class="step" id="nivel1">
+      <div class="badge">01</div>
+      <div>
+        <div class="tagline">Degrau térreo</div>
+        <h2>SE CONTÉM + SENÃO</h2>
+        <p>Isso você já domina — é só pra aquecer e fixar o vocabulário antes de subir. Uma <span class="rotulo" style="display:inline;margin:0;">PERGUNTA LIVRE</span> tem várias regras <span class="rotulo" style="display:inline;margin:0;">SE CONTÉM</span>, cada uma com sua <span class="rotulo" style="display:inline;margin:0;">RESPOSTA</span>. Quando nada bate, cai no <span class="rotulo" style="display:inline;margin:0;">SENÃO</span>.</p>
+
+        <div class="rotulo">Cole isso no Treino - Escala</div>
+        <div class="code"><span class="kw">PERGUNTA LIVRE:</span> Fala uma fruta que você gosta
+<span class="kw">SE CONTÉM:</span> banana
+<span class="kw">RESPOSTA:</span> Boa, banana é ótima!
+<span class="kw">SE CONTÉM:</span> maçã, maca
+<span class="kw">RESPOSTA:</span> Boa, maçã é refrescante.
+<span class="kw">SENÃO</span>
+<span class="kw">RESPOSTA:</span> Não conheço essa fruta ainda, me fala outra.</div>
+
+        <div class="exercicio">
+          <h4>Exercício</h4>
+          <p>Sem testar ainda: se você digitar <b>"pera"</b>, qual resposta deveria sair?</p>
+          <details>
+            <summary>Ver gabarito</summary>
+            <div class="checa"><b>✓</b> Cai no SENÃO ("Não conheço essa fruta ainda...") — "pera" não bate em nenhum SE CONTÉM cadastrado.</div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="step" id="nivel2">
+      <div class="badge">02</div>
+      <div>
+        <div class="tagline">O pulo do gato</div>
+        <h2>Abrir uma gaveta: SUBPERGUNTA + PERGUNTA SEGUINTE</h2>
+        <p>Uma <span class="rotulo" style="display:inline;margin:0;">RESPOSTA</span> fecha o assunto ali. Se você quer que a conversa continue com uma pergunta DIFERENTE dependendo do que a pessoa respondeu, troca a RESPOSTA por <span class="rotulo" style="display:inline;margin:0;">PERGUNTA SEGUINTE: algum-id</span> — isso abre uma gaveta nova.</p>
+
+        <div class="analogia"><b>Analogia Excel:</b> "algum-id" é só um apelido, igual nome de intervalo. Não aparece pra ninguém na conversa — é só o endereço que diz pra Lara "abre essa gaveta agora". Podia se chamar qualquer coisa, contanto que o nome depois de SUBPERGUNTA seja idêntico ao nome depois de PERGUNTA SEGUINTE.</div>
+
+        <div class="rotulo">Cole isso (substitui o "madura" do degrau 1)</div>
+        <div class="code"><span class="kw">SUBPERGUNTA:</span> banana-doce
+<span class="kw">PERGUNTA:</span> Você prefere ela verde ou madura?
+<span class="kw">SE CONTÉM:</span> verde
+<span class="kw">RESPOSTA:</span> Verde é mais firme mesmo.
+<span class="kw">SE CONTÉM:</span> madura
+<span class="kw">RESPOSTA:</span> Madura é mais docinha mesmo!
+<span class="kw">SENÃO</span>
+<span class="kw">RESPOSTA:</span> Entendi.</div>
+        <p style="font-size:14px;color:var(--ink-soft);">E lá em cima, no lugar de <span class="rotulo" style="display:inline;margin:0;">RESPOSTA: Boa, banana é ótima!</span>, troca por:</p>
+        <div class="code"><span class="kw">SE CONTÉM:</span> banana
+<span class="kw">PERGUNTA SEGUINTE:</span> banana-doce</div>
+
+        <div class="exercicio">
+          <h4>Exercício</h4>
+          <p>Cria uma <b>3ª gaveta</b> sozinho: quando a pessoa responder "verde", em vez de fechar com RESPOSTA, abre mais uma pergunta perguntando se ela come "cozida ou frita". Escreve a SUBPERGUNTA inteira antes de olhar o gabarito.</p>
+          <details>
+            <summary>Ver gabarito</summary>
+            <div class="code"><span class="kw">SE CONTÉM:</span> verde
+<span class="kw">PERGUNTA SEGUINTE:</span> banana-verde</div>
+            <div class="code"><span class="kw">SUBPERGUNTA:</span> banana-verde
+<span class="kw">PERGUNTA:</span> Verde? Você come cozida ou frita?
+<span class="kw">SE CONTÉM:</span> frita
+<span class="kw">RESPOSTA:</span> Banana frita é maravilhosa!
+<span class="kw">SE CONTÉM:</span> cozida
+<span class="kw">RESPOSTA:</span> Cozida também é uma boa pedida.
+<span class="kw">SENÃO</span>
+<span class="kw">RESPOSTA:</span> Interessante, nunca ouvi falar desse jeito.</div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="step" id="nivel3">
+      <div class="badge">03</div>
+      <div>
+        <div class="tagline">Dando alma ao SENÃO</div>
+        <h2>Opinião esperada × aleatoriedade genuína</h2>
+        <p>Não tenta prever TODA frase possível — isso é trabalho infinito. O SENÃO já pega sozinho qualquer coisa que você não previu. O que você pode fazer é separar em duas camadas: uma lista curta pra opiniões plausíveis (ganham resposta pessoal), e o SENÃO de verdade reservado só pro que sobrar de genuinamente aleatório.</p>
+
+        <div class="analogia"><b>Por quê isso importa:</b> "não gosto dessas frutas" e "meu gato mordeu o mouse" são coisas bem diferentes. Uma resposta só pra "Eita, por que você falou isso, kkk" fica ótima pro gato e ridícula pra opinião normal. Duas camadas resolvem os dois casos.</div>
+
+        <div class="rotulo">Cole isso (substitui o "madura" do degrau 2)</div>
+        <div class="code"><span class="kw">SE CONTÉM:</span> madura
+<span class="kw">PERGUNTA SEGUINTE:</span> madura-docinha</div>
+        <div class="code"><span class="kw">SUBPERGUNTA:</span> madura-docinha
+<span class="kw">PERGUNTA:</span> Madura é mais docinha mesmo!
+<span class="kw">SE CONTÉM:</span> não acho, nao acho, discordo, duvido, imagina
+<span class="kw">RESPOSTA:</span> Nossa, é sério que você não acha docinha? Que gosto pareceu ser pra você?
+<span class="kw">SE CONTÉM:</span> não gosto, nao gosto, não curto, odeio, detesto, não é minha praia
+<span class="kw">RESPOSTA:</span> Eita, não é sua praia então! Qual fruta você prefere?
+<span class="kw">SENÃO</span>
+<span class="kw">RESPOSTA:</span> Eita! Por que você falou isso, kkk</div>
+
+        <div class="exercicio">
+          <h4>Exercício</h4>
+          <p>Faz a mesma coisa pra gaveta <b>banana-verde</b> do degrau 2: quando a resposta for "frita", em vez de fechar direto, pergunta "Com açúcar ou sem?" — e já separa as duas camadas (uma opinião esperada tipo "sem açúcar, claro" e um SENÃO genuíno).</p>
+          <details>
+            <summary>Ver gabarito</summary>
+            <div class="code"><span class="kw">SE CONTÉM:</span> frita
+<span class="kw">PERGUNTA SEGUINTE:</span> frita-acucar</div>
+            <div class="code"><span class="kw">SUBPERGUNTA:</span> frita-acucar
+<span class="kw">PERGUNTA:</span> Com açúcar ou sem?
+<span class="kw">SE CONTÉM:</span> sem, sem acucar, natural
+<span class="kw">RESPOSTA:</span> Boa, sem açúcar é mais saudável mesmo.
+<span class="kw">SENÃO</span>
+<span class="kw">RESPOSTA:</span> Também gosto assim, é uma delícia.</div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="step" id="nivel4">
+      <div class="badge">04</div>
+      <div>
+        <div class="tagline">Muitos nomes, um caminho só</div>
+        <h2>Funil compartilhado</h2>
+        <p>Quando várias respostas diferentes (nomes, pessoas, situações) precisam levar pra um MESMO próximo passo, não repete a árvore inteira pra cada uma — todas apontam com PERGUNTA SEGUINTE pro <b>mesmo</b> id de gaveta.</p>
+
+        <div class="rotulo">Cole isso (dentro de uma gaveta qualquer, ex: madura-docinha)</div>
+        <div class="code"><span class="kw">SE CONTÉM:</span> maria
+<span class="kw">PERGUNTA SEGUINTE:</span> quem-te-apresentou
+<span class="kw">SE CONTÉM:</span> joao, joão
+<span class="kw">PERGUNTA SEGUINTE:</span> quem-te-apresentou
+<span class="kw">SE CONTÉM:</span> minha mae, minha mãe
+<span class="kw">PERGUNTA SEGUINTE:</span> quem-te-apresentou</div>
+        <div class="code"><span class="kw">SUBPERGUNTA:</span> quem-te-apresentou
+<span class="kw">PERGUNTA:</span> Que legal, e o que essa pessoa disse sobre a fruta?
+<span class="kw">SENÃO</span>
+<span class="kw">RESPOSTA:</span> Entendi, boa lembrança.</div>
+        <p style="font-size:14px;color:var(--ink-soft);">Três nomes diferentes, uma gaveta só depois. É exatamente esse esqueleto que você já usa pro Valdir/Zefa no seu contexto de verdade — só troca "quem-te-apresentou" e as respostas pelas palavras reais do seu assunto.</p>
+
+        <div class="exercicio">
+          <h4>Exercício</h4>
+          <p>Adiciona um 4º nome (o seu próprio, por exemplo) apontando pro mesmo "quem-te-apresentou", sem duplicar a gaveta.</p>
+          <details>
+            <summary>Ver gabarito</summary>
+            <div class="code"><span class="kw">SE CONTÉM:</span> marcelao, marcelão, voce, você
+<span class="kw">PERGUNTA SEGUINTE:</span> quem-te-apresentou</div>
+            <div class="checa"><b>✓</b> Só mais um SE CONTÉM apontando pro id já existente — a gaveta "quem-te-apresentou" não muda em nada.</div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="step" id="nivel5">
+      <div class="badge">05</div>
+      <div>
+        <div class="tagline">Isso não é exercício</div>
+        <h2>O que já vem pronto</h2>
+        <p>Diferente dos degraus 1 a 4, isso aqui você não precisa escrever — já existe no código da Lara desde o build 31.</p>
+        <div class="fyi">
+          <p><b>Atalho de saída global:</b> se no meio de QUALQUER pergunta ou gaveta a pessoa responder algo tipo "espera aí", "um minuto", "já volto", "calma aí", "tô ocupado" — a Lara não tenta encaixar isso como resposta do assunto aberto. Ela só devolve um recado curto ("Sem pressa, te espero aqui.") e deixa a pergunta esperando exatamente onde parou, pra continuar depois.</p>
+        </div>
+        <p style="font-size:14px;color:var(--ink-soft);margin-top:14px;">Se um dia você perceber alguma frase de pausa que ela não reconheceu, é só me pedir pra adicionar na lista — essa parte fica no código, não no editor de Conversar.</p>
+      </div>
+    </section>
+
+  </div>
+
+  <section class="glossario" id="glossario">
+    <h2>Glossário rápido</h2>
+    <div class="tagline">Todo comando que existe, num lugar só</div>
+    <div class="tabela-wrap">
+      <table>
+        <thead>
+          <tr><th>Comando</th><th>Pra que serve</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="cmd">CONTEXTO:</td><td>Começa um assunto novo (o botão que aparece no menu de Conversar).</td></tr>
+          <tr><td class="cmd">PERGUNTA LIVRE:</td><td>A pergunta de entrada desse contexto — a pessoa responde digitando, texto livre.</td></tr>
+          <tr><td class="cmd">PERGUNTA CARDS:</td><td>Igual acima, mas a pessoa escolhe clicando entre opções (CARD).</td></tr>
+          <tr><td class="cmd">CARD:</td><td>Uma opção clicável dentro de PERGUNTA CARDS.</td></tr>
+          <tr><td class="cmd">SE CONTÉM:</td><td>Lista de palavras — se a resposta tiver uma delas, essa regra bate.</td></tr>
+          <tr><td class="cmd">RESPOSTA:</td><td>O que a Lara fala quando essa regra bate. Fecha o assunto ali.</td></tr>
+          <tr><td class="cmd">SENÃO</td><td>O que fazer quando NENHUM SE CONTÉM bateu.</td></tr>
+          <tr><td class="cmd">TÍTULO:</td><td>Apelido interno de uma regra (usado só nos diagnósticos, não aparece na conversa).</td></tr>
+          <tr><td class="cmd">TAMBÉM CONTÉM:</td><td>Acrescenta mais palavras-gatilho numa regra já existente, sem reescrevê-la.</td></tr>
+          <tr><td class="cmd">MATERIAL:</td><td>Texto de referência mais longo sobre o assunto, só entra quando nada mais bate.</td></tr>
+          <tr><td class="cmd">PARTE 2: / PARTE 3:</td><td>Continuação de uma resposta longa — some "quer ler mais?" antes de mostrar.</td></tr>
+          <tr><td class="cmd">SUBPERGUNTA: id</td><td>Abre uma gaveta nova com seu próprio texto e suas próprias regras.</td></tr>
+          <tr><td class="cmd">PERGUNTA: texto</td><td>O texto da pergunta de dentro de uma SUBPERGUNTA (equivalente ao PERGUNTA LIVRE de nível de cima).</td></tr>
+          <tr><td class="cmd">PERGUNTA SEGUINTE: id</td><td>Em vez de RESPOSTA, encadeia pra uma SUBPERGUNTA com esse id.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="fim">
+    <p>Sobe um degrau de cada vez. Quando o "Treino - Escala" tiver os cinco degraus funcionando do seu jeito, é só copiar o mesmo esqueleto pro seu contexto de verdade (vizinho, Zefa, Valdir) — trocando as palavras, sem inventar estrutura nova.</p>
+  </footer>
+
+</div>
