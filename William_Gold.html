@@ -79,15 +79,16 @@ input[type=file]{ display:none; }
 
 <script>
 // ══════════════════════════════════════════════════════
-// PERSONAGENS PADRÃO (usados só pro seletor "farmando")
+// PERSONAGENS DO GOLD — fixo por servidor, só os arqueiros (não
+// puxa mais a lista inteira sincronizada do app Personagens). Pra
+// incluir outro arqueiro no futuro, é só adicionar o nome no array
+// do servidor certo aqui embaixo.
 // ══════════════════════════════════════════════════════
-var EU_CHARS_DEFAULT = [
-  {nome:'Archlord',  cat:'Principal'},
-  {nome:'Baygon',    cat:'Principal'},
-  {nome:'Maditau',   cat:'Principal'},
-  {nome:'Varian',    cat:'Principal'},
-  {nome:'Mxyzptlk',  cat:'Intermediário'},
-];
+var GOLD_CHARS_POR_SERVIDOR = {
+  eu:      ['Mxyzptlk'],
+  america: ['Archlord'],
+  murica:  ['GodOfHonor'],
+};
 
 var KEY = 'william_superapp_v1'; // mesma chave do SuperApp — dados ficam sincronizados
 var server = 'eu';
@@ -101,9 +102,8 @@ function saveState(s) { try { s.lastModified = new Date().toISOString(); localSt
 function pertenceAoGold(k){ return /_gold$/.test(k); }
 
 function getChars() {
-  var s = loadState(), k = server+'_chars';
-  if (!s[k]) { s[k] = server==='eu' ? JSON.parse(JSON.stringify(EU_CHARS_DEFAULT)) : []; saveState(s); }
-  return s[k];
+  var nomes = GOLD_CHARS_POR_SERVIDOR[server] || [];
+  return nomes.map(function(nome){ return { nome: nome }; });
 }
 
 function parsePtBrDate(str){
@@ -311,34 +311,9 @@ function renderGold(main) {
   }
 
   main.appendChild(card);
-
-  // Histórico dos últimos 7 dias
-  var diario=gs.diario||[];
-  if(diario.length>0){
-    var dCard=document.createElement('div'); dCard.className='card';
-    dCard.appendChild(el('div','card-title','📅 HISTÓRICO — ÚLTIMOS 7 DIAS'));
-    diario.forEach(function(d,i){
-      var isHoje=(d.data===hoje);
-      var dRow=document.createElement('div');
-      dRow.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:'+(isHoje?'#1a1608':'#0f0f1e')+';border-radius:8px;margin-bottom:5px;border:1px solid '+(isHoje?'#c8a96e':'#2a2a3a')+';gap:8px;';
-      var left=el('div','',(isHoje?'🟢 Hoje — ':'')+d.data);
-      left.style.cssText='font-size:12px;font-weight:600;color:'+(isHoje?'#c8a96e':'#aaa')+';flex:1;';
-      var right=el('div','',formatGold(d.total));
-      right.style.cssText='font-size:15px;font-weight:800;color:#FFD700;';
-      var delBtn=document.createElement('button');
-      delBtn.textContent='✕';
-      delBtn.title='Apagar essa linha do histórico';
-      delBtn.style.cssText='background:none;border:none;color:#555;font-size:14px;cursor:pointer;padding:2px 4px;flex-shrink:0;';
-      delBtn.onclick=(function(dataAlvo){ return function(){
-        if(!confirm('Apagar o histórico de '+dataAlvo+'?')) return;
-        var gs2=getGoldState();
-        gs2.diario=(gs2.diario||[]).filter(function(x){return x.data!==dataAlvo;});
-        setGoldState(gs2); render();
-      };})(d.data);
-      dRow.appendChild(left); dRow.appendChild(right); dRow.appendChild(delBtn); dCard.appendChild(dRow);
-    });
-    main.appendChild(dCard);
-  }
+  // Histórico diário removido de propósito — a barra de depósito (hoje)
+  // e o box GERAL acumulado (total + dias) acima já bastam; ver o valor
+  // de cada dia específico, incluindo dias com 0, gerava ansiedade à toa.
 }
 
 function parseGoldInput(str){
