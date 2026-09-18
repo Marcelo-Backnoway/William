@@ -494,23 +494,25 @@ function reservarNumeroFoto(){
 function checklistHojeStr(){ return new Date().toISOString().split('T')[0]; }
 function getChecklistDias(){ var s=loadState(); return s.checklistDias || {}; }
 function getChecklistDia(ds){
+  // Importante: essa função é só LEITURA — monta um retrato em memória
+  // com os defaults pros itens que ainda não têm registro nesse dia,
+  // mas NÃO grava isso no armazenamento. Antes ela salvava esse
+  // "esqueleto" de propósito (pra já deixar tudo preenchido), e isso
+  // bagunçava o relógio de sincronização (lastModified): assim que o
+  // app abria, criava esse registro vazio e já marcava "mudou agora
+  // mesmo" — ficando mais novo que a versão de verdade (com fotos) que
+  // tava vindo do Firebase, e a trava de segurança da sincronização
+  // bloqueava os dados reais de descerem, achando que o vazio local
+  // era mais atualizado. Isso é o que fazia os itens já verificados
+  // com foto voltarem a aparecer como "sem foto" ao reabrir o app.
   var s = loadState();
-  if (!s.checklistDias) s.checklistDias = {};
-  if (!s.checklistDias[ds]) {
-    s.checklistDias[ds] = {};
-    saveState(s);
-  }
-  // garante que itens novos (cadastrados depois) apareçam também em dias já existentes
+  var diaSalvo = (s.checklistDias && s.checklistDias[ds]) || {};
   var itens = getChecklistItens();
-  var mudou = false;
+  var resultado = {};
   itens.forEach(function(it){
-    if (!s.checklistDias[ds][it.id]) {
-      s.checklistDias[ds][it.id] = { ok: null, obs: '', fotoNumero: null, hora: null };
-      mudou = true;
-    }
+    resultado[it.id] = diaSalvo[it.id] || { ok: null, obs: '', fotoNumero: null, hora: null };
   });
-  if (mudou) saveState(s);
-  return s.checklistDias[ds];
+  return resultado;
 }
 function setChecklistItemDia(ds, itemId, dados){
   var s = loadState();
