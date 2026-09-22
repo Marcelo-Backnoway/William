@@ -278,19 +278,34 @@ function abrirCameraParaItem(ds, it){
 // ══════════════════════════════════════════════════════
 // RECEBER FOTOS COMPARTILHADAS DA GALERIA (Web Share Target)
 // ══════════════════════════════════════════════════════
+var MSG_REINSTALAR = ' Se continuar assim, remove o "William Checklist" da tela inicial e adiciona de novo (reinstalar) — o compartilhamento às vezes fica desatualizado depois de mudanças no app.';
+
 function verificarFotosCompartilhadas(){
   var params = new URLSearchParams(window.location.search);
-  if (params.get('compartilhado') !== '1') return;
+  var houveErro = params.get('erro_compartilhar') === '1';
+  var houveCompartilhamento = params.get('compartilhado') === '1';
+  if (!houveErro && !houveCompartilhamento) return;
 
   // limpa o parâmetro da URL pra não repetir se a pessoa atualizar a página
   window.history.replaceState({}, '', window.location.pathname);
 
-  if (!('caches' in window)) return;
+  if (houveErro) {
+    alert('Recebi o pedido de compartilhamento, mas não consegui guardar a(s) foto(s) pra processar (erro ao ler o compartilhamento). Tenta compartilhar de novo.' + MSG_REINSTALAR);
+    return;
+  }
+
+  if (!('caches' in window)) {
+    alert('Esse navegador não suporta o recurso de cache usado pra receber fotos compartilhadas.' + MSG_REINSTALAR);
+    return;
+  }
 
   caches.open('checklist-compartilhado').then(function(cache){
     return cache.keys().then(function(chaves){
       var chavesFotos = chaves.filter(function(req){ return req.url.indexOf('__compartilhado-foto-') !== -1; });
-      if (chavesFotos.length === 0) return;
+      if (chavesFotos.length === 0) {
+        alert('O app abriu pelo compartilhamento, mas nenhuma foto chegou junto (veio vazio).' + MSG_REINSTALAR);
+        return;
+      }
 
       Promise.all(chavesFotos.map(function(req){
         return cache.match(req).then(function(resp){ return resp.blob(); });
@@ -299,6 +314,9 @@ function verificarFotosCompartilhadas(){
         mostrarEscolhaDeAmbiente(blobs);
       });
     });
+  }).catch(function(e){
+    console.error('Erro ao abrir cache de fotos compartilhadas:', e);
+    alert('Não consegui acessar o cache de fotos compartilhadas (erro: ' + (e && e.message ? e.message : e) + ').' + MSG_REINSTALAR);
   });
 }
 
