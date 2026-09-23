@@ -274,6 +274,20 @@ function abrirCameraParaItem(ds, it){
   document.body.appendChild(input);
   input.click();
 }
+// Igual ao de cima, mas sem "capture" — abre o seletor de fotos já tiradas (Galeria/Photo Picker do Android)
+// em vez da câmera ao vivo. Caminho alternativo ao compartilhamento (share_target), que se mostrou pouco
+// confiável nesse aparelho (o corpo da requisição chegava praticamente vazio no service worker).
+function abrirGaleriaParaItem(ds, it){
+  var input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*'; input.multiple = true;
+  input.style.display = 'none';
+  input.addEventListener('change', function(){
+    enviarFotosItem(ds, it, input.files);
+    document.body.removeChild(input);
+  });
+  document.body.appendChild(input);
+  input.click();
+}
 
 // ══════════════════════════════════════════════════════
 // RECEBER FOTOS COMPARTILHADAS DA GALERIA (Web Share Target)
@@ -618,8 +632,14 @@ function renderChecklistHoje(main){
         fotoRow.appendChild(el('div','chk-foto-tag','📷 Fotos enviadas'));
         var linkDriveHoje = document.createElement('a'); linkDriveHoje.href = d.pastaLink || linkBuscaDrivePasta(it); linkDriveHoje.target = '_blank'; linkDriveHoje.rel = 'noopener'; linkDriveHoje.className = 'chk-link-drive'; linkDriveHoje.textContent = '📂 Ver no Drive';
         fotoRow.appendChild(linkDriveHoje);
+        var btnMaisFotos = document.createElement('button'); btnMaisFotos.className='chk-btn-foto-mini'; btnMaisFotos.textContent='+ mais fotos';
+        btnMaisFotos.onclick=function(){ abrirGaleriaParaItem(ds, it); };
+        fotoRow.appendChild(btnMaisFotos);
       } else {
-        fotoRow.appendChild(el('div','chk-foto-dica','Envie fotos compartilhando da Galeria pra cá'));
+        var btnGaleria = document.createElement('button'); btnGaleria.className='chk-btn-foto'; btnGaleria.textContent='📷 Escolher da Galeria';
+        btnGaleria.onclick=function(){ abrirGaleriaParaItem(ds, it); };
+        fotoRow.appendChild(btnGaleria);
+        fotoRow.appendChild(el('div','chk-foto-dica','ou compartilha direto da Galeria pra cá'));
       }
       box.appendChild(fotoRow);
 
