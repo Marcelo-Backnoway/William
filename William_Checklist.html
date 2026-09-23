@@ -393,8 +393,34 @@ async function subirComRetentativa(pastaCaminho, nomeArquivo, base64, mimeType, 
   }
   throw ultimoErro;
 }
+// ---------- Trava contra mistura de fotos entre ambientes parecidos ----------
+// A ideia: toda foto nova, de qualquer ambiente, deveria ter sido tirada DEPOIS do
+// último envio bem-sucedido (afinal ele tira as fotos e manda na sequência, ambiente
+// por ambiente). Se uma foto selecionada for de ANTES disso, é bem provável que seja
+// uma foto antiga de outro ambiente que sobrou na Galeria e foi selecionada por engano.
+var ULTIMO_ENVIO_SUCESSO_KEY = 'william_checklist_ultimo_envio_sucesso_em';
+function getUltimoEnvioComSucesso(){
+  try { var v = localStorage.getItem(ULTIMO_ENVIO_SUCESSO_KEY); return v ? parseInt(v, 10) : null; } catch(e){ return null; }
+}
+function setUltimoEnvioComSucesso(ts){
+  try { localStorage.setItem(ULTIMO_ENVIO_SUCESSO_KEY, String(ts)); } catch(e){}
+}
+function confirmarFotosNaoSaoAntigas(it, files){
+  var ultimoEnvio = getUltimoEnvioComSucesso();
+  if (!ultimoEnvio) return true; // primeiro envio da sessão — nada pra comparar
+  var antigas = [];
+  for (var k = 0; k < files.length; k++) {
+    if (files[k].lastModified && files[k].lastModified < ultimoEnvio) antigas.push(files[k]);
+  }
+  if (antigas.length === 0) return true;
+  var maisAntiga = Math.min.apply(null, antigas.map(function(f){ return f.lastModified; }));
+  var minutosAtras = Math.max(1, Math.round((Date.now() - maisAntiga) / 60000));
+  return confirm('⚠️ '+antigas.length+' de '+files.length+' foto(s) selecionada(s) parece(m) ser de ANTES do seu último envio (tirada(s) há '+minutosAtras+' min) — pode ser foto de outro ambiente que sobrou na Galeria.\n\nTem certeza que é mesmo do ambiente "'+it.nome+'"?\n\nOK = enviar assim mesmo\nCancelar = escolher de novo');
+}
+
 async function enviarFotosItem(ds, it, files){
   if (!files || files.length === 0) return;
+  if (!confirmarFotosNaoSaoAntigas(it, files)) return;
   var d = getChecklistDia(ds)[it.id] || { ok:null, obs:'', fotoNumero:null, fotosEnviadas:0, hora:null, pastaLink:null };
   var numero = d.fotoNumero;
   if (!numero) { numero = reservarNumeroFoto(); setChecklistItemDia(ds, it.id, {fotoNumero:numero}); }
@@ -425,6 +451,7 @@ async function enviarFotosItem(ds, it, files){
 
   delete uploadStatus[it.id];
   setChecklistItemDia(ds, it.id, { fotoNumero:numero, fotosEnviadas: jaEnviadas + sucesso, pastaLink: linkPasta });
+  if (sucesso > 0) setUltimoEnvioComSucesso(Date.now());
   vibe([30]);
   render();
 }
@@ -632,11 +659,17 @@ function renderChecklistHoje(main){
         fotoRow.appendChild(el('div','chk-foto-tag','📷 Fotos enviadas'));
         var linkDriveHoje = document.createElement('a'); linkDriveHoje.href = d.pastaLink || linkBuscaDrivePasta(it); linkDriveHoje.target = '_blank'; linkDriveHoje.rel = 'noopener'; linkDriveHoje.className = 'chk-link-drive'; linkDriveHoje.textContent = '📂 Ver no Drive';
         fotoRow.appendChild(linkDriveHoje);
-        var btnMaisFotos = document.createElement('button'); btnMaisFotos.className='chk-btn-foto-mini'; btnMaisFotos.textContent='+ mais fotos';
+        var btnMaisCamera = document.createElement('button'); btnMaisCamera.className='chk-btn-foto-mini'; btnMaisCamera.textContent='+ tirar foto agora';
+        btnMaisCamera.onclick=function(){ abrirCameraParaItem(ds, it); };
+        fotoRow.appendChild(btnMaisCamera);
+        var btnMaisFotos = document.createElement('button'); btnMaisFotos.className='chk-btn-foto-mini'; btnMaisFotos.textContent='+ da galeria';
         btnMaisFotos.onclick=function(){ abrirGaleriaParaItem(ds, it); };
         fotoRow.appendChild(btnMaisFotos);
       } else {
-        var btnGaleria = document.createElement('button'); btnGaleria.className='chk-btn-foto'; btnGaleria.textContent='📷 Escolher da Galeria';
+        var btnCamera = document.createElement('button'); btnCamera.className='chk-btn-foto'; btnCamera.textContent='📷 Tirar Foto Agora';
+        btnCamera.onclick=function(){ abrirCameraParaItem(ds, it); };
+        fotoRow.appendChild(btnCamera);
+        var btnGaleria = document.createElement('button'); btnGaleria.className='chk-btn-foto'; btnGaleria.textContent='🖼️ Escolher da Galeria';
         btnGaleria.onclick=function(){ abrirGaleriaParaItem(ds, it); };
         fotoRow.appendChild(btnGaleria);
         fotoRow.appendChild(el('div','chk-foto-dica','ou compartilha direto da Galeria pra cá'));
