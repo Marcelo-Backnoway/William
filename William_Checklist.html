@@ -280,6 +280,13 @@ function abrirCameraParaItem(ds, it){
 // ══════════════════════════════════════════════════════
 var MSG_REINSTALAR = ' Se continuar assim, remove o "William Checklist" da tela inicial e adiciona de novo (reinstalar) — o compartilhamento às vezes fica desatualizado depois de mudanças no app.';
 
+function lerDiagnosticoCompartilhamento(cache){
+  return cache.match('/__compartilhado-debug').then(function(resp){
+    if (!resp) return '(sem diagnóstico salvo pelo service worker — ele nem chegou a rodar o recebimento)';
+    return resp.json().then(function(d){ return JSON.stringify(d); }).catch(function(){ return '(diagnóstico salvo, mas ilegível)'; });
+  }).catch(function(){ return '(não consegui ler o diagnóstico)'; });
+}
+
 function verificarFotosCompartilhadas(){
   var params = new URLSearchParams(window.location.search);
   var houveErro = params.get('erro_compartilhar') === '1';
@@ -289,28 +296,31 @@ function verificarFotosCompartilhadas(){
   // limpa o parâmetro da URL pra não repetir se a pessoa atualizar a página
   window.history.replaceState({}, '', window.location.pathname);
 
-  if (houveErro) {
-    alert('Recebi o pedido de compartilhamento, mas não consegui guardar a(s) foto(s) pra processar (erro ao ler o compartilhamento). Tenta compartilhar de novo.' + MSG_REINSTALAR);
-    return;
-  }
-
   if (!('caches' in window)) {
     alert('Esse navegador não suporta o recurso de cache usado pra receber fotos compartilhadas.' + MSG_REINSTALAR);
     return;
   }
 
   caches.open('checklist-compartilhado').then(function(cache){
+    if (houveErro) {
+      return lerDiagnosticoCompartilhamento(cache).then(function(diag){
+        alert('Recebi o pedido de compartilhamento, mas não consegui guardar a(s) foto(s) pra processar (erro ao ler o compartilhamento).' + MSG_REINSTALAR + '\n\nDiagnóstico: ' + diag);
+      });
+    }
+
     return cache.keys().then(function(chaves){
       var chavesFotos = chaves.filter(function(req){ return req.url.indexOf('__compartilhado-foto-') !== -1; });
       if (chavesFotos.length === 0) {
-        alert('O app abriu pelo compartilhamento, mas nenhuma foto chegou junto (veio vazio).' + MSG_REINSTALAR);
-        return;
+        return lerDiagnosticoCompartilhamento(cache).then(function(diag){
+          alert('O app abriu pelo compartilhamento, mas nenhuma foto chegou junto (veio vazio).' + MSG_REINSTALAR + '\n\nDiagnóstico: ' + diag);
+        });
       }
 
-      Promise.all(chavesFotos.map(function(req){
+      return Promise.all(chavesFotos.map(function(req){
         return cache.match(req).then(function(resp){ return resp.blob(); });
       })).then(function(blobs){
         chavesFotos.forEach(function(req){ cache.delete(req); });
+        cache.delete('/__compartilhado-debug');
         mostrarEscolhaDeAmbiente(blobs);
       });
     });
@@ -1135,7 +1145,8 @@ onAuthStateChanged(auth, async function(user){
       jaMigrou = true;
       render();
       iniciarEscuta();
-      iniciarChecagemDataCritica();
+      // iniciarChecagemDataCritica() DESLIGADO de propósito nesse app — Marcelão pediu pra tirar
+      // os lembretes/alertas pulsantes (moto, contas, datas...) da tela do Checklist
       verificarFotosCompartilhadas();
     }
   } else {
