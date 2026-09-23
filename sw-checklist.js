@@ -23,15 +23,34 @@ self.addEventListener('fetch', function(event){
   event.respondWith(fetch(event.request));
 });
 
-async function receberFotosCompartilhadas(request){
+async function registrarDiagnostico(cache, dados){
   try {
-    var formData = await request.formData();
-    var arquivos = formData.getAll('photos');
-    var cache = await caches.open(CACHE_COMPARTILHADO);
+    await cache.put('/__compartilhado-debug', new Response(JSON.stringify(dados), { headers: { 'Content-Type': 'application/json' } }));
+  } catch (e) { /* diagnóstico é melhor-esforço, nunca deve travar o fluxo real */ }
+}
 
-    // limpa qualquer foto compartilhada anterior que não tenha sido usada
+async function receberFotosCompartilhadas(request){
+  var cache;
+  try {
+    cache = await caches.open(CACHE_COMPARTILHADO);
+
+    // limpa qualquer foto (e diagnóstico) compartilhada anterior que não tenha sido usada
     var chavesAntigas = await cache.keys();
     await Promise.all(chavesAntigas.map(function(k){ return cache.delete(k); }));
+
+    var formData = await request.formData();
+    var arquivos = formData.getAll('photos');
+
+    // diagnóstico: registra tudo que realmente veio no formData (nomes de campo, se é arquivo, tamanho)
+    // pra dar pra investigar remotamente quando o resultado não bate com o esperado
+    var camposRecebidos = [];
+    formData.forEach(function(valor, chave){
+      if (valor && typeof valor.arrayBuffer === 'function') {
+        camposRecebidos.push(chave + '=File(nome=' + (valor.name || '?') + ', ' + valor.size + 'b, tipo=' + (valor.type || '?') + ')');
+      } else {
+        camposRecebidos.push(chave + '=' + String(valor).slice(0, 60));
+      }
+    });
 
     var i = 0;
     for (var idx = 0; idx < arquivos.length; idx++) {
@@ -43,8 +62,11 @@ async function receberFotosCompartilhadas(request){
       }
     }
 
+    await registrarDiagnostico(cache, { etapa: 'ok', totalCamposFormData: camposRecebidos.length, campos: camposRecebidos, fotosSalvas: i });
+
     return Response.redirect('./William_Checklist.html?compartilhado=1', 303);
   } catch (e) {
+    if (cache) await registrarDiagnostico(cache, { etapa: 'erro', mensagem: String(e && e.message || e) });
     return Response.redirect('./William_Checklist.html?erro_compartilhar=1', 303);
   }
 }
