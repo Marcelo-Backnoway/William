@@ -560,7 +560,20 @@ function reservarNumeroFoto(){
 // ══════════════════════════════════════════════════════
 // PLANTÕES — um checklist por dia
 // ══════════════════════════════════════════════════════
-function checklistHojeStr(){ return new Date().toISOString().split('T')[0]; }
+function checklistHojeStr(){
+  // IMPORTANTE (achado em 24/09/2026): toISOString() dá a data em UTC, não a
+  // data local do aparelho. Brasília é UTC-3, então a partir das 21h de cada
+  // dia (aqui) o UTC já virou o dia seguinte — o app achava que já era
+  // amanhã, mostrando o checklist de hoje "zerado" mesmo com tudo já feito,
+  // e mandando fotos tiradas depois das 21h pra pasta do dia seguinte no
+  // Drive (foi o que aconteceu com a Sala de Artes). Corrigido usando a data
+  // local de verdade do aparelho.
+  var d = new Date();
+  var ano = d.getFullYear();
+  var mes = String(d.getMonth()+1).padStart(2,'0');
+  var dia = String(d.getDate()).padStart(2,'0');
+  return ano+'-'+mes+'-'+dia;
+}
 function getChecklistDias(){ var s=loadState(); return s.checklistDias || {}; }
 function getChecklistDia(ds){
   // Importante: essa função é só LEITURA — monta um retrato em memória
