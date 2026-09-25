@@ -537,6 +537,41 @@ var CHECKLIST_ITENS_DEFAULT = [
   {id:'portao_areia', nome:'Portão Parque de Areia'},
   {id:'quadra_chaves', nome:'Quadra de Chaves'}
 ];
+
+// ══════════════════════════════════════════════════════
+// DIAGNÓSTICO DE MUDANÇAS NA LISTA DE ITENS (25/09/2026) — investigação em
+// andamento: itens CRIADOS PELO USUÁRIO (nunca os de fábrica) às vezes somem
+// sozinhos entre um plantão e outro, sem nenhuma limpeza de histórico ou
+// reinstalação envolvida. Ainda não sabemos a causa exata. Em vez de chutar
+// um conserto, este registro guarda toda vez que a lista de itens muda —
+// de onde veio a mudança (edição local ou sincronização com a nuvem) e quais
+// ids sumiram/apareceram — pra, da próxima vez que isso acontecer, termos
+// prova real de onde veio, em vez de reconstituir de memória depois. Só
+// registra localmente (nunca sincroniza pra nuvem, não é dado do checklist
+// em si) e nunca deleta nada sozinho — só observa.
+var CHECKLIST_LOG_ITENS_MAX = 30;
+function registrarMudancaItensEm(s, origem, itensAntes, itensDepois, extra){
+  try {
+    var idsAntes = (itensAntes || []).map(function(it){ return it.id; });
+    var idsDepois = (itensDepois || []).map(function(it){ return it.id; });
+    var removidos = idsAntes.filter(function(id){ return idsDepois.indexOf(id) === -1; });
+    var adicionados = idsDepois.filter(function(id){ return idsAntes.indexOf(id) === -1; });
+    if (removidos.length === 0 && adicionados.length === 0) return; // nada mudou de fato, não polui o log
+    var log = s.checklistLogItens || [];
+    log.unshift(Object.assign({
+      quando: new Date().toISOString(),
+      origem: origem,
+      idsAntes: idsAntes,
+      idsDepois: idsDepois,
+      idsRemovidos: removidos,
+      idsAdicionados: adicionados
+    }, extra || {}));
+    if (log.length > CHECKLIST_LOG_ITENS_MAX) log = log.slice(0, CHECKLIST_LOG_ITENS_MAX);
+    s.checklistLogItens = log;
+  } catch(e) {}
+}
+function getChecklistLogItens(){ var s = loadState(); return s.checklistLogItens || []; }
+
 function getChecklistItens(){
   // IMPORTANTE (achado em 24/09/2026 — causa raiz do "tudo virgem" recorrente):
   // antes, essa função GRAVAVA de volta no armazenamento toda vez que criava a
@@ -578,7 +613,12 @@ function getChecklistItens(){
 
   return itens;
 }
-function setChecklistItens(itens){ var s=loadState(); s.checklistItens=itens; saveState(s); }
+function setChecklistItens(itens){
+  var s = loadState();
+  registrarMudancaItensEm(s, 'edicao_local', s.checklistItens || [], itens);
+  s.checklistItens = itens;
+  saveState(s);
+}
 function gerarIdItemChecklist(){ return 'item_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
 // ══════════════════════════════════════════════════════
@@ -851,6 +891,52 @@ function renderChecklistHistorico(main){
 }
 
 // ══════════════════════════════════════════════════════
+// UI — DIAGNÓSTICO DE MUDANÇAS NA LISTA DE ITENS (investigação em andamento,
+// ver comentário em registrarMudancaItensEm). Se um item que você criou
+// sumir de novo, abre essa seção e me manda print — aqui fica registrado de
+// onde veio a mudança.
+// ══════════════════════════════════════════════════════
+var checklistDiagnosticoAberto = false;
+
+function renderChecklistDiagnostico(main){
+  var card = document.createElement('div'); card.className='card';
+  var toggle = document.createElement('div'); toggle.className='toggle-secao';
+  toggle.textContent = (checklistDiagnosticoAberto ? '▲' : '▼') + ' 🔍 Diagnóstico (mudanças na lista de itens)';
+  toggle.onclick = function(){ checklistDiagnosticoAberto = !checklistDiagnosticoAberto; render(); };
+  card.appendChild(toggle);
+
+  if (checklistDiagnosticoAberto) {
+    var log = getChecklistLogItens();
+    if (log.length === 0) {
+      card.appendChild(el('div','itin-vazio','Nenhuma mudança na lista de itens registrada ainda neste aparelho.'));
+    } else {
+      log.forEach(function(entrada){
+        var box = document.createElement('div'); box.className='chk-item';
+        var quandoFmt = new Date(entrada.quando).toLocaleString('pt-BR');
+        var origemTxt = entrada.origem === 'edicao_local'
+          ? 'Você editou a lista de itens neste aparelho'
+          : 'A sincronização com a nuvem trouxe uma lista diferente';
+        box.appendChild(el('div','chk-item-nome', quandoFmt));
+        box.appendChild(el('div','chk-obs-leitura', origemTxt));
+        if (entrada.idsRemovidos && entrada.idsRemovidos.length) {
+          box.appendChild(el('div','chk-obs-leitura', '❌ Sumiram: ' + entrada.idsRemovidos.join(', ')));
+        }
+        if (entrada.idsAdicionados && entrada.idsAdicionados.length) {
+          box.appendChild(el('div','chk-obs-leitura', '✅ Apareceram: ' + entrada.idsAdicionados.join(', ')));
+        }
+        if (entrada.origem === 'sincronizacao_remota') {
+          box.appendChild(el('div','chk-item-hora', 'relógio local antes: ' + (entrada.localLastModifiedAntes || '—')));
+          box.appendChild(el('div','chk-item-hora', 'relógio da nuvem: ' + (entrada.remotoLastModified || '—')));
+        }
+        card.appendChild(box);
+      });
+    }
+  }
+
+  main.appendChild(card);
+}
+
+// ══════════════════════════════════════════════════════
 // RENDER PRINCIPAL
 // ══════════════════════════════════════════════════════
 function render(){
@@ -858,6 +944,7 @@ function render(){
   main.innerHTML = '';
   renderChecklistHoje(main);
   renderChecklistHistorico(main);
+  renderChecklistDiagnostico(main);
 }
 </script>
 
@@ -1216,6 +1303,12 @@ function iniciarEscuta(){
     var mudou = false;
     Object.keys(remoto).forEach(function(k){
       if(pertenceAoChecklist(k) && JSON.stringify(local[k]) !== JSON.stringify(remoto[k])){
+        if (k === 'checklistItens') {
+          registrarMudancaItensEm(local, 'sincronizacao_remota', local.checklistItens || [], remoto.checklistItens || [], {
+            localLastModifiedAntes: local.lastModified || null,
+            remotoLastModified: remoto.lastModified || null
+          });
+        }
         local[k] = remoto[k]; mudou = true;
       }
     });
