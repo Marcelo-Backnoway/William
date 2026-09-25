@@ -190,8 +190,34 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-var KEY = 'william_superapp_v1'; // mesma chave do SuperApp — dados ficam sincronizados
+// ISOLAMENTO (pedido em 24/09/2026): antes usava a MESMA gaveta (chave de
+// armazenamento) que todos os outros apps do William (Moto, Gold, Agenda...).
+// Isso significava que abrir qualquer outro app do ecossistema no mesmo
+// celular também mexia no "relógio" que o Checklist usa pra decidir se
+// confia na memória local ou na da nuvem — uma fonte extra de instabilidade,
+// sem necessidade. Agora o Checklist tem sua própria gaveta, isolada, e não
+// depende mais de nada que aconteça nos outros apps.
+var KEY = 'william_checklist_isolado_v1';
 var server = null; // sem conceito de servidor aqui — Moto é vida real, não jogo
+
+// Migração de uma vez só: se a gaveta isolada ainda não existe mas a gaveta
+// antiga (compartilhada) tem dados reais do checklist, copia pra não parecer
+// que "sumiu tudo" na primeira abertura depois dessa mudança. Depois dessa
+// cópia única, a gaveta antiga nunca mais é lida por este app.
+(function migrarDaGavetaCompartilhadaSeNecessario(){
+  try {
+    if (localStorage.getItem(KEY)) return; // gaveta isolada já tem dado — nada a migrar
+    var antigo = JSON.parse(localStorage.getItem('william_superapp_v1') || 'null');
+    if (!antigo) return;
+    var copia = {};
+    Object.keys(antigo).forEach(function(k){
+      if (k === 'checklistItens' || k === 'checklistDias' || k === 'checklistProximoNumeroFoto' || k === 'lastModified') {
+        copia[k] = antigo[k];
+      }
+    });
+    if (Object.keys(copia).length) localStorage.setItem(KEY, JSON.stringify(copia));
+  } catch(e) {}
+})();
 
 // ══════════════════════════════════════════════════════
 // UPLOAD AUTOMÁTICO DE FOTOS PARA O DRIVE (via Apps Script)
@@ -512,14 +538,26 @@ var CHECKLIST_ITENS_DEFAULT = [
   {id:'quadra_chaves', nome:'Quadra de Chaves'}
 ];
 function getChecklistItens(){
+  // IMPORTANTE (achado em 24/09/2026 — causa raiz do "tudo virgem" recorrente):
+  // antes, essa função GRAVAVA de volta no armazenamento toda vez que criava a
+  // lista padrão pela primeira vez ou normalizava nomes/ordem. Isso corria
+  // contra a sincronização: se a memória local tivesse acabado de ser limpa
+  // (ex.: "limpar histórico" no navegador, reinstalar o app), essa gravação
+  // incidental carimbava um "agora mesmo" ANTES de a nuvem conseguir devolver
+  // os dados de verdade — e o app então achava que a memória vazia era mais
+  // nova que a nuvem, recusando trazer o checklist de volta. Mesma categoria
+  // de bug já corrigida antes em getChecklistDia (ver comentário lá). Agora
+  // esta função só LÊ e devolve a lista corrigida em memória — nunca grava
+  // sozinha. Só grava quem edita de propósito (setChecklistItens) ou a própria
+  // sincronização com a nuvem.
   var s = loadState();
-  if (!s.checklistItens) { s.checklistItens = CHECKLIST_ITENS_DEFAULT.slice(); saveState(s); }
-  var mudou = false;
-  s.checklistItens.forEach(function(it){
-    if (it.id === 'deficientes' && it.nome !== 'Sala Recursos Multif.') { it.nome = 'Sala Recursos Multif.'; mudou = true; }
-    if (it.id === 'sala2' && it.nome !== 'Sala 2') { it.nome = 'Sala 2'; mudou = true; }
+  var itens = (s.checklistItens || CHECKLIST_ITENS_DEFAULT.slice()).map(function(it){ return Object.assign({}, it); });
+
+  itens.forEach(function(it){
+    if (it.id === 'deficientes' && it.nome !== 'Sala Recursos Multif.') it.nome = 'Sala Recursos Multif.';
+    if (it.id === 'sala2' && it.nome !== 'Sala 2') it.nome = 'Sala 2';
   });
-  var ids = s.checklistItens.map(function(it){ return it.id; });
+  var ids = itens.map(function(it){ return it.id; });
   [
     {id:'sala1', nome:'Sala 1'},
     {id:'refeitorio', nome:'Refeitório'},
@@ -527,21 +565,18 @@ function getChecklistItens(){
     {id:'portao_areia', nome:'Portão Parque de Areia'},
     {id:'quadra_chaves', nome:'Quadra de Chaves'}
   ].forEach(function(novo){
-    if (ids.indexOf(novo.id)===-1) { s.checklistItens.push(novo); ids.push(novo.id); mudou = true; }
+    if (ids.indexOf(novo.id)===-1) { itens.push(novo); ids.push(novo.id); }
   });
 
   // Reordena em ordem cronológica (Sala 1, 2, 3...) seguindo a ordem de referência abaixo
   var ordemReferencia = ['portao','sala1','sala2','sala3','sala4','sala5','artes','deficientes','refeitorio','banheiro_adapt','portao_areia','quadra_chaves'];
-  var ordemAtual = s.checklistItens.map(function(it){ return it.id; }).join('|');
-  s.checklistItens.sort(function(a,b){
+  itens.sort(function(a,b){
     var ia = ordemReferencia.indexOf(a.id); if(ia===-1) ia=999;
     var ib = ordemReferencia.indexOf(b.id); if(ib===-1) ib=999;
     return ia - ib;
   });
-  if (s.checklistItens.map(function(it){ return it.id; }).join('|') !== ordemAtual) mudou = true;
 
-  if (mudou) saveState(s);
-  return s.checklistItens;
+  return itens;
 }
 function setChecklistItens(itens){ var s=loadState(); s.checklistItens=itens; saveState(s); }
 function gerarIdItemChecklist(){ return 'item_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
